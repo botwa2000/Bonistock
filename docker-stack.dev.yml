@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  app:
+    image: bonistock:dev
+    ports:
+      - "3003:3000"
+    secrets:
+      - bonistock_dev_DATABASE_URL
+      - bonistock_dev_NEXTAUTH_SECRET
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXTAUTH_URL=https://dev.bonistock.com
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+secrets:
+  bonistock_dev_DATABASE_URL:
+    external: true
+  bonistock_dev_NEXTAUTH_SECRET:
+    external: true

@@ -100,6 +100,7 @@ export interface User {
   region: UserRegion;
   passExpiry?: string;
   passType?: PassDuration;
+  passActivationsRemaining?: number;
 }
 
 export interface FaqItem {
@@ -124,7 +125,7 @@ export interface PassOption {
   name: string;
   price: string;
   priceNumeric: number;
-  hours: number;
+  days: number;
   description: string;
   perDay: string;
   savings?: string;

@@ -15,7 +15,7 @@ import type { Goal, Tier, PassDuration } from "@/lib/types";
 export default function ProfilePage() {
   const t = useTranslations("profile");
   const router = useRouter();
-  const { isLoggedIn, username, email, tier, goal, memberSince, region, setTier, setGoal, activatePass } =
+  const { isLoggedIn, username, email, tier, goal, memberSince, region, setTier, setGoal, purchasePass } =
     useAuth();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function ProfilePage() {
 
   const handleTierChange = (value: string) => {
     if (value === "1day" || value === "3day" || value === "12day") {
-      activatePass(value as PassDuration);
+      purchasePass(value as PassDuration);
     } else {
       setTier(value as Tier);
     }
@@ -85,9 +85,9 @@ export default function ProfilePage() {
                   onChange={handleTierChange}
                   options={[
                     { value: "free", label: "Free" },
-                    { value: "1day", label: "1-Day Pass ($2.99/24h)" },
-                    { value: "3day", label: "3-Day Pass ($5.99/72h)" },
-                    { value: "12day", label: "12-Day Pass ($14.99/12d)" },
+                    { value: "1day", label: "1-Day Pass ($2.99 / 1 activation)" },
+                    { value: "3day", label: "3-Day Pass ($5.99 / 3 activations)" },
+                    { value: "12day", label: "12-Day Pass ($14.99 / 12 activations)" },
                     { value: "plus", label: "Plus ($6.99/mo)" },
                   ]}
                 />

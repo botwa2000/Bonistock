@@ -7,28 +7,63 @@ import { Button } from "@/components/ui/button";
 
 export function DayPassBanner() {
   const t = useTranslations("paywall");
-  const { tier, passExpiry, passType, isPassActive } = useAuth();
+  const {
+    tier,
+    passExpiry,
+    passType,
+    passActivationsRemaining,
+    isPassActive,
+    canActivatePass,
+    activatePassDay,
+  } = useAuth();
 
   if (tier === "pass") {
     const active = isPassActive();
-    const remaining = active && passExpiry
-      ? formatRemaining(new Date(passExpiry).getTime() - Date.now())
-      : null;
-    const passLabel = passType === "1day" ? "1-Day" : passType === "3day" ? "3-Day" : "12-Day";
+    const remaining =
+      active && passExpiry
+        ? formatRemaining(new Date(passExpiry).getTime() - Date.now())
+        : null;
+    const passLabel =
+      passType === "1day"
+        ? "1-Day"
+        : passType === "3day"
+          ? "3-Day"
+          : "12-Day";
 
     return (
       <div className="flex items-center justify-between rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3">
         <div className="flex items-center gap-3">
-          <Badge variant="accent">{passLabel} {t("passActive")}</Badge>
-          {remaining && (
+          <Badge variant="accent">
+            {passLabel} {t("passActive")}
+          </Badge>
+          {active && remaining && (
             <span className="text-sm text-white/70">
               {t("passExpires")} {remaining}
             </span>
           )}
-          {!active && (
-            <span className="text-sm text-rose-300">
-              {t("passExpired")}
+          {active && (
+            <span className="text-sm text-white/50">
+              {passActivationsRemaining} activation
+              {passActivationsRemaining !== 1 ? "s" : ""} remaining
             </span>
+          )}
+          {!active && canActivatePass() && (
+            <>
+              <span className="text-sm text-white/70">
+                {passActivationsRemaining} activation
+                {passActivationsRemaining !== 1 ? "s" : ""} remaining
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={activatePassDay}
+              >
+                Activate a Day
+              </Button>
+            </>
+          )}
+          {!active && !canActivatePass() && (
+            <span className="text-sm text-rose-300">{t("passExpired")}</span>
           )}
         </div>
         <Button variant="secondary" size="sm">
@@ -63,10 +98,5 @@ function formatRemaining(ms: number): string {
   if (ms <= 0) return "0m";
   const hours = Math.floor(ms / (1000 * 60 * 60));
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours >= 24) {
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return `${days}d ${remainingHours}h`;
-  }
   return `${hours}h ${minutes}m`;
 }
