@@ -30,6 +30,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - NEXTAUTH_URL=https://bonistock.com
+      - NEXT_PUBLIC_APP_URL=https://bonistock.com
     deploy:
       replicas: 1
       restart_policy:
