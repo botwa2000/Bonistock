@@ -16,6 +16,10 @@ COPY . .
 ARG NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
+# Sentry auth token for source map uploads (not persisted in final image)
+ARG SENTRY_AUTH_TOKEN
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

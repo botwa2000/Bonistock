@@ -59,7 +59,7 @@ All work happens on `dev`. When tested and ready, merge to `main` and deploy to 
 Commit your changes first, then run this single block:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && npm run build && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git fetch origin && git checkout dev && git pull origin dev && docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 20 && curl -sf http://localhost:3003/api/health"
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && npm run build && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git fetch origin && git checkout dev && git pull origin dev && docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com --build-arg SENTRY_AUTH_TOKEN='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' -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 20 && curl -sf http://localhost:3003/api/health"
 ```
 
 **What it does:**
@@ -85,7 +85,7 @@ After deploying to dev:
 Only after testing on dev:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git fetch origin && git checkout main && git pull origin main && docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 20 && curl -sf http://localhost:3002/api/health" && git checkout dev
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git fetch origin && git checkout main && git pull origin main && docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com --build-arg SENTRY_AUTH_TOKEN='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' -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 20 && curl -sf http://localhost:3002/api/health" && git checkout dev
 ```
 
 **What it does:**

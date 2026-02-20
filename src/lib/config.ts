@@ -40,9 +40,6 @@ export const config = {
   fmp: {
     apiKey: required("FMP_API_KEY"),
   },
-  sentry: {
-    dsn: required("SENTRY_DSN"),
-  },
   app: {
     url: required("NEXT_PUBLIC_APP_URL"),
   },

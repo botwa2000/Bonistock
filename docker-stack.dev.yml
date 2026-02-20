@@ -20,7 +20,6 @@ services:
       - bonistock_dev_FACEBOOK_CLIENT_SECRET
       - bonistock_dev_FMP_API_KEY
       - bonistock_dev_ENCRYPTION_KEY
-      - bonistock_dev_SENTRY_DSN
       - bonistock_dev_STRIPE_PRICE_PLUS_MONTHLY
       - bonistock_dev_STRIPE_PRICE_PLUS_ANNUAL
       - bonistock_dev_STRIPE_PRICE_PASS_1DAY
@@ -75,8 +74,6 @@ secrets:
   bonistock_dev_FMP_API_KEY:
     external: true
   bonistock_dev_ENCRYPTION_KEY:
-    external: true
-  bonistock_dev_SENTRY_DSN:
     external: true
   bonistock_dev_STRIPE_PRICE_PLUS_MONTHLY:
     external: true
