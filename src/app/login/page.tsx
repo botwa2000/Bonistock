@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -9,23 +9,71 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
-import { Badge } from "@/components/ui/badge";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const t = useTranslations("login");
   const router = useRouter();
-  const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const searchParams = useSearchParams();
+  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [error, setError] = useState("");
+  const [show2FA, setShow2FA] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const verified = searchParams.get("verified") === "true";
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(username, password);
-    if (success) {
-      router.push("/dashboard");
-    } else {
-      setError(t("error"));
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const result = await login(email, password);
+      if (result.ok) {
+        router.push("/dashboard");
+      } else if (result.error === "2FA_REQUIRED") {
+        setShow2FA(true);
+      } else {
+        setError(result.error ?? t("error"));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handle2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: twoFactorCode }),
+      });
+      if (res.ok) {
+        // Re-login after 2FA verification
+        const result = await login(email, password);
+        if (result.ok) {
+          router.push("/dashboard");
+        }
+      } else {
+        const data = await res.json();
+        setError(data.error ?? "Invalid 2FA code");
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -42,41 +90,121 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-white/60">{t("subtitle")}</p>
         </div>
 
-        <Card variant="glass" padding="lg">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label={t("usernamePlaceholder")}
-              id="username"
-              type="text"
-              placeholder="admin"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-            <Input
-              label={t("passwordPlaceholder")}
-              id="password"
-              type="password"
-              placeholder="admin"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-
-            {error && (
-              <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-                {error}
-              </div>
-            )}
-
-            <Button type="submit" fullWidth>
-              {t("loginButton")}
-            </Button>
-          </form>
-
-          <div className="mt-4 text-center">
-            <Badge variant="accent">{t("demoHint")}</Badge>
+        {verified && (
+          <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center text-xs text-emerald-200">
+            Email verified successfully. You can now log in.
           </div>
+        )}
+
+        <Card variant="glass" padding="lg">
+          {show2FA ? (
+            <form onSubmit={handle2FASubmit} className="space-y-4">
+              <p className="text-sm text-white/70">
+                Enter the 6-digit code from your authenticator app.
+              </p>
+              <Input
+                label="2FA Code"
+                id="twoFactorCode"
+                type="text"
+                placeholder="000000"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                autoComplete="one-time-code"
+                maxLength={6}
+              />
+
+              {error && (
+                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" fullWidth disabled={submitting}>
+                {submitting ? "Verifying..." : "Verify"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setShow2FA(false); setError(""); }}
+                className="w-full text-center text-sm text-white/50 hover:text-white transition-colors"
+              >
+                Back to login
+              </button>
+            </form>
+          ) : (
+            <>
+              {/* OAuth Buttons */}
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  fullWidth
+                  onClick={loginWithGoogle}
+                >
+                  Continue with Google
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  fullWidth
+                  onClick={loginWithFacebook}
+                >
+                  Continue with Facebook
+                </Button>
+              </div>
+
+              <div className="my-4 flex items-center gap-3">
+                <div className="flex-1 border-t border-white/10" />
+                <span className="text-xs text-white/40">or</span>
+                <div className="flex-1 border-t border-white/10" />
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  label="Email"
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+                <Input
+                  label={t("passwordPlaceholder")}
+                  id="password"
+                  type="password"
+                  placeholder=""
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+
+                {error && (
+                  <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                    {error}
+                  </div>
+                )}
+
+                <Button type="submit" fullWidth disabled={submitting}>
+                  {submitting ? "Signing in..." : t("loginButton")}
+                </Button>
+              </form>
+
+              <div className="mt-4 flex justify-between text-sm">
+                <Link
+                  href="/forgot-password"
+                  className="text-white/50 hover:text-white transition-colors"
+                >
+                  Forgot password?
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-white/50 hover:text-white transition-colors"
+                >
+                  Create account
+                </Link>
+              </div>
+            </>
+          )}
         </Card>
 
         <div className="text-center text-sm text-white/60">

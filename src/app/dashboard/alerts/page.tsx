@@ -12,7 +12,8 @@ import { UpgradePaywall } from "@/components/features/upgrade-paywall";
 
 export default function AlertsPage() {
   const t = useTranslations("alerts");
-  const { tier } = useAuth();
+  const { user } = useAuth();
+  const tier = user?.tier ?? "free";
 
   if (tier === "free" || tier === "pass") {
     return (

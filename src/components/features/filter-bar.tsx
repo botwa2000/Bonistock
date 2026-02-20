@@ -40,7 +40,8 @@ export function StockFilterBar({
   sectors,
 }: StockFilterBarProps) {
   const t = useTranslations("filters");
-  const { region } = useAuth();
+  const { user } = useAuth();
+  const region = (user?.region ?? "US").toLowerCase() as "us" | "de";
 
   const set = <K extends keyof StockFilters>(key: K, value: StockFilters[K]) =>
     onChange({ ...filters, [key]: value });
@@ -246,7 +247,8 @@ export function EtfFilterBar({
   themes,
 }: EtfFilterBarProps) {
   const t = useTranslations("filters");
-  const { region } = useAuth();
+  const { user } = useAuth();
+  const region = (user?.region ?? "US").toLowerCase() as "us" | "de";
 
   const set = <K extends keyof EtfFilters>(key: K, value: EtfFilters[K]) =>
     onChange({ ...filters, [key]: value });

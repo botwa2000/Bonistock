@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/input";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import type { UserRegion } from "@/lib/types";
 
 function Toggle({
   checked,
@@ -33,16 +32,30 @@ function Toggle({
 export default function SettingsPage() {
   const t = useTranslations("settings");
   const router = useRouter();
-  const { isLoggedIn, region, setRegion } = useAuth();
+  const { isLoggedIn, user, refreshUser } = useAuth();
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
-  const [language, setLanguage] = useState("en");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) router.push("/login");
   }, [isLoggedIn, router]);
 
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn || !user) return null;
+
+  const updateSetting = async (field: string, value: string) => {
+    setSaving(true);
+    try {
+      await fetch("/api/user/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      await refreshUser();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -61,16 +74,16 @@ export default function SettingsPage() {
             <div className="mt-4">
               <Select
                 id="region"
-                value={region}
-                onChange={(v) => setRegion(v as UserRegion)}
+                value={user.region}
+                onChange={(v) => updateSetting("region", v)}
                 options={[
-                  { value: "us", label: t("regionUs") },
-                  { value: "de", label: t("regionDe") },
+                  { value: "US", label: t("regionUs") },
+                  { value: "DE", label: t("regionDe") },
                 ]}
               />
             </div>
             <p className="mt-3 text-xs text-white/40">
-              {region === "us" ? t("regionInfoUs") : t("regionInfoDe")}
+              {user.region === "US" ? t("regionInfoUs") : t("regionInfoDe")}
             </p>
           </Card>
 
@@ -85,21 +98,40 @@ export default function SettingsPage() {
             <div className="mt-4">
               <Select
                 id="lang"
-                value={language}
-                onChange={setLanguage}
+                value={user.language}
+                onChange={(v) => updateSetting("language", v)}
                 options={[
-                  { value: "en", label: "English" },
-                  { value: "de", label: "Deutsch (coming soon)" },
-                  { value: "es", label: "Espanol (coming soon)" },
-                  { value: "fr", label: "Francais (coming soon)" },
+                  { value: "EN", label: "English" },
+                  { value: "DE", label: "Deutsch (coming soon)" },
+                  { value: "ES", label: "Espanol (coming soon)" },
+                  { value: "FR", label: "Francais (coming soon)" },
                 ]}
               />
             </div>
-            {language !== "en" && (
+            {user.language !== "EN" && (
               <Badge variant="warning" className="mt-3">
-                Translation coming soon — i18n scaffold ready
+                Translation coming soon
               </Badge>
             )}
+          </Card>
+
+          {/* Theme */}
+          <Card variant="glass" padding="lg">
+            <h2 className="text-lg font-semibold text-white">
+              {t("appearance")}
+            </h2>
+            <div className="mt-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm text-white">{t("darkMode")}</div>
+                <div className="text-xs text-white/50">
+                  Toggle between dark and light mode
+                </div>
+              </div>
+              <Toggle
+                checked={user.theme === "DARK"}
+                onChange={(v) => updateSetting("theme", v ? "DARK" : "LIGHT")}
+              />
+            </div>
           </Card>
 
           {/* Notifications */}
@@ -129,19 +161,20 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          {/* Appearance */}
+          {/* Goal */}
           <Card variant="glass" padding="lg">
-            <h2 className="text-lg font-semibold text-white">
-              {t("appearance")}
-            </h2>
-            <div className="mt-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm text-white">{t("darkMode")}</div>
-                <div className="text-xs text-white/50">
-                  Dark mode is currently the only theme
-                </div>
-              </div>
-              <Toggle checked={true} onChange={() => {}} />
+            <h2 className="text-lg font-semibold text-white">Investment Goal</h2>
+            <div className="mt-4">
+              <Select
+                id="goal"
+                value={user.goal}
+                onChange={(v) => updateSetting("goal", v)}
+                options={[
+                  { value: "GROWTH", label: "Growth" },
+                  { value: "INCOME", label: "Income" },
+                  { value: "BALANCED", label: "Balanced" },
+                ]}
+              />
             </div>
           </Card>
 
@@ -150,18 +183,48 @@ export default function SettingsPage() {
             <h2 className="text-lg font-semibold text-white">
               {t("dangerZone")}
             </h2>
-            <div className="mt-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm text-white">{t("deleteAccount")}</div>
-                <div className="text-xs text-white/50">
-                  {t("deleteAccountDescription")}
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-white">Export data</div>
+                  <div className="text-xs text-white/50">
+                    Download all your data (GDPR)
+                  </div>
                 </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => window.open("/api/user/export", "_blank")}
+                >
+                  Export
+                </Button>
               </div>
-              <Button variant="danger" size="sm">
-                {t("deleteAccount")}
-              </Button>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-white">{t("deleteAccount")}</div>
+                  <div className="text-xs text-white/50">
+                    {t("deleteAccountDescription")}
+                  </div>
+                </div>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm("Are you sure? This cannot be undone.")) {
+                      await fetch("/api/user/delete", { method: "POST" });
+                      router.push("/");
+                    }
+                  }}
+                >
+                  {t("deleteAccount")}
+                </Button>
+              </div>
             </div>
           </Card>
+
+          {saving && (
+            <p className="text-xs text-white/40 text-center">Saving...</p>
+          )}
         </div>
       </div>
     </DashboardLayout>

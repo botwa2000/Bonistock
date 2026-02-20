@@ -38,7 +38,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
   const pathname = usePathname();
   const router = useRouter();
-  const { isLoggedIn, username, tier, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
+  const username = user?.name ?? user?.email ?? "";
+  const tier = user?.tier ?? "free";
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -118,7 +120,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               size="sm"
               onClick={() => {
                 logout();
-                router.push("/");
               }}
             >
               {t("common.logout")}

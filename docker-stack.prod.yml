@@ -8,6 +8,24 @@ services:
     secrets:
       - bonistock_prod_DATABASE_URL
       - bonistock_prod_NEXTAUTH_SECRET
+      - bonistock_prod_STRIPE_SECRET_KEY
+      - bonistock_prod_STRIPE_WEBHOOK_SECRET
+      - bonistock_prod_STRIPE_PUBLISHABLE_KEY
+      - bonistock_prod_BREVO_SMTP_USER
+      - bonistock_prod_BREVO_SMTP_KEY
+      - bonistock_prod_EMAIL_FROM
+      - bonistock_prod_GOOGLE_CLIENT_ID
+      - bonistock_prod_GOOGLE_CLIENT_SECRET
+      - bonistock_prod_FACEBOOK_CLIENT_ID
+      - bonistock_prod_FACEBOOK_CLIENT_SECRET
+      - bonistock_prod_FMP_API_KEY
+      - bonistock_prod_ENCRYPTION_KEY
+      - bonistock_prod_SENTRY_DSN
+      - bonistock_prod_STRIPE_PRICE_PLUS_MONTHLY
+      - bonistock_prod_STRIPE_PRICE_PLUS_ANNUAL
+      - bonistock_prod_STRIPE_PRICE_PASS_1DAY
+      - bonistock_prod_STRIPE_PRICE_PASS_3DAY
+      - bonistock_prod_STRIPE_PRICE_PASS_12DAY
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -32,4 +50,40 @@ secrets:
   bonistock_prod_DATABASE_URL:
     external: true
   bonistock_prod_NEXTAUTH_SECRET:
+    external: true
+  bonistock_prod_STRIPE_SECRET_KEY:
+    external: true
+  bonistock_prod_STRIPE_WEBHOOK_SECRET:
+    external: true
+  bonistock_prod_STRIPE_PUBLISHABLE_KEY:
+    external: true
+  bonistock_prod_BREVO_SMTP_USER:
+    external: true
+  bonistock_prod_BREVO_SMTP_KEY:
+    external: true
+  bonistock_prod_EMAIL_FROM:
+    external: true
+  bonistock_prod_GOOGLE_CLIENT_ID:
+    external: true
+  bonistock_prod_GOOGLE_CLIENT_SECRET:
+    external: true
+  bonistock_prod_FACEBOOK_CLIENT_ID:
+    external: true
+  bonistock_prod_FACEBOOK_CLIENT_SECRET:
+    external: true
+  bonistock_prod_FMP_API_KEY:
+    external: true
+  bonistock_prod_ENCRYPTION_KEY:
+    external: true
+  bonistock_prod_SENTRY_DSN:
+    external: true
+  bonistock_prod_STRIPE_PRICE_PLUS_MONTHLY:
+    external: true
+  bonistock_prod_STRIPE_PRICE_PLUS_ANNUAL:
+    external: true
+  bonistock_prod_STRIPE_PRICE_PASS_1DAY:
+    external: true
+  bonistock_prod_STRIPE_PRICE_PASS_3DAY:
+    external: true
+  bonistock_prod_STRIPE_PRICE_PASS_12DAY:
     external: true

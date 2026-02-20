@@ -15,7 +15,9 @@ import { StockFilterBar, defaultStockFilters } from "@/components/features/filte
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tf = useTranslations("filters");
-  const { username, tier } = useAuth();
+  const { user } = useAuth();
+  const username = user?.name ?? user?.email ?? "";
+  const tier = user?.tier ?? "free";
 
   const [filters, setFilters] = useState<StockFilters>(defaultStockFilters);
 

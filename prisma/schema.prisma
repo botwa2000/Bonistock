@@ -1,0 +1,446 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──── Auth.js required models ────
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerified   DateTime?
+  passwordHash    String?
+  name            String?
+  image           String?
+  role            Role      @default(USER)
+
+  // Profile
+  region          Region    @default(US)
+  language        Language  @default(EN)
+  theme           Theme     @default(DARK)
+  goal            Goal      @default(GROWTH)
+
+  // Security
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?   // AES-256 encrypted
+
+  // Legal
+  tosAcceptedAt       DateTime?
+  tosVersion          String?
+  privacyAcceptedAt   DateTime?
+  cookieConsent       Json?     // { analytics: bool, marketing: bool }
+
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime? // Soft delete
+
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  authenticators  Authenticator[]
+  subscription    Subscription?
+  passPurchases   PassPurchase[]
+  watchlistItems  WatchlistItem[]
+  alerts          Alert[]
+  savedMixes      SavedMix[]
+  portfolios      UserPortfolio[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  type       TokenType @default(EMAIL_VERIFICATION)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Authenticator {
+  credentialID         String  @id
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, credentialID])
+  @@map("authenticators")
+}
+
+// ──── Payment models ────
+
+model Subscription {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  stripeCustomerId      String   @unique
+  stripeSubscriptionId  String?  @unique
+  stripePriceId         String?
+  status                SubStatus @default(INACTIVE)
+  tier                  Tier     @default(FREE)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model PassPurchase {
+  id                     String   @id @default(cuid())
+  userId                 String
+  passType               PassType
+  activationsTotal       Int
+  activationsUsed        Int      @default(0)
+  stripePaymentIntentId  String   @unique
+  purchasedAt            DateTime @default(now())
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activations PassActivation[]
+
+  @@map("pass_purchases")
+}
+
+model PassActivation {
+  id             String   @id @default(cuid())
+  passPurchaseId String
+  activatedAt    DateTime @default(now())
+  expiresAt      DateTime
+
+  passPurchase PassPurchase @relation(fields: [passPurchaseId], references: [id], onDelete: Cascade)
+
+  @@map("pass_activations")
+}
+
+// ──── User data models ────
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  symbol    String
+  addedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@map("watchlist_items")
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  userId      String
+  symbol      String
+  type        AlertType
+  condition   Json      // { operator: "gte"|"lte", value: number } or { ratingChange: true }
+  message     String?
+  triggered   Boolean   @default(false)
+  triggeredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
+}
+
+model SavedMix {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  amount      Float
+  riskFilter  RiskLevel
+  allocations Json     // Array of { symbol, weight, dollars, shares }
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_mixes")
+}
+
+// ──── Portfolio models ────
+
+model DemoPortfolio {
+  id          String   @id @default(cuid())
+  strategy    Strategy
+  name        String
+  description String
+  initialAmount Float
+  holdings    Json     // Array of { symbol, weight }
+  createdAt   DateTime @default(now())
+
+  snapshots DemoPortfolioSnapshot[]
+
+  @@map("demo_portfolios")
+}
+
+model DemoPortfolioSnapshot {
+  id              String   @id @default(cuid())
+  demoPortfolioId String
+  date            DateTime
+  totalValue      Float
+  returnPct       Float    // cumulative return %
+  holdings        Json     // Array of { symbol, shares, value }
+
+  demoPortfolio DemoPortfolio @relation(fields: [demoPortfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([demoPortfolioId, date])
+  @@map("demo_portfolio_snapshots")
+}
+
+model UserPortfolio {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings UserPortfolioHolding[]
+
+  @@map("user_portfolios")
+}
+
+model UserPortfolioHolding {
+  id          String   @id @default(cuid())
+  portfolioId String
+  symbol      String
+  shares      Float
+  avgCost     Float
+  addedAt     DateTime @default(now())
+
+  portfolio UserPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, symbol])
+  @@map("user_portfolio_holdings")
+}
+
+// ──── Stock data models ────
+
+model Stock {
+  id            String   @id @default(cuid())
+  symbol        String   @unique
+  name          String
+  price         Float
+  target        Float
+  upside        Float
+  buys          Int
+  holds         Int
+  sells         Int
+  analysts      Int
+  sector        String
+  risk          RiskLevel
+  horizon       String
+  region        String
+  exchange      String
+  currency      String
+  dividendYield Float?
+  marketCap     String
+  description   String
+  whyThisPick   String
+  belowSma200   Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+
+  brokerAvailability StockBroker[]
+
+  @@map("stocks")
+}
+
+model Etf {
+  id          String   @id @default(cuid())
+  symbol      String   @unique
+  name        String
+  cagr1y      Float
+  cagr3y      Float
+  cagr5y      Float
+  drawdown    Float
+  fee         Float
+  sharpe      Float
+  theme       String
+  region      String
+  exchange    String
+  currency    String
+  description String
+  updatedAt   DateTime @updatedAt
+
+  brokerAvailability EtfBroker[]
+
+  @@map("etfs")
+}
+
+model StockBroker {
+  stockId  String
+  brokerId String
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@id([stockId, brokerId])
+  @@map("stock_brokers")
+}
+
+model EtfBroker {
+  etfId    String
+  brokerId String
+
+  etf Etf @relation(fields: [etfId], references: [id], onDelete: Cascade)
+
+  @@id([etfId, brokerId])
+  @@map("etf_brokers")
+}
+
+model Broker {
+  id          String   @id
+  name        String
+  logo        String
+  fractional  Boolean
+  commission  String
+  minDeposit  String
+  features    Json     // String array
+  cta         String
+  regions     Json     // UserRegion array
+  sparplan    Boolean  @default(false)
+  sparplanMin String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("brokers")
+}
+
+// ──── Security models ────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // LOGIN, LOGOUT, PASSWORD_CHANGE, 2FA_ENABLE, 2FA_DISABLE, SUBSCRIPTION_CHANGE, DATA_EXPORT, ACCOUNT_DELETE, FAILED_LOGIN
+  metadata  Json?    // { ip, userAgent, details }
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ──── Enums ────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Region {
+  US
+  DE
+}
+
+enum Language {
+  EN
+  DE
+  ES
+  FR
+}
+
+enum Theme {
+  DARK
+  LIGHT
+}
+
+enum Goal {
+  GROWTH
+  INCOME
+  BALANCED
+}
+
+enum Tier {
+  FREE
+  PASS
+  PLUS
+}
+
+enum SubStatus {
+  INACTIVE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum PassType {
+  ONE_DAY
+  THREE_DAY
+  TWELVE_DAY
+}
+
+enum AlertType {
+  PRICE_TARGET
+  RATING_CHANGE
+  TREND_WARNING
+}
+
+enum RiskLevel {
+  LOW
+  BALANCED
+  HIGH
+}
+
+enum Strategy {
+  BUY_AND_HOLD
+  ACTIVE_ROTATION
+  DIVIDEND_FOCUS
+  BALANCED_GROWTH
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}

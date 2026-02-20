@@ -1,74 +1,60 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export function DayPassBanner() {
   const t = useTranslations("paywall");
-  const {
-    tier,
-    passExpiry,
-    passType,
-    passActivationsRemaining,
-    isPassActive,
-    canActivatePass,
-    activatePassDay,
-  } = useAuth();
+  const { user } = useAuth();
+
+  const tier = user?.tier ?? "free";
+  const passExpiry = user?.passExpiry ?? null;
+  const passActivationsRemaining = user?.passActivationsRemaining ?? 0;
 
   if (tier === "pass") {
-    const active = isPassActive();
+    const active = passExpiry ? Date.now() < new Date(passExpiry).getTime() : false;
     const remaining =
       active && passExpiry
         ? formatRemaining(new Date(passExpiry).getTime() - Date.now())
         : null;
-    const passLabel =
-      passType === "1day"
-        ? "1-Day"
-        : passType === "3day"
-          ? "3-Day"
-          : "12-Day";
 
     return (
       <div className="flex items-center justify-between rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3">
         <div className="flex items-center gap-3">
-          <Badge variant="accent">
-            {passLabel} {t("passActive")}
-          </Badge>
+          <Badge variant="accent">{t("passActive")}</Badge>
           {active && remaining && (
             <span className="text-sm text-white/70">
               {t("passExpires")} {remaining}
             </span>
           )}
-          {active && (
-            <span className="text-sm text-white/50">
-              {passActivationsRemaining} activation
-              {passActivationsRemaining !== 1 ? "s" : ""} remaining
-            </span>
+          <span className="text-sm text-white/50">
+            {passActivationsRemaining} activation
+            {passActivationsRemaining !== 1 ? "s" : ""} remaining
+          </span>
+          {!active && passActivationsRemaining > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                await fetch("/api/user/pass/activate", { method: "POST" });
+                window.location.reload();
+              }}
+            >
+              Activate a Day
+            </Button>
           )}
-          {!active && canActivatePass() && (
-            <>
-              <span className="text-sm text-white/70">
-                {passActivationsRemaining} activation
-                {passActivationsRemaining !== 1 ? "s" : ""} remaining
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={activatePassDay}
-              >
-                Activate a Day
-              </Button>
-            </>
-          )}
-          {!active && !canActivatePass() && (
+          {!active && passActivationsRemaining <= 0 && (
             <span className="text-sm text-rose-300">{t("passExpired")}</span>
           )}
         </div>
-        <Button variant="secondary" size="sm">
-          Upgrade to Plus
-        </Button>
+        <Link href="/pricing">
+          <Button variant="secondary" size="sm">
+            Upgrade to Plus
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -82,10 +68,14 @@ export function DayPassBanner() {
           (from $2.99) or Plus ($6.99/mo).
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm">
-            Pass from $2.99
-          </Button>
-          <Button size="sm">Go Plus</Button>
+          <Link href="/pricing">
+            <Button variant="secondary" size="sm">
+              Pass from $2.99
+            </Button>
+          </Link>
+          <Link href="/pricing">
+            <Button size="sm">Go Plus</Button>
+          </Link>
         </div>
       </div>
     );

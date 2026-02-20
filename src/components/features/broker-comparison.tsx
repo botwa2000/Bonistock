@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 
 export function BrokerComparison() {
   const t = useTranslations("brokers");
-  const { region } = useAuth();
+  const { user } = useAuth();
+  const region = (user?.region ?? "US").toLowerCase() as "us" | "de";
 
   const regionBrokers = brokers.filter((b) => b.regions.includes(region));
   const config = regionConfigs[region];

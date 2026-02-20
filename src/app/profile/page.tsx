@@ -8,32 +8,22 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/input";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import type { Goal, Tier, PassDuration } from "@/lib/types";
 
 export default function ProfilePage() {
   const t = useTranslations("profile");
   const router = useRouter();
-  const { isLoggedIn, username, email, tier, goal, memberSince, region, setTier, setGoal, purchasePass } =
-    useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   useEffect(() => {
     if (!isLoggedIn) router.push("/login");
   }, [isLoggedIn, router]);
 
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn || !user) return null;
 
+  const tier = user.tier;
   const tierVariant =
     tier === "plus" ? "info" : tier === "pass" ? "accent" : "default";
-
-  const handleTierChange = (value: string) => {
-    if (value === "1day" || value === "3day" || value === "12day") {
-      purchasePass(value as PassDuration);
-    } else {
-      setTier(value as Tier);
-    }
-  };
 
   return (
     <DashboardLayout>
@@ -48,11 +38,11 @@ export default function ProfilePage() {
             <div className="mt-4 space-y-4 text-sm">
               <div className="flex justify-between border-b border-white/5 pb-3">
                 <span className="text-white/60">{t("username")}</span>
-                <span className="text-white">{username}</span>
+                <span className="text-white">{user.name}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-3">
                 <span className="text-white/60">{t("email")}</span>
-                <span className="text-white">{email}</span>
+                <span className="text-white">{user.email}</span>
               </div>
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <span className="text-white/60">{t("tier")}</span>
@@ -60,61 +50,48 @@ export default function ProfilePage() {
               </div>
               <div className="flex justify-between border-b border-white/5 pb-3">
                 <span className="text-white/60">Region</span>
-                <span className="text-white">{region === "us" ? "United States" : "Germany"}</span>
+                <span className="text-white">{user.region === "US" ? "United States" : "Germany"}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-3">
+                <span className="text-white/60">2FA</span>
+                <Badge variant={user.twoFactorEnabled ? "accent" : "default"}>
+                  {user.twoFactorEnabled ? "Enabled" : "Disabled"}
+                </Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/60">{t("memberSince")}</span>
-                <span className="text-white">{memberSince}</span>
+                <span className="text-white/60">Email verified</span>
+                <Badge variant={user.emailVerified ? "accent" : "warning"}>
+                  {user.emailVerified ? "Verified" : "Not verified"}
+                </Badge>
               </div>
             </div>
           </Card>
 
           <div className="space-y-4">
             <Card variant="glass" padding="lg">
-              <h2 className="text-lg font-semibold text-white">
-                {t("changeTier")}
-              </h2>
-              <p className="mt-1 text-xs text-white/50">
-                Switch tier to preview different experiences (demo only).
+              <h2 className="text-lg font-semibold text-white">Subscription</h2>
+              <p className="mt-2 text-sm text-white/60">
+                {tier === "plus"
+                  ? "You have full access to all features."
+                  : tier === "pass"
+                  ? `You have ${user.passActivationsRemaining} activations remaining.`
+                  : "Upgrade to Plus for full access."}
               </p>
-              <div className="mt-4">
-                <Select
-                  label={t("tier")}
-                  id="tier-select"
-                  value={tier}
-                  onChange={handleTierChange}
-                  options={[
-                    { value: "free", label: "Free" },
-                    { value: "1day", label: "1-Day Pass ($2.99 / 1 activation)" },
-                    { value: "3day", label: "3-Day Pass ($5.99 / 3 activations)" },
-                    { value: "12day", label: "12-Day Pass ($14.99 / 12 activations)" },
-                    { value: "plus", label: "Plus ($6.99/mo)" },
-                  ]}
-                />
-              </div>
               <Link href="/pricing">
                 <Button variant="secondary" size="sm" className="mt-3">
-                  View Plans
+                  {tier === "free" ? "Upgrade" : "Manage Subscription"}
                 </Button>
               </Link>
             </Card>
 
             <Card variant="glass" padding="lg">
-              <h2 className="text-lg font-semibold text-white">
-                {t("changeGoal")}
-              </h2>
-              <div className="mt-4">
-                <Select
-                  label={t("goal")}
-                  id="goal-select"
-                  value={goal}
-                  onChange={(v) => setGoal(v as Goal)}
-                  options={[
-                    { value: "growth", label: "Growth" },
-                    { value: "income", label: "Income" },
-                    { value: "balanced", label: "Balanced" },
-                  ]}
-                />
+              <h2 className="text-lg font-semibold text-white">Security</h2>
+              <div className="mt-3 space-y-2">
+                <Link href="/settings">
+                  <Button variant="secondary" size="sm" fullWidth>
+                    {user.twoFactorEnabled ? "Manage 2FA" : "Enable 2FA"}
+                  </Button>
+                </Link>
               </div>
             </Card>
           </div>
