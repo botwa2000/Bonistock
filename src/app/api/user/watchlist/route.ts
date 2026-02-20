@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import type { WatchlistItem } from "@prisma/client";
 
 const addSchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -20,7 +21,7 @@ export async function GET() {
 
   // Enrich with stock data
   const enriched = await Promise.all(
-    items.map(async (item) => {
+    items.map(async (item: WatchlistItem) => {
       const stock = await db.stock.findUnique({
         where: { symbol: item.symbol },
         select: { name: true, price: true, upside: true },

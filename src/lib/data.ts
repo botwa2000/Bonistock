@@ -1,5 +1,5 @@
 import { db } from "./db";
-import type { RiskLevel } from "@prisma/client";
+import type { RiskLevel, Stock, StockBroker, Etf, EtfBroker, Broker } from "@prisma/client";
 
 export interface StockFilters {
   region?: string;
@@ -39,8 +39,8 @@ export async function getStocks(filters?: StockFilters) {
   });
 
   if (filters?.broker) {
-    return stocks.filter((s) =>
-      s.brokerAvailability.some((ba) => ba.brokerId === filters.broker)
+    return stocks.filter((s: Stock & { brokerAvailability: StockBroker[] }) =>
+      s.brokerAvailability.some((ba: StockBroker) => ba.brokerId === filters.broker)
     );
   }
 
@@ -68,8 +68,8 @@ export async function getEtfs(filters?: EtfFilters) {
   });
 
   if (filters?.broker) {
-    return etfs.filter((e) =>
-      e.brokerAvailability.some((ba) => ba.brokerId === filters.broker)
+    return etfs.filter((e: Etf & { brokerAvailability: EtfBroker[] }) =>
+      e.brokerAvailability.some((ba: EtfBroker) => ba.brokerId === filters.broker)
     );
   }
 
@@ -86,7 +86,7 @@ export async function getEtf(symbol: string) {
 export async function getBrokers(region?: string) {
   const brokers = await db.broker.findMany({ orderBy: { name: "asc" } });
   if (region) {
-    return brokers.filter((b) =>
+    return brokers.filter((b: Broker) =>
       (b.regions as string[]).includes(region)
     );
   }

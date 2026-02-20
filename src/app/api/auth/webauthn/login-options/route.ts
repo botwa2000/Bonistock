@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import type { Authenticator } from "@prisma/client";
 
 const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost").hostname;
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: user.authenticators.map((auth) => ({
+    allowCredentials: user.authenticators.map((auth: Authenticator) => ({
       id: auth.credentialID,
       type: "public-key" as const,
       transports: auth.transports

@@ -59,14 +59,14 @@ All work happens on `dev`. When tested and ready, merge to `main` and deploy to 
 Commit your changes first, then run this single block:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && npm run build && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git fetch origin && git checkout dev && git pull origin dev && docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com --build-arg SENTRY_AUTH_TOKEN='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' -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 20 && curl -sf http://localhost:3003/api/health"
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && npm run build && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git fetch origin && git checkout dev && git pull origin dev && docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 20 && curl -sf http://localhost:3003/api/health"
 ```
 
 **What it does:**
 1. Builds locally (catches errors before pushing)
 2. Pushes `dev` branch to GitHub
 3. SSHs to server: pulls code, builds Docker image, deploys stack, forces service update
-4. Waits 20s for convergence, then health-checks → expects `{"status":"ok"}`
+4. Waits 20s for convergence, then health-checks
 
 ## Test on Dev
 
@@ -85,37 +85,83 @@ After deploying to dev:
 Only after testing on dev:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git fetch origin && git checkout main && git pull origin main && docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com --build-arg SENTRY_AUTH_TOKEN='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' -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 20 && curl -sf http://localhost:3002/api/health" && git checkout dev
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git fetch origin && git checkout main && git pull origin main && docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 20 && curl -sf http://localhost:3002/api/health" && git checkout dev
 ```
 
 **What it does:**
 1. Merges `dev` → `main` locally, pushes to GitHub
 2. SSHs to server: pulls code, builds Docker image, deploys stack, forces service update
-3. Waits 20s for convergence, then health-checks → expects `{"status":"ok"}`
+3. Waits 20s for convergence, then health-checks
 4. Switches back to `dev` branch locally
 
 ---
 
-## Database
+## Database (Prisma 7)
+
+Prisma 7 manages all database operations. The connection URL is configured in two places:
+- **CLI operations** (migrate, db push, seed): reads from `prisma.config.ts` via `DATABASE_URL` env var
+- **Runtime** (PrismaClient in the app): uses `@prisma/adapter-pg` with `DATABASE_URL` from Docker secrets
 
 ### Connection details
 
-| Env  | Host      | Database       | User      | Password           |
-|------|-----------|----------------|-----------|--------------------|
-| Dev  | localhost | bonistock_dev  | bonifatus | (in Docker secret) |
-| Prod | localhost | bonistock_prod | bonifatus | (in Docker secret) |
+| Env  | Host (from host)  | Host (from Docker) | Database       | User      |
+|------|-------------------|--------------------|----------------|-----------|
+| Dev  | localhost         | 172.18.0.1         | bonistock_dev  | bonifatus |
+| Prod | localhost         | 172.18.0.1         | bonistock_prod | bonifatus |
+
+Docker containers cannot reach PostgreSQL via `localhost`. They use the Docker bridge IP `172.18.0.1`.
+
+### Schema changes (db push)
+
+After modifying `prisma/schema.prisma`, push changes to the database:
+
+```bash
+# Dev
+$SSH "cd /home/deploy/bonistock-dev && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_dev' npx prisma db push"
+
+# Prod
+$SSH "cd /home/deploy/bonistock && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_prod' npx prisma db push"
+```
+
+This runs on the **server** (not from Docker) so it uses `localhost` to reach PostgreSQL.
+
+### Seed data
+
+Seed stocks, ETFs, brokers, and demo portfolios:
+
+```bash
+# Dev
+$SSH "cd /home/deploy/bonistock-dev && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_dev' npx tsx prisma/seed.ts"
+
+# Prod
+$SSH "cd /home/deploy/bonistock && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_prod' npx tsx prisma/seed.ts"
+```
 
 ### Run psql
 
 ```bash
-# Read DATABASE_URL from running container
-$SSH 'docker exec $(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL'
-$SSH 'docker exec $(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL'
+# Direct psql connection
+$SSH "PGPASSWORD=Bon1fatusPr0d2026 psql -h localhost -U bonifatus -d bonistock_dev"
+$SSH "PGPASSWORD=Bon1fatusPr0d2026 psql -h localhost -U bonifatus -d bonistock_prod"
 
-# Connect directly (substitute password from .secrets)
-$SSH "PGPASSWORD=<password> psql -h localhost -U bonifatus -d bonistock_prod"
-$SSH "PGPASSWORD=<password> psql -h localhost -U bonifatus -d bonistock_dev"
+# Read DATABASE_URL from running container
+$SSH 'docker exec $(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL'
+$SSH 'docker exec $(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL'
 ```
+
+### Full database workflow
+
+When you change the Prisma schema:
+
+1. Edit `prisma/schema.prisma`
+2. Run `npx prisma generate` locally (regenerates client types)
+3. Fix any TypeScript errors from schema changes
+4. `npm run build` (verify build passes)
+5. Commit, push, deploy (see deploy commands above)
+6. After deploy, run `db push` on the server (see above)
+7. Optionally run seed if new seed data was added
+
+---
 
 ## Secrets Management
 
@@ -136,28 +182,47 @@ All four apps on this server use distinct prefixes:
 | Bonistock Prod     | `bonistock_prod_`   | `bonistock_prod_DATABASE_URL` |
 | Bonistock Dev      | `bonistock_dev_`    | `bonistock_dev_DATABASE_URL`  |
 
-### Current secrets
+### Current secrets (20 per environment)
 
-| Secret                            | Description                  |
-|-----------------------------------|------------------------------|
-| `bonistock_{env}_DATABASE_URL`    | PostgreSQL connection string |
-| `bonistock_{env}_NEXTAUTH_SECRET` | Auth JWT signing secret      |
+| Secret                                | Description                     |
+|---------------------------------------|---------------------------------|
+| `bonistock_{env}_DATABASE_URL`        | PostgreSQL connection string    |
+| `bonistock_{env}_NEXTAUTH_SECRET`     | Auth JWT signing secret         |
+| `bonistock_{env}_BREVO_SMTP_USER`     | Brevo SMTP username             |
+| `bonistock_{env}_BREVO_SMTP_KEY`      | Brevo SMTP password             |
+| `bonistock_{env}_EMAIL_FROM`          | Sender address for emails       |
+| `bonistock_{env}_GOOGLE_CLIENT_ID`    | Google OAuth client ID          |
+| `bonistock_{env}_GOOGLE_CLIENT_SECRET`| Google OAuth client secret      |
+| `bonistock_{env}_FACEBOOK_CLIENT_ID`  | Facebook OAuth client ID        |
+| `bonistock_{env}_FACEBOOK_CLIENT_SECRET`| Facebook OAuth client secret  |
+| `bonistock_{env}_FMP_API_KEY`         | Financial Modeling Prep API key |
+| `bonistock_{env}_SENTRY_DSN`          | Sentry error tracking DSN       |
+| `bonistock_{env}_ENCRYPTION_KEY`      | AES-256 key (32-byte hex)       |
+| `bonistock_{env}_STRIPE_SECRET_KEY`   | Stripe API secret key           |
+| `bonistock_{env}_STRIPE_PUBLISHABLE_KEY`| Stripe publishable key        |
+| `bonistock_{env}_STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `bonistock_{env}_STRIPE_PRICE_PLUS_MONTHLY` | Stripe price ID           |
+| `bonistock_{env}_STRIPE_PRICE_PLUS_ANNUAL`  | Stripe price ID           |
+| `bonistock_{env}_STRIPE_PRICE_PASS_1DAY`    | Stripe price ID           |
+| `bonistock_{env}_STRIPE_PRICE_PASS_3DAY`    | Stripe price ID           |
+| `bonistock_{env}_STRIPE_PRICE_PASS_12DAY`   | Stripe price ID           |
 
-### Add a new secret
+### Add / update a secret
 
 ```bash
-# Create
-echo -n "sk_live_..." | $SSH "docker secret create bonistock_prod_STRIPE_SECRET_KEY -"
+# Create new
+echo -n "value" | $SSH "docker secret create bonistock_prod_SECRET_NAME -"
+
+# Update (must remove stack first, then remove + recreate secret, then redeploy)
+$SSH "docker stack rm bonistock-prod"
+sleep 5
+$SSH "docker secret rm bonistock_prod_SECRET_NAME"
+echo -n "new_value" | $SSH "docker secret create bonistock_prod_SECRET_NAME -"
+# Then redeploy (see deploy commands)
 
 # List all
 $SSH "docker secret ls | grep bonistock"
-
-# Update (remove + recreate, then redeploy)
-$SSH "docker secret rm bonistock_prod_STRIPE_SECRET_KEY 2>/dev/null || true"
-echo -n "new_value" | $SSH "docker secret create bonistock_prod_STRIPE_SECRET_KEY -"
 ```
-
-After adding/changing secrets, update `docker-stack.{prod,dev}.yml` to reference them, then redeploy.
 
 ### Read a secret from a running container
 
@@ -228,6 +293,8 @@ Config file: `/etc/nginx/sites-available/bonistock.com`
 | Health check fails | Check logs: `docker service logs bonistock-prod_app --tail 50` |
 | Build fails on server | Run `npm run build` locally first |
 | Secret not found | Check `docker secret ls \| grep bonistock` and stack file references |
+| DB schema out of sync | Run `db push` on server (see Database section) |
+| Prisma generate error | Run `npx prisma generate` locally after any schema change |
 | Redirect to bonifatus.com | Nginx misconfigured. Check `/etc/nginx/sites-available/bonistock.com` has 443 blocks |
 | DNS not resolving | Check Cloudflare dashboard — A record must point to `159.69.180.183` |
 | Disk full | Run `$SSH "docker builder prune -a -f && docker image prune -a -f"` |

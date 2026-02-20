@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateRegistrationOptions } from "@simplewebauthn/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import type { Authenticator } from "@prisma/client";
 
 const rpName = "Bonistock";
 const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost").hostname;
@@ -27,7 +28,7 @@ export async function POST() {
     userName: user.email,
     userDisplayName: user.name ?? user.email,
     attestationType: "none",
-    excludeCredentials: user.authenticators.map((auth) => ({
+    excludeCredentials: user.authenticators.map((auth: Authenticator) => ({
       id: auth.credentialID,
       type: "public-key" as const,
       transports: auth.transports
