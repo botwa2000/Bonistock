@@ -10,14 +10,13 @@ export async function GET() {
     await db.$queryRaw`SELECT 1`;
     dbStatus = "connected";
   } catch {
-    return NextResponse.json(
-      {
-        status: "degraded",
-        db: "disconnected",
-        uptime: Math.floor((Date.now() - startTime) / 1000),
-      },
-      { status: 503 }
-    );
+    // Return 200 so Docker healthcheck passes even if DB is temporarily unreachable.
+    // The "degraded" status signals that DB is down without killing the container.
+    return NextResponse.json({
+      status: "degraded",
+      db: "disconnected",
+      uptime: Math.floor((Date.now() - startTime) / 1000),
+    });
   }
 
   return NextResponse.json({
