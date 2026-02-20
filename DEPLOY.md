@@ -111,6 +111,17 @@ Prisma 7 manages all database operations. The connection URL is configured in tw
 
 Docker containers cannot reach PostgreSQL via `localhost`. They use the Docker bridge IP `172.18.0.1`.
 
+### One-time setup (per server directory)
+
+Prisma CLI runs directly on the server (not in Docker). Install deps once per project directory:
+
+```bash
+$SSH "cd /home/deploy/bonistock && npm install prisma @prisma/client @prisma/adapter-pg pg"
+$SSH "cd /home/deploy/bonistock-dev && npm install prisma @prisma/client @prisma/adapter-pg pg"
+```
+
+Re-run after major Prisma version upgrades.
+
 ### Schema changes (db push)
 
 After modifying `prisma/schema.prisma`, push changes to the database:
