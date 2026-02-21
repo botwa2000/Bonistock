@@ -88,6 +88,87 @@ export async function fetchPriceTarget(symbol: string) {
   return data[0] ?? null;
 }
 
+// ── Screener ──
+
+const screenerSchema = z.array(z.object({
+  symbol: z.string(),
+  companyName: z.string(),
+  marketCap: z.number(),
+  sector: z.string().optional().default(""),
+  price: z.number(),
+  exchange: z.string().optional().default(""),
+  country: z.string().optional().default(""),
+  exchangeShortName: z.string().optional().default(""),
+}));
+
+export async function fetchScreenerStocks(limit = 100) {
+  checkRateLimit();
+  const params = new URLSearchParams({
+    marketCapMoreThan: "5000000000",
+    isActivelyTrading: "true",
+    limit: String(limit),
+    apikey: getApiKey(),
+  });
+  const url = `https://financialmodelingprep.com/api/v3/stock-screener?${params}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`FMP screener error: ${res.status}`);
+  const data = await res.json();
+  return screenerSchema.parse(data);
+}
+
+// ── Batch Quotes ──
+
+const batchQuoteSchema = z.array(z.object({
+  symbol: z.string(),
+  price: z.number(),
+  changesPercentage: z.number().optional(),
+  priceAvg200: z.number().optional(),
+}));
+
+export async function fetchBatchQuotes(symbols: string[]) {
+  const results: z.infer<typeof batchQuoteSchema> = [];
+  const batchSize = 50;
+  for (let i = 0; i < symbols.length; i += batchSize) {
+    const batch = symbols.slice(i, i + batchSize);
+    checkRateLimit();
+    const url = `https://financialmodelingprep.com/api/v3/quote/${batch.join(",")}?apikey=${getApiKey()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`FMP batch quote error: ${res.status}`);
+    const data = await res.json();
+    results.push(...batchQuoteSchema.parse(data));
+  }
+  return results;
+}
+
+// ── Analyst Consensus (grade endpoint) ──
+
+const gradeSchema = z.array(z.object({
+  symbol: z.string().optional(),
+  date: z.string().optional(),
+  gradingCompany: z.string().optional(),
+  previousGrade: z.string().optional(),
+  newGrade: z.string().optional(),
+}));
+
+export async function fetchAnalystConsensus(symbol: string) {
+  checkRateLimit();
+  const url = `https://financialmodelingprep.com/api/v3/grade/${symbol}?limit=100&apikey=${getApiKey()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`FMP grade error: ${res.status}`);
+  const raw = await res.json();
+  const grades = gradeSchema.parse(raw);
+
+  let strongBuy = 0, buy = 0, hold = 0, sell = 0;
+  for (const g of grades) {
+    const grade = (g.newGrade ?? "").toLowerCase();
+    if (grade.includes("strong buy") || grade.includes("outperform")) strongBuy++;
+    else if (grade.includes("buy") || grade.includes("overweight")) buy++;
+    else if (grade.includes("hold") || grade.includes("neutral") || grade.includes("equal")) hold++;
+    else if (grade.includes("sell") || grade.includes("underperform") || grade.includes("underweight")) sell++;
+  }
+  return { strongBuy, buy, hold, sell, total: strongBuy + buy + hold + sell };
+}
+
 export function getRemainingRequests(): number {
   const today = new Date().toDateString();
   if (today !== lastResetDate) return DAILY_LIMIT;

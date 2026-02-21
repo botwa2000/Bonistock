@@ -224,6 +224,26 @@ export default function AdminPage() {
     }
   };
 
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverResult, setDiscoverResult] = useState<{ candidates: number; populated: number; errors: number } | null>(null);
+
+  const handleDiscoverStocks = async () => {
+    setDiscovering(true);
+    setDiscoverResult(null);
+    try {
+      const res = await fetch("/api/admin/discover-stocks", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setDiscoverResult(data);
+        fetchStats();
+      }
+    } catch {
+      // network error
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
   if (loading || user?.role !== "ADMIN") {
     return (
       <DashboardLayout>
@@ -243,10 +263,27 @@ export default function AdminPage() {
             <h1 className="text-2xl font-semibold text-text-primary">{t("title")}</h1>
             <p className="text-sm text-text-secondary">{t("subtitle")}</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={fetchStats} disabled={fetching}>
-            {fetching ? t("refreshing") : t("refresh")}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={handleDiscoverStocks} disabled={discovering}>
+              {discovering ? t("refreshingStocks") : t("discoverStocks")}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={fetchStats} disabled={fetching}>
+              {fetching ? t("refreshing") : t("refresh")}
+            </Button>
+          </div>
         </div>
+
+        {discoverResult && (
+          <Card variant="glass">
+            <p className="text-sm text-emerald-400">
+              {t("stocksDiscovered", {
+                candidates: discoverResult.candidates,
+                populated: discoverResult.populated,
+                errors: discoverResult.errors,
+              })}
+            </p>
+          </Card>
+        )}
 
         {stats && (
           <>

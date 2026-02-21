@@ -25,6 +25,7 @@ services:
       - PORT=3000
       - NEXTAUTH_URL=https://dev.bonistock.com
       - NEXT_PUBLIC_APP_URL=https://dev.bonistock.com
+      - STOCK_SYNC_SOURCE=https://bonistock.com
     deploy:
       replicas: 1
       restart_policy:

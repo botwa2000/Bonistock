@@ -416,7 +416,10 @@
     "status": "Status",
     "actions": "Actions",
     "noProducts": "No products yet. Create your first product to get started.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "discoverStocks": "Discover Stocks",
+    "refreshingStocks": "Discovering...",
+    "stocksDiscovered": "Discovery complete: {candidates} screened, {populated} stocks populated, {errors} errors."
   },
   "tiers": {
     "free": "Free",

@@ -1,17 +1,44 @@
 import cron from "node-cron";
 import { db } from "./db";
-import { fetchStockQuote, fetchPriceTarget, getRemainingRequests } from "./fmp";
+import {
+  discoverAndPopulateStocks,
+  refreshStockData as refreshStocksViaDiscovery,
+  syncFromProd,
+} from "./stock-discovery";
 
 export function initCronJobs(): void {
-  // Nightly stock data refresh — 2 AM UTC
-  cron.schedule("0 2 * * *", async () => {
-    console.log("[cron] Starting nightly stock data refresh");
-    try {
-      await refreshStockData();
-    } catch (err) {
-      console.error("[cron] Stock refresh failed:", err);
-    }
-  });
+  if (process.env.STOCK_SYNC_SOURCE) {
+    // DEV MODE: sync from prod daily at 4 AM UTC (after prod refreshes at 2 AM)
+    cron.schedule("0 4 * * *", async () => {
+      console.log("[cron] DEV: syncing stocks from prod");
+      try {
+        await syncFromProd();
+      } catch (err) {
+        console.error("[cron] Dev sync failed:", err);
+      }
+    });
+    console.log("[cron] DEV mode: scheduled prod sync (4 AM UTC)");
+  } else {
+    // PROD MODE: weekly discovery (Sunday 1 AM) + daily refresh (Mon-Sat 2 AM)
+    cron.schedule("0 1 * * 0", async () => {
+      console.log("[cron] Starting weekly stock discovery");
+      try {
+        await discoverAndPopulateStocks();
+      } catch (err) {
+        console.error("[cron] Stock discovery failed:", err);
+      }
+    });
+
+    cron.schedule("0 2 * * 1-6", async () => {
+      console.log("[cron] Starting daily stock data refresh");
+      try {
+        await refreshStocksViaDiscovery();
+      } catch (err) {
+        console.error("[cron] Stock refresh failed:", err);
+      }
+    });
+    console.log("[cron] PROD mode: scheduled discovery (Sun 1 AM) + refresh (Mon-Sat 2 AM)");
+  }
 
   // Weekly ETF data refresh — Sunday 3 AM UTC
   cron.schedule("0 3 * * 0", async () => {
@@ -33,37 +60,7 @@ export function initCronJobs(): void {
     }
   });
 
-  console.log("[cron] Scheduled: stock refresh (2 AM), ETF refresh (Sun 3 AM), demo snapshots (4 AM)");
-}
-
-async function refreshStockData(): Promise<void> {
-  const stocks = await db.stock.findMany({ select: { id: true, symbol: true } });
-
-  for (const stock of stocks) {
-    if (getRemainingRequests() < 10) {
-      console.log("[cron] FMP rate limit approaching, stopping refresh");
-      break;
-    }
-
-    try {
-      const quote = await fetchStockQuote(stock.symbol);
-      const target = await fetchPriceTarget(stock.symbol);
-
-      if (quote && target) {
-        await db.stock.update({
-          where: { id: stock.id },
-          data: {
-            price: quote.price,
-            target: target.targetConsensus,
-            upside: Math.round(((target.targetConsensus - quote.price) / quote.price) * 100),
-            belowSma200: quote.priceAvg200 ? quote.price < quote.priceAvg200 : false,
-          },
-        });
-      }
-    } catch (err) {
-      console.error(`[cron] Failed to refresh ${stock.symbol}:`, err);
-    }
-  }
+  console.log("[cron] Scheduled: ETF refresh (Sun 3 AM), demo snapshots (4 AM)");
 }
 
 async function refreshEtfData(): Promise<void> {
