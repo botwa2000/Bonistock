@@ -1082,7 +1082,7 @@ export const faqItems: FaqItem[] = [
   {
     question: "Is this financial advice?",
     answer:
-      "No. Bonifatus is an informational tool that aggregates publicly available analyst data. We do not provide personalized investment advice. Always do your own research and consult a licensed financial advisor before making investment decisions.",
+      "No. Bonistock is an informational tool that aggregates publicly available analyst data. We do not provide personalized investment advice. Always do your own research and consult a licensed financial advisor before making investment decisions.",
   },
   {
     question: "Where does the data come from?",
@@ -1197,7 +1197,7 @@ export const mockAlerts: Alert[] = [
 
 export const mockUser = {
   username: "admin",
-  email: "admin@bonifatus.io",
+  email: "admin@bonistock.com",
   tier: "plus" as const,
   goal: "growth" as const,
   memberSince: "2026-01-01",

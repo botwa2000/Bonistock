@@ -20,7 +20,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bonifatus — Upside-first Stock & ETF Advisor",
+  title: "Bonistock — Smart Picks. Simple Moves.",
   description:
     "Wall Street's top picks, simplified. From analyst consensus to a diversified portfolio in 60 seconds.",
 };

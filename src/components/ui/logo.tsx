@@ -28,9 +28,9 @@ export function Logo({ size = "md", showText = true }: LogoProps) {
       {showText && (
         <div>
           <div className={`font-semibold text-white ${textClasses[size]}`}>
-            Bonifatus
+            Bonistock
           </div>
-          <div className="text-xs text-white/60">Upside-first picks</div>
+          <div className="text-xs text-white/60">Smart picks. Simple moves.</div>
         </div>
       )}
     </Link>

@@ -1,7 +1,7 @@
 {
   "common": {
-    "appName": "Bonifatus",
-    "tagline": "Upside-first stock & ETF advisor",
+    "appName": "Bonistock",
+    "tagline": "Smart picks. Simple moves.",
     "getStarted": "Get Started Free",
     "learnMore": "Learn More",
     "login": "Log In",
@@ -71,7 +71,7 @@
     "pricingSubtitle": "Start free. Upgrade when you need more.",
     "faqTitle": "Frequently asked questions",
     "ctaTitle": "Ready to invest smarter?",
-    "ctaSubtitle": "Join thousands of investors who use Bonifatus to cut through the noise.",
+    "ctaSubtitle": "Join thousands of investors who use Bonistock to cut through the noise.",
     "ctaCta": "Create Free Account"
   },
   "login": {
@@ -238,7 +238,7 @@
     "cookies": "Cookie Policy",
     "terms": "Terms of Service",
     "disclaimer": "For informational purposes only. Not financial advice. Always do your own research.",
-    "copyright": "Bonifatus. All rights reserved."
+    "copyright": "Bonistock. All rights reserved."
   },
   "privacy": {
     "title": "Privacy Policy",
@@ -253,7 +253,7 @@
     "lastUpdated": "Last updated: February 2026"
   },
   "about": {
-    "title": "About Bonifatus",
+    "title": "About Bonistock",
     "mission": "Our Mission",
     "missionText": "To democratize analyst-grade investment research for everyday investors. We believe everyone deserves access to the same data Wall Street uses — presented simply, scored transparently, and actionable in seconds.",
     "howWeWork": "How We Work",

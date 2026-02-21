@@ -1,11 +1,13 @@
+# syntax=docker/dockerfile:1
+
 # Stage 1: Install dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-RUN npm ci --ignore-scripts
-RUN npx prisma generate
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts && npx prisma generate
 
 # Stage 2: Build the application
 FROM node:20-alpine AS builder
@@ -17,10 +19,6 @@ COPY . .
 ARG NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
-# Sentry auth token for source map uploads (not persisted in final image)
-ARG SENTRY_AUTH_TOKEN
-ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
-
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -31,8 +29,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
