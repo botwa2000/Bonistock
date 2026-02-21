@@ -13,11 +13,21 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 export default function ProfilePage() {
   const t = useTranslations("profile");
   const router = useRouter();
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, loading } = useAuth();
 
   useEffect(() => {
-    if (!isLoggedIn) router.push("/login");
-  }, [isLoggedIn, router]);
+    if (!loading && !isLoggedIn) router.push("/login");
+  }, [isLoggedIn, loading, router]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!isLoggedIn || !user) return null;
 

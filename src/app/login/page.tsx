@@ -31,6 +31,7 @@ function LoginContent() {
   const [submitting, setSubmitting] = useState(false);
 
   const verified = searchParams.get("verified") === "true";
+  const authError = searchParams.get("error");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +94,14 @@ function LoginContent() {
         {verified && (
           <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center text-xs text-emerald-200">
             Email verified successfully. You can now log in.
+          </div>
+        )}
+
+        {authError && (
+          <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-center text-xs text-rose-200">
+            {authError === "OAuthAccountNotLinked"
+              ? "This email is already registered with a different sign-in method."
+              : "Sign-in failed. Please try again or use a different method."}
           </div>
         )}
 
