@@ -11,12 +11,10 @@ export async function getUserTier(userId: string): Promise<"free" | "pass" | "pl
     return "plus";
   }
 
-  // Check active pass
-  const activePass = await db.passPurchase.findFirst({
-    where: {
-      userId,
-      activationsUsed: { lt: db.$queryRaw`activations_total` as unknown as number },
-    },
+  // Check active pass — fetch recent passes and filter in JS
+  // (Prisma doesn't support column-to-column comparison in where clauses)
+  const recentPass = await db.passPurchase.findFirst({
+    where: { userId },
     include: {
       activations: {
         orderBy: { activatedAt: "desc" },
@@ -26,17 +24,13 @@ export async function getUserTier(userId: string): Promise<"free" | "pass" | "pl
     orderBy: { purchasedAt: "desc" },
   });
 
-  if (activePass) {
-    if (activePass.activationsUsed < activePass.activationsTotal) {
-      // Has remaining activations
-      const lastActivation = activePass.activations[0];
-      if (lastActivation && new Date() < lastActivation.expiresAt) {
-        // Currently in an active 24h window
-        return "pass";
-      }
-      // Has remaining activations but no active window — still a pass holder
+  if (recentPass && recentPass.activationsUsed < recentPass.activationsTotal) {
+    const lastActivation = recentPass.activations[0];
+    if (lastActivation && new Date() < lastActivation.expiresAt) {
       return "pass";
     }
+    // Has remaining activations but no active window — still a pass holder
+    return "pass";
   }
 
   return "free";
