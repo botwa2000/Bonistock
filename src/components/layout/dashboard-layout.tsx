@@ -51,7 +51,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
       </div>
     );
   }
@@ -60,8 +60,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-56 flex-shrink-0 flex-col border-r border-white/5 bg-black/40 lg:w-64">
-        <div className="border-b border-white/5 p-4">
+      <aside className="sticky top-0 flex h-screen w-56 flex-shrink-0 flex-col border-r border-border-subtle bg-surface-elevated lg:w-64">
+        <div className="border-b border-border-subtle p-4">
           <Logo size="sm" />
         </div>
 
@@ -78,8 +78,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     href={link.href}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                       isActive
-                        ? "bg-white/10 text-white"
-                        : "text-white/60 hover:bg-white/5 hover:text-white"
+                        ? "bg-surface text-text-primary"
+                        : "text-text-secondary hover:bg-surface hover:text-text-primary"
                     }`}
                   >
                     <span className="w-5 text-center">
@@ -98,27 +98,27 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
 
-        <div className="border-t border-white/5 p-3 space-y-1">
+        <div className="border-t border-border-subtle p-3 space-y-1">
           <Link
             href="/profile"
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${pathname === "/profile" ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${pathname === "/profile" ? "bg-surface text-text-primary" : "text-text-secondary hover:bg-surface hover:text-text-primary"}`}
           >
             <span className="w-5 text-center">{"\u2B24"}</span>
             <span>{t("nav.profile")}</span>
           </Link>
           <Link
             href="/settings"
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${pathname === "/settings" ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${pathname === "/settings" ? "bg-surface text-text-primary" : "text-text-secondary hover:bg-surface hover:text-text-primary"}`}
           >
             <span className="w-5 text-center">{"\u2699"}</span>
             <span>{t("nav.settings")}</span>
           </Link>
         </div>
 
-        <div className="border-t border-white/5 p-4">
+        <div className="border-t border-border-subtle p-4">
           <div className="flex items-center justify-between text-sm">
             <div>
-              <div className="font-medium text-white">{username}</div>
+              <div className="font-medium text-text-primary">{username}</div>
               <Badge variant="accent" className="mt-1">
                 {tier.toUpperCase()}
               </Badge>

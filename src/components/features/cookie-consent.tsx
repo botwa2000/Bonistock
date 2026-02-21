@@ -85,22 +85,22 @@ export function CookieConsentBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black/95 backdrop-blur-sm p-4 md:p-6">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-black/95 backdrop-blur-sm p-4 md:p-6">
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-white">Cookie Settings</h3>
-            <p className="mt-1 text-xs text-white/60">
+            <h3 className="text-sm font-semibold text-text-primary">Cookie Settings</h3>
+            <p className="mt-1 text-xs text-text-secondary">
               We use cookies to provide essential functionality and improve your experience.
               Required cookies are always active. You can choose which optional cookies to allow.
             </p>
 
             <div className="mt-3 space-y-2">
-              <label className="flex items-center gap-2 text-xs text-white/50">
+              <label className="flex items-center gap-2 text-xs text-text-tertiary">
                 <input type="checkbox" checked disabled className="accent-emerald-400" />
                 <span>Necessary (always on)</span>
               </label>
-              <label className="flex items-center gap-2 text-xs text-white/70">
+              <label className="flex items-center gap-2 text-xs text-text-secondary">
                 <input
                   type="checkbox"
                   checked={analytics}
@@ -109,7 +109,7 @@ export function CookieConsentBanner() {
                 />
                 <span>Analytics — helps us understand how you use the app</span>
               </label>
-              <label className="flex items-center gap-2 text-xs text-white/70">
+              <label className="flex items-center gap-2 text-xs text-text-secondary">
                 <input
                   type="checkbox"
                   checked={marketing}
@@ -130,7 +130,7 @@ export function CookieConsentBanner() {
             </Button>
             <button
               onClick={rejectOptional}
-              className="text-xs text-white/40 hover:text-white/60 transition-colors"
+              className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
             >
               Reject optional
             </button>

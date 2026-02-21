@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEtf } from "@/lib/data";
+import { mapEtfToFrontend } from "@/lib/api-mappers";
 
 export async function GET(
   _req: NextRequest,
@@ -10,5 +11,5 @@ export async function GET(
   if (!etf) {
     return NextResponse.json({ error: "ETF not found", code: "NOT_FOUND" }, { status: 404 });
   }
-  return NextResponse.json(etf);
+  return NextResponse.json(mapEtfToFrontend(etf));
 }

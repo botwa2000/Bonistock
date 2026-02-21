@@ -57,7 +57,7 @@ function ResetPasswordContent() {
     return (
       <div className="flex min-h-screen items-center justify-center px-5">
         <Card variant="glass" padding="lg" className="max-w-md text-center">
-          <p className="text-sm text-white/70">Invalid reset link. Please request a new one.</p>
+          <p className="text-sm text-text-secondary">Invalid reset link. Please request a new one.</p>
           <Link href="/forgot-password">
             <Button variant="secondary" className="mt-4">
               Request new link
@@ -75,7 +75,7 @@ function ResetPasswordContent() {
           <div className="flex justify-center">
             <Logo size="lg" showText={false} />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold text-white">Set new password</h1>
+          <h1 className="mt-4 text-2xl font-semibold text-text-primary">Set new password</h1>
         </div>
 
         <Card variant="glass" padding="lg">
@@ -118,8 +118,8 @@ function ResetPasswordContent() {
           )}
         </Card>
 
-        <div className="text-center text-sm text-white/60">
-          <Link href="/login" className="hover:text-white transition-colors">
+        <div className="text-center text-sm text-text-secondary">
+          <Link href="/login" className="hover:text-text-primary transition-colors">
             &larr; Back to login
           </Link>
         </div>

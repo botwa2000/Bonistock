@@ -26,11 +26,11 @@ export function DayPassBanner() {
         <div className="flex items-center gap-3">
           <Badge variant="accent">{t("passActive")}</Badge>
           {active && remaining && (
-            <span className="text-sm text-white/70">
+            <span className="text-sm text-text-secondary">
               {t("passExpires")} {remaining}
             </span>
           )}
-          <span className="text-sm text-white/50">
+          <span className="text-sm text-text-tertiary">
             {passActivationsRemaining} activation
             {passActivationsRemaining !== 1 ? "s" : ""} remaining
           </span>
@@ -61,10 +61,10 @@ export function DayPassBanner() {
 
   if (tier === "free") {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-        <div className="text-sm text-white/70">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3">
+        <div className="text-sm text-text-secondary">
           Viewing top 5 only.{" "}
-          <span className="text-white">Unlock the full list</span> with a Pass
+          <span className="text-text-primary">Unlock the full list</span> with a Pass
           (from $2.99) or Plus ($6.99/mo).
         </div>
         <div className="flex gap-2">

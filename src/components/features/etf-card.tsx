@@ -18,16 +18,16 @@ export function EtfCard({ etf }: EtfCardProps) {
       <Card variant="glass" hover className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs uppercase text-white/60">{etf.theme}</div>
-            <h3 className="text-lg font-semibold text-white">
+            <div className="text-xs uppercase text-text-secondary">{etf.theme}</div>
+            <h3 className="text-lg font-semibold text-text-primary">
               {etf.symbol} &middot; {etf.name}
             </h3>
           </div>
           <Badge variant="info">ETF</Badge>
         </div>
-        <div className="grid grid-cols-4 gap-2 text-sm text-white/80">
+        <div className="grid grid-cols-4 gap-2 text-sm text-text-secondary">
           <div>
-            <div className="text-[11px] uppercase text-white/60">
+            <div className="text-[11px] uppercase text-text-secondary">
               {t("cagr5y")}
             </div>
             <div className="text-base font-semibold text-emerald-300">
@@ -35,7 +35,7 @@ export function EtfCard({ etf }: EtfCardProps) {
             </div>
           </div>
           <div>
-            <div className="text-[11px] uppercase text-white/60">
+            <div className="text-[11px] uppercase text-text-secondary">
               {t("maxDrawdown")}
             </div>
             <div className="text-base font-semibold text-rose-200">
@@ -43,18 +43,18 @@ export function EtfCard({ etf }: EtfCardProps) {
             </div>
           </div>
           <div>
-            <div className="text-[11px] uppercase text-white/60">
+            <div className="text-[11px] uppercase text-text-secondary">
               {t("expenseRatio")}
             </div>
-            <div className="text-base font-semibold text-white">
+            <div className="text-base font-semibold text-text-primary">
               {etf.fee}%
             </div>
           </div>
           <div>
-            <div className="text-[11px] uppercase text-white/60">
+            <div className="text-[11px] uppercase text-text-secondary">
               {t("sharpe")}
             </div>
-            <div className="text-base font-semibold text-white">
+            <div className="text-base font-semibold text-text-primary">
               {etf.sharpe.toFixed(2)}
             </div>
           </div>
@@ -64,7 +64,7 @@ export function EtfCard({ etf }: EtfCardProps) {
             {etf.brokerAvailability.map((b) => (
               <span
                 key={b}
-                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/50"
+                className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-tertiary"
               >
                 {b === "ibkr" ? "IBKR" : b === "t212" ? "T212" : b === "robinhood" ? "RH" : "eToro"}
               </span>

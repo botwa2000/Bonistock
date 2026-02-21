@@ -28,7 +28,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={id} className="text-xs text-white/60">
+          <label htmlFor={id} className="text-xs text-text-secondary">
             {label}
           </label>
         )}
@@ -37,7 +37,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={id}
             type={isPassword && showPassword ? "text" : type}
-            className={`w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-emerald-300/70 transition-colors ${isPassword ? "pr-10" : ""} ${className}`}
+            className={`w-full rounded-lg border border-input-border bg-input-bg px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-emerald-300/70 transition-colors ${isPassword ? "pr-10" : ""} ${className}`}
             {...props}
           />
           {isPassword && (
@@ -45,7 +45,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               type="button"
               tabIndex={-1}
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
@@ -85,7 +85,7 @@ export function Select({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={id} className="text-xs text-white/60">
+        <label htmlFor={id} className="text-xs text-text-secondary">
           {label}
         </label>
       )}
@@ -93,10 +93,10 @@ export function Select({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/70 transition-colors ${className}`}
+        className={`rounded-lg border border-input-border bg-input-bg px-3 py-2 text-sm text-text-primary outline-none focus:border-emerald-300/70 transition-colors ${className}`}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-[#1a1a2e] text-white">
+          <option key={opt.value} value={opt.value} className="bg-surface-elevated text-text-primary">
             {opt.label}
           </option>
         ))}

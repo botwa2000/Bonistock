@@ -34,7 +34,7 @@ function ProfileContent() {
     return (
       <DashboardLayout>
         <div className="flex min-h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
         </div>
       </DashboardLayout>
     );
@@ -45,7 +45,7 @@ function ProfileContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-white">{t("title")}</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">{t("title")}</h1>
 
         <div className="max-w-2xl space-y-6">
           <PersonalInfoSection emailChanged={emailChanged} />

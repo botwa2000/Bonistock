@@ -149,13 +149,13 @@ export function SecuritySection() {
 
   return (
     <Card variant="glass" padding="lg">
-      <h2 className="text-lg font-semibold text-white">{t("security")}</h2>
+      <h2 className="text-lg font-semibold text-text-primary">{t("security")}</h2>
 
       <div className="mt-4 space-y-6">
         {/* Password Change */}
         {user.hasPassword ? (
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-white">{t("changePassword")}</h3>
+            <h3 className="text-sm font-medium text-text-primary">{t("changePassword")}</h3>
             {passwordSuccess && (
               <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
                 {t("passwordUpdated")}
@@ -200,18 +200,18 @@ export function SecuritySection() {
           </div>
         ) : (
           <div>
-            <h3 className="text-sm font-medium text-white">{t("changePassword")}</h3>
-            <p className="mt-1 text-xs text-white/50">{t("oauthOnly")}</p>
+            <h3 className="text-sm font-medium text-text-primary">{t("changePassword")}</h3>
+            <p className="mt-1 text-xs text-text-tertiary">{t("oauthOnly")}</p>
           </div>
         )}
 
         {/* Divider */}
-        <div className="border-t border-white/5" />
+        <div className="border-t border-border-subtle" />
 
         {/* 2FA Management */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-white">{t("twoFactorAuth")}</h3>
+            <h3 className="text-sm font-medium text-text-primary">{t("twoFactorAuth")}</h3>
             <Badge variant={user.twoFactorEnabled ? "accent" : "default"}>
               {user.twoFactorEnabled ? "Enabled" : "Disabled"}
             </Badge>
@@ -225,13 +225,13 @@ export function SecuritySection() {
 
           {setting2FA && qrCode && (
             <div className="space-y-3">
-              <p className="text-xs text-white/60">{t("scanQRCode")}</p>
+              <p className="text-xs text-text-secondary">{t("scanQRCode")}</p>
               <div className="flex justify-center">
                 <img src={qrCode} alt="2FA QR Code" className="h-48 w-48 rounded-lg" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-white/50">{t("manualEntry")}</p>
-                <code className="block rounded bg-white/5 px-2 py-1 text-xs text-emerald-300 break-all">
+                <p className="text-xs text-text-tertiary">{t("manualEntry")}</p>
+                <code className="block rounded bg-surface px-2 py-1 text-xs text-emerald-300 break-all">
                   {secret}
                 </code>
               </div>
@@ -295,12 +295,12 @@ export function SecuritySection() {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-white/5" />
+        <div className="border-t border-border-subtle" />
 
         {/* Active Sessions */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-white">{t("activeSessions")}</h3>
+            <h3 className="text-sm font-medium text-text-primary">{t("activeSessions")}</h3>
             <Button size="sm" variant="ghost" onClick={loadSessions} disabled={sessionsLoading}>
               {sessionsLoading ? "..." : sessions.length > 0 ? "Refresh" : "Load"}
             </Button>
@@ -309,12 +309,12 @@ export function SecuritySection() {
           {sessions.length > 0 && (
             <div className="space-y-2">
               {sessions.map((s) => (
-                <div key={s.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-xs">
+                <div key={s.id} className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 text-xs">
                   <div className="space-y-0.5">
-                    <div className="text-white/80 truncate max-w-[280px]">
+                    <div className="text-text-secondary truncate max-w-[280px]">
                       {s.userAgent ?? "Unknown device"}
                     </div>
-                    <div className="text-white/40">
+                    <div className="text-text-tertiary">
                       {s.ipAddress ?? "Unknown IP"} &middot; {new Date(s.createdAt).toLocaleDateString()}
                     </div>
                   </div>

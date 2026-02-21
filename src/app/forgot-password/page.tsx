@@ -43,8 +43,8 @@ export default function ForgotPasswordPage() {
           <div className="flex justify-center">
             <Logo size="lg" showText={false} />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold text-white">Reset your password</h1>
-          <p className="mt-1 text-sm text-white/60">
+          <h1 className="mt-4 text-2xl font-semibold text-text-primary">Reset your password</h1>
+          <p className="mt-1 text-sm text-text-secondary">
             Enter your email and we&apos;ll send a reset link
           </p>
         </div>
@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
         <Card variant="glass" padding="lg">
           {sent ? (
             <div className="text-center">
-              <p className="text-sm text-white/70">
+              <p className="text-sm text-text-secondary">
                 If an account exists for <strong className="text-white">{email}</strong>,
                 you&apos;ll receive a password reset link shortly.
               </p>
@@ -87,8 +87,8 @@ export default function ForgotPasswordPage() {
           )}
         </Card>
 
-        <div className="text-center text-sm text-white/60">
-          <Link href="/login" className="hover:text-white transition-colors">
+        <div className="text-center text-sm text-text-secondary">
+          <Link href="/login" className="hover:text-text-primary transition-colors">
             &larr; Back to login
           </Link>
         </div>

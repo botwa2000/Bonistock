@@ -1,37 +1,47 @@
 import Link from "next/link";
+import Image from "next/image";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   showText?: boolean;
 }
 
-const sizeClasses = {
-  sm: "h-7 w-7 text-sm",
-  md: "h-9 w-9 text-base",
-  lg: "h-12 w-12 text-xl",
+const iconSizes = {
+  sm: 28,
+  md: 36,
+  lg: 48,
 };
 
-const textClasses = {
-  sm: "text-sm",
-  md: "text-base",
-  lg: "text-xl",
+const fullLogoSizes = {
+  sm: { width: 120, height: 28 },
+  md: { width: 150, height: 36 },
+  lg: { width: 200, height: 48 },
 };
 
 export function Logo({ size = "md", showText = true }: LogoProps) {
+  const iconSize = iconSizes[size];
+  const fullSize = fullLogoSizes[size];
+
   return (
     <Link href="/" className="flex items-center gap-3">
-      <div
-        className={`flex items-center justify-center rounded-xl bg-emerald-400 font-bold text-gray-900 ${sizeClasses[size]}`}
-      >
-        B
-      </div>
-      {showText && (
-        <div>
-          <div className={`font-semibold text-white ${textClasses[size]}`}>
-            Bonistock
-          </div>
-          <div className="text-xs text-white/60">Smart picks. Simple moves.</div>
-        </div>
+      {showText ? (
+        <Image
+          src="/logo.png"
+          alt="Bonistock"
+          width={fullSize.width}
+          height={fullSize.height}
+          className="object-contain"
+          priority
+        />
+      ) : (
+        <Image
+          src="/logo-icon.png"
+          alt="Bonistock"
+          width={iconSize}
+          height={iconSize}
+          className="rounded-xl object-contain"
+          priority
+        />
       )}
     </Link>
   );

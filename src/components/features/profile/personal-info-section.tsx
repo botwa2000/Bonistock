@@ -67,7 +67,7 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
 
   return (
     <Card variant="glass" padding="lg">
-      <h2 className="text-lg font-semibold text-white">{t("personalInfo")}</h2>
+      <h2 className="text-lg font-semibold text-text-primary">{t("personalInfo")}</h2>
 
       {emailChanged && (
         <div className="mt-3 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
@@ -83,15 +83,15 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
 
       <div className="mt-4 space-y-4 text-sm">
         {/* Name */}
-        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-          <span className="text-white/60">{t("username")}</span>
+        <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+          <span className="text-text-secondary">{t("username")}</span>
           {editingName ? (
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
-                className="rounded-lg border border-white/10 bg-white/10 px-2 py-1 text-sm text-white outline-none focus:border-emerald-300/70 transition-colors"
+                className="rounded-lg border border-border bg-surface px-2 py-1 text-sm text-text-primary outline-none focus:border-emerald-300/70 transition-colors"
               />
               <Button size="sm" onClick={handleSaveName} disabled={nameSaving}>
                 {nameSaving ? "..." : t("saveName")}
@@ -102,7 +102,7 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-white">{user.name}</span>
+              <span className="text-text-primary">{user.name}</span>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(true)}>
                 {t("editName")}
               </Button>
@@ -111,11 +111,11 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
         </div>
 
         {/* Email */}
-        <div className="border-b border-white/5 pb-3">
+        <div className="border-b border-border-subtle pb-3">
           <div className="flex items-center justify-between">
-            <span className="text-white/60">{t("email")}</span>
+            <span className="text-text-secondary">{t("email")}</span>
             <div className="flex items-center gap-2">
-              <span className="text-white">{user.email}</span>
+              <span className="text-text-primary">{user.email}</span>
               {user.emailVerified && (
                 <Badge variant="accent">{t("emailVerified")}</Badge>
               )}

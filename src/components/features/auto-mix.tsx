@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { stockPicks } from "@/lib/mock-data";
-import type { RiskLevel, MixAllocation } from "@/lib/types";
+import type { StockPick, RiskLevel, MixAllocation } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,14 +11,23 @@ import { Input, Select } from "@/components/ui/input";
 
 export function AutoMix() {
   const t = useTranslations("mix");
+  const [stocks, setStocks] = useState<StockPick[]>([]);
+  const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState(500);
   const [riskFilter, setRiskFilter] = useState<RiskLevel | "any">("any");
+
+  useEffect(() => {
+    fetch("/api/stocks")
+      .then((r) => r.json())
+      .then((data) => { setStocks(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   const result = useMemo(() => {
     const candidates =
       riskFilter === "any"
-        ? stockPicks
-        : stockPicks.filter((p) => p.risk === riskFilter);
+        ? stocks
+        : stocks.filter((p) => p.risk === riskFilter);
 
     const ranked = [...candidates].sort((a, b) => b.upside - a.upside);
     const top = ranked.slice(0, 4);
@@ -46,10 +54,18 @@ export function AutoMix() {
     const spent = allocations.reduce((s, a) => s + a.spend, 0);
     const cash = Math.round((amount - spent) * 100) / 100;
     return { allocations, cash, totalInvested: spent };
-  }, [amount, riskFilter]);
+  }, [stocks, amount, riskFilter]);
 
   const riskVariant = (risk: RiskLevel) =>
     risk === "low" ? "success" : risk === "high" ? "danger" : "warning";
+
+  if (loading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -86,18 +102,18 @@ export function AutoMix() {
         {result.allocations.map((alloc) => (
           <Card key={alloc.symbol} variant="dark">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">{alloc.symbol}</span>
+              <span className="font-semibold text-text-primary">{alloc.symbol}</span>
               <Badge>{Math.round(alloc.weight * 100)}%</Badge>
             </div>
-            <div className="mt-2 text-xs text-white/60">
+            <div className="mt-2 text-xs text-text-secondary">
               ${alloc.price.toFixed(2)} &middot;{" "}
               <Badge variant={riskVariant(alloc.risk)} className="text-[10px]">
                 {alloc.risk}
               </Badge>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-white">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-text-primary">
               <div>
-                <div className="text-[11px] uppercase text-white/60">
+                <div className="text-[11px] uppercase text-text-secondary">
                   {t("dollars")}
                 </div>
                 <div className="text-base font-semibold">
@@ -105,7 +121,7 @@ export function AutoMix() {
                 </div>
               </div>
               <div>
-                <div className="text-[11px] uppercase text-white/60">
+                <div className="text-[11px] uppercase text-text-secondary">
                   {t("shares")}
                 </div>
                 <div className="text-base font-semibold">
@@ -122,7 +138,7 @@ export function AutoMix() {
         padding="sm"
         className="flex items-center justify-between px-4 py-3"
       >
-        <span className="text-sm text-white/70">
+        <span className="text-sm text-text-secondary">
           {t("unusedCash")}
         </span>
         <Badge variant="default" className="text-sm font-semibold">

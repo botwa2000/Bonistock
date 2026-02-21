@@ -11,19 +11,19 @@ export function FaqSection() {
       {faqItems.map((item, idx) => (
         <div
           key={idx}
-          className="rounded-xl border border-white/5 bg-white/5 backdrop-blur"
+          className="rounded-xl border border-border-subtle bg-surface backdrop-blur"
         >
           <button
-            className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-white"
+            className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-text-primary"
             onClick={() => setOpen(open === idx ? null : idx)}
           >
             {item.question}
-            <span className="ml-2 text-white/60">
+            <span className="ml-2 text-text-secondary">
               {open === idx ? "\u2212" : "+"}
             </span>
           </button>
           {open === idx && (
-            <div className="border-t border-white/5 px-5 py-4 text-sm text-white/70">
+            <div className="border-t border-border-subtle px-5 py-4 text-sm text-text-secondary">
               {item.answer}
             </div>
           )}

@@ -3,6 +3,7 @@ import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "@/lib/theme-provider";
 import { CookieConsentBanner } from "@/components/features/cookie-consent";
 import "./globals.css";
 
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
   title: "Bonistock — Smart Picks. Simple Moves.",
   description:
     "Wall Street's top picks, simplified. From analyst consensus to a diversified portfolio in 60 seconds.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default async function RootLayout({
@@ -40,8 +45,10 @@ export default async function RootLayout({
       >
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
-            {children}
-            <CookieConsentBanner />
+            <ThemeProvider>
+              {children}
+              <CookieConsentBanner />
+            </ThemeProvider>
           </AuthProvider>
         </NextIntlClientProvider>
       </body>

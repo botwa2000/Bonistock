@@ -100,8 +100,9 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await signOut({ callbackUrl: "/" });
+    await signOut({ redirect: false });
     setUser(null);
+    window.location.href = "/";
   }, []);
 
   return (

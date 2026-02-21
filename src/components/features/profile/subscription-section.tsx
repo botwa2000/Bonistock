@@ -35,11 +35,11 @@ export function SubscriptionSection() {
   return (
     <Card variant="glass" padding="lg">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">{t("subscription")}</h2>
+        <h2 className="text-lg font-semibold text-text-primary">{t("subscription")}</h2>
         <Badge variant={tierVariant}>{tier.toUpperCase()}</Badge>
       </div>
 
-      <p className="mt-2 text-sm text-white/60">
+      <p className="mt-2 text-sm text-text-secondary">
         {tier === "plus"
           ? t("plusTierMessage")
           : tier === "pass"
@@ -48,7 +48,7 @@ export function SubscriptionSection() {
       </p>
 
       {tier === "pass" && user.passExpiry && (
-        <p className="mt-1 text-xs text-white/40">
+        <p className="mt-1 text-xs text-text-tertiary">
           {t("passExpiry", { date: new Date(user.passExpiry).toLocaleDateString() })}
         </p>
       )}

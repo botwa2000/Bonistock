@@ -11,15 +11,15 @@ export function Navbar() {
   const { isLoggedIn } = useAuth();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#0b111c]/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 md:px-8">
         <Logo />
         <div className="flex items-center gap-6">
-          <div className="hidden items-center gap-5 text-sm text-white/70 md:flex">
-            <Link href="/pricing" className="transition-colors hover:text-white">
+          <div className="hidden items-center gap-5 text-sm text-text-secondary md:flex">
+            <Link href="/pricing" className="transition-colors hover:text-text-primary">
               {t("nav.pricing")}
             </Link>
-            <Link href="/about" className="transition-colors hover:text-white">
+            <Link href="/about" className="transition-colors hover:text-text-primary">
               {t("nav.about")}
             </Link>
           </div>

@@ -41,12 +41,12 @@ export default function CookiesPage() {
     <div className="min-h-screen">
       <Navbar />
       <Container className="pb-24 pt-16" size="md">
-        <h1 className="text-3xl font-bold text-white">{t("title")}</h1>
-        <p className="mt-2 text-sm text-white/60">{t("lastUpdated")}</p>
+        <h1 className="text-3xl font-bold text-text-primary">{t("title")}</h1>
+        <p className="mt-2 text-sm text-text-secondary">{t("lastUpdated")}</p>
 
-        <div className="mt-10 space-y-8 text-sm leading-relaxed text-white/70">
+        <div className="mt-10 space-y-8 text-sm leading-relaxed text-text-secondary">
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               What Are Cookies
             </h2>
             <p className="mt-2">
@@ -57,7 +57,7 @@ export default function CookiesPage() {
           </section>
 
           <section>
-            <h2 className="mb-4 text-lg font-semibold text-white">
+            <h2 className="mb-4 text-lg font-semibold text-text-primary">
               Cookies We Use
             </h2>
             <div className="space-y-3">
@@ -65,14 +65,14 @@ export default function CookiesPage() {
                 <Card key={cookie.name} variant="glass" padding="md">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-medium text-white">{cookie.name}</h3>
-                      <p className="mt-1 text-white/60">{cookie.purpose}</p>
+                      <h3 className="font-medium text-text-primary">{cookie.name}</h3>
+                      <p className="mt-1 text-text-secondary">{cookie.purpose}</p>
                     </div>
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80">
+                    <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-text-secondary">
                       {cookie.type}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-white/50">
+                  <p className="mt-2 text-xs text-text-tertiary">
                     Duration: {cookie.duration}
                   </p>
                 </Card>
@@ -81,7 +81,7 @@ export default function CookiesPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               Managing Cookies
             </h2>
             <p className="mt-2">

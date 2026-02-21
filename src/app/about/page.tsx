@@ -23,16 +23,16 @@ export default function AboutPage() {
     <div className="min-h-screen">
       <Navbar />
       <Container className="pb-24 pt-16" size="md">
-        <h1 className="text-3xl font-bold text-white">{t("title")}</h1>
+        <h1 className="text-3xl font-bold text-text-primary">{t("title")}</h1>
 
         <div className="mt-10 space-y-6">
           {sections.map((s) => (
             <Card key={s.title} variant="glass" padding="lg">
               <div className="text-3xl">{s.icon}</div>
-              <h2 className="mt-3 text-xl font-semibold text-white">
+              <h2 className="mt-3 text-xl font-semibold text-text-primary">
                 {s.title}
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/70">
+              <p className="mt-2 text-sm leading-relaxed text-text-secondary">
                 {s.text}
               </p>
             </Card>

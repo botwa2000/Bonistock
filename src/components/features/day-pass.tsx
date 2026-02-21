@@ -12,29 +12,29 @@ export function DayPassSection() {
   return (
     <Card variant="glass" padding="lg">
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-white">
+        <h3 className="text-lg font-semibold text-text-primary">
           {t("dayPassTitle")}
         </h3>
-        <p className="mt-1 text-sm text-white/60">{t("dayPassSubtitle")}</p>
+        <p className="mt-1 text-sm text-text-secondary">{t("dayPassSubtitle")}</p>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         {passOptions.map((option) => (
           <div
             key={option.duration}
-            className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-4"
+            className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface-elevated p-4"
           >
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-white">
+              <span className="text-2xl font-bold text-text-primary">
                 {option.price}
               </span>
               {option.savings && (
                 <Badge variant="accent">{option.savings}</Badge>
               )}
             </div>
-            <div className="text-sm font-medium text-white">{option.name}</div>
-            <p className="text-xs text-white/60">{option.description}</p>
-            <p className="text-xs text-white/40">{option.perDay}</p>
+            <div className="text-sm font-medium text-text-primary">{option.name}</div>
+            <p className="text-xs text-text-secondary">{option.description}</p>
+            <p className="text-xs text-text-tertiary">{option.perDay}</p>
             <Button variant="secondary" size="sm" fullWidth>
               Buy {option.name}
             </Button>
@@ -42,7 +42,7 @@ export function DayPassSection() {
         ))}
       </div>
 
-      <p className="mt-4 text-center text-xs text-white/40">
+      <p className="mt-4 text-center text-xs text-text-tertiary">
         {t("dayPassNote")}
       </p>
     </Card>

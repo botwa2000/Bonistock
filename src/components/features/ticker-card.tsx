@@ -36,18 +36,18 @@ export function TickerCard({ pick, compact = false }: TickerCardProps) {
                 {pick.analysts} {t("analysts")}
               </Badge>
             </div>
-            <h3 className="mt-2 text-lg font-semibold text-white">
+            <h3 className="mt-2 text-lg font-semibold text-text-primary">
               {pick.symbol} &middot; {pick.name}
             </h3>
             {!compact && (
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-text-secondary">
                 ${pick.price.toFixed(2)} &middot; target $
                 {pick.target.toFixed(0)} &middot; {pick.horizon}
               </p>
             )}
           </div>
           <div className="text-right">
-            <div className="text-xs uppercase text-white/60">
+            <div className="text-xs uppercase text-text-secondary">
               {t("upside")}
             </div>
             <div className="text-2xl font-semibold text-emerald-300">
@@ -55,10 +55,10 @@ export function TickerCard({ pick, compact = false }: TickerCardProps) {
             </div>
             {!compact && (
               <>
-                <div className="mt-1 text-xs text-white/60">
+                <div className="mt-1 text-xs text-text-secondary">
                   {t("conviction")}
                 </div>
-                <div className="text-sm font-semibold text-white">
+                <div className="text-sm font-semibold text-text-primary">
                   {(conviction * 100).toFixed(0)}%
                 </div>
               </>
@@ -67,7 +67,7 @@ export function TickerCard({ pick, compact = false }: TickerCardProps) {
         </div>
 
         {!compact && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-xs text-white/80">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-300" />
               {pick.buys} {t("buy")}
@@ -91,7 +91,7 @@ export function TickerCard({ pick, compact = false }: TickerCardProps) {
             {pick.brokerAvailability.map((b) => (
               <span
                 key={b}
-                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/50"
+                className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-tertiary"
               >
                 {b === "ibkr" ? "IBKR" : b === "t212" ? "T212" : b === "robinhood" ? "RH" : "eToro"}
               </span>

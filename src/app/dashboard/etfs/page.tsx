@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { etfPicks } from "@/lib/mock-data";
-import type { EtfFilters } from "@/lib/types";
+import type { EtfPick, EtfFilters } from "@/lib/types";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Card } from "@/components/ui/card";
 import { EtfCard } from "@/components/features/etf-card";
@@ -13,15 +12,24 @@ export default function EtfsPage() {
   const t = useTranslations("nav");
   const tf = useTranslations("filters");
 
+  const [etfs, setEtfs] = useState<EtfPick[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<EtfFilters>(defaultEtfFilters);
 
+  useEffect(() => {
+    fetch("/api/etfs")
+      .then((r) => r.json())
+      .then((data) => { setEtfs(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
   const themes = useMemo(
-    () => [...new Set(etfPicks.map((e) => e.theme))].sort(),
-    []
+    () => [...new Set(etfs.map((e) => e.theme))].sort(),
+    [etfs]
   );
 
   const filtered = useMemo(() => {
-    return etfPicks.filter((e) => {
+    return etfs.filter((e) => {
       if (filters.region !== "all" && e.region !== filters.region) return false;
       if (filters.theme !== "all" && e.theme !== filters.theme) return false;
       if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any))
@@ -30,7 +38,15 @@ export default function EtfsPage() {
       if (e.sharpe < filters.minSharpe) return false;
       return true;
     });
-  }, [filters]);
+  }, [etfs, filters]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -49,7 +65,7 @@ export default function EtfsPage() {
 
       {filtered.length === 0 ? (
         <Card variant="glass" className="py-12 text-center">
-          <p className="text-white/60">{tf("noResults")}</p>
+          <p className="text-text-secondary">{tf("noResults")}</p>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

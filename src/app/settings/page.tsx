@@ -20,7 +20,7 @@ function Toggle({
   return (
     <button
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-emerald-400" : "bg-white/20"}`}
+      className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-emerald-400" : "bg-surface"}`}
     >
       <span
         className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${checked ? "left-[22px]" : "left-0.5"}`}
@@ -45,7 +45,7 @@ export default function SettingsPage() {
     return (
       <DashboardLayout>
         <div className="flex min-h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
         </div>
       </DashboardLayout>
     );
@@ -70,15 +70,15 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-white">{t("title")}</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">{t("title")}</h1>
 
         <div className="max-w-2xl space-y-6">
           {/* Market Region */}
           <Card variant="glass" padding="lg">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               {t("region")}
             </h2>
-            <p className="mt-1 text-xs text-white/50">
+            <p className="mt-1 text-xs text-text-tertiary">
               {t("regionDescription")}
             </p>
             <div className="mt-4">
@@ -92,17 +92,17 @@ export default function SettingsPage() {
                 ]}
               />
             </div>
-            <p className="mt-3 text-xs text-white/40">
+            <p className="mt-3 text-xs text-text-tertiary">
               {user.region === "US" ? t("regionInfoUs") : t("regionInfoDe")}
             </p>
           </Card>
 
           {/* Language */}
           <Card variant="glass" padding="lg">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               {t("language")}
             </h2>
-            <p className="mt-1 text-xs text-white/50">
+            <p className="mt-1 text-xs text-text-tertiary">
               {t("languageDescription")}
             </p>
             <div className="mt-4">
@@ -127,13 +127,13 @@ export default function SettingsPage() {
 
           {/* Theme */}
           <Card variant="glass" padding="lg">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               {t("appearance")}
             </h2>
             <div className="mt-4 flex items-center justify-between">
               <div>
-                <div className="text-sm text-white">{t("darkMode")}</div>
-                <div className="text-xs text-white/50">
+                <div className="text-sm text-text-primary">{t("darkMode")}</div>
+                <div className="text-xs text-text-tertiary">
                   Toggle between dark and light mode
                 </div>
               </div>
@@ -146,14 +146,14 @@ export default function SettingsPage() {
 
           {/* Notifications */}
           <Card variant="glass" padding="lg">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               {t("notifications")}
             </h2>
             <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-white">{t("emailAlerts")}</div>
-                  <div className="text-xs text-white/50">
+                  <div className="text-sm text-text-primary">{t("emailAlerts")}</div>
+                  <div className="text-xs text-text-tertiary">
                     {t("emailAlertsDescription")}
                   </div>
                 </div>
@@ -161,8 +161,8 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-white">{t("weeklyDigest")}</div>
-                  <div className="text-xs text-white/50">
+                  <div className="text-sm text-text-primary">{t("weeklyDigest")}</div>
+                  <div className="text-xs text-text-tertiary">
                     {t("weeklyDigestDescription")}
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
 
           {/* Goal */}
           <Card variant="glass" padding="lg">
-            <h2 className="text-lg font-semibold text-white">Investment Goal</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Investment Goal</h2>
             <div className="mt-4">
               <Select
                 id="goal"
@@ -189,7 +189,7 @@ export default function SettingsPage() {
           </Card>
 
           {saving && (
-            <p className="text-xs text-white/40 text-center">Saving...</p>
+            <p className="text-xs text-text-tertiary text-center">Saving...</p>
           )}
         </div>
       </div>

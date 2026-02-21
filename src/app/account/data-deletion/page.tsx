@@ -9,14 +9,14 @@ export default function DataDeletionPage() {
     <div className="min-h-screen">
       <Navbar />
       <Container className="pb-24 pt-16" size="md">
-        <h1 className="text-3xl font-bold text-white">Data Deletion</h1>
-        <p className="mt-2 text-sm text-white/60">
+        <h1 className="text-3xl font-bold text-text-primary">Data Deletion</h1>
+        <p className="mt-2 text-sm text-text-secondary">
           How to delete your Bonistock account and associated data
         </p>
 
-        <div className="mt-10 space-y-8 text-sm leading-relaxed text-white/70">
+        <div className="mt-10 space-y-8 text-sm leading-relaxed text-text-secondary">
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               Delete Your Account
             </h2>
             <p className="mt-2">
@@ -33,7 +33,7 @@ export default function DataDeletionPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               What Gets Deleted
             </h2>
             <p className="mt-2">When you delete your account, the following data is removed:</p>
@@ -51,7 +51,7 @@ export default function DataDeletionPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               Facebook Login Users
             </h2>
             <p className="mt-2">
@@ -68,7 +68,7 @@ export default function DataDeletionPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               Export Your Data First
             </h2>
             <p className="mt-2">
@@ -80,7 +80,7 @@ export default function DataDeletionPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               Alternative: Email Request
             </h2>
             <p className="mt-2">

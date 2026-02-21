@@ -13,10 +13,10 @@ const variantClasses: Record<Variant, string> = {
   primary:
     "bg-emerald-400 text-gray-900 hover:bg-emerald-300 font-semibold",
   secondary:
-    "border border-white/20 bg-white/10 text-white hover:border-emerald-300/60 hover:text-emerald-100",
-  ghost: "text-white/70 hover:text-white hover:bg-white/5",
+    "border border-border bg-surface text-text-primary hover:border-emerald-300/60 hover:text-emerald-100",
+  ghost: "text-text-secondary hover:text-text-primary hover:bg-surface",
   outline:
-    "border border-white/20 text-white hover:bg-white/5",
+    "border border-border text-text-primary hover:bg-surface",
   danger:
     "bg-rose-500/20 border border-rose-400/40 text-rose-100 hover:bg-rose-500/30",
 };

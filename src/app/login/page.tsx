@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
+import { GoogleIcon, FacebookIcon } from "@/components/ui/icons";
 
 export default function LoginPage() {
   return (
@@ -84,10 +85,10 @@ function LoginContent() {
           <div className="flex justify-center">
             <Logo size="lg" showText={false} />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold text-white">
+          <h1 className="mt-4 text-2xl font-semibold text-text-primary">
             {t("title")}
           </h1>
-          <p className="mt-1 text-sm text-white/60">{t("subtitle")}</p>
+          <p className="mt-1 text-sm text-text-secondary">{t("subtitle")}</p>
         </div>
 
         {verified && (
@@ -107,7 +108,7 @@ function LoginContent() {
         <Card variant="glass" padding="lg">
           {show2FA ? (
             <form onSubmit={handle2FASubmit} className="space-y-4">
-              <p className="text-sm text-white/70">
+              <p className="text-sm text-text-secondary">
                 Enter the 6-digit code from your authenticator app.
               </p>
               <Input
@@ -133,7 +134,7 @@ function LoginContent() {
               <button
                 type="button"
                 onClick={() => { setShow2FA(false); setError(""); }}
-                className="w-full text-center text-sm text-white/50 hover:text-white transition-colors"
+                className="w-full text-center text-sm text-text-tertiary hover:text-text-primary transition-colors"
               >
                 Back to login
               </button>
@@ -148,7 +149,7 @@ function LoginContent() {
                   fullWidth
                   onClick={loginWithGoogle}
                 >
-                  Continue with Google
+                  <GoogleIcon /> <span className="ml-2">Continue with Google</span>
                 </Button>
                 <Button
                   type="button"
@@ -156,14 +157,14 @@ function LoginContent() {
                   fullWidth
                   onClick={loginWithFacebook}
                 >
-                  Continue with Facebook
+                  <FacebookIcon /> <span className="ml-2">Continue with Facebook</span>
                 </Button>
               </div>
 
               <div className="my-4 flex items-center gap-3">
-                <div className="flex-1 border-t border-white/10" />
-                <span className="text-xs text-white/40">or</span>
-                <div className="flex-1 border-t border-white/10" />
+                <div className="flex-1 border-t border-border" />
+                <span className="text-xs text-text-tertiary">or</span>
+                <div className="flex-1 border-t border-border" />
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -200,13 +201,13 @@ function LoginContent() {
               <div className="mt-4 flex justify-between text-sm">
                 <Link
                   href="/forgot-password"
-                  className="text-white/50 hover:text-white transition-colors"
+                  className="text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   Forgot password?
                 </Link>
                 <Link
                   href="/register"
-                  className="text-white/50 hover:text-white transition-colors"
+                  className="text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   Create account
                 </Link>
@@ -215,8 +216,8 @@ function LoginContent() {
           )}
         </Card>
 
-        <div className="text-center text-sm text-white/60">
-          <Link href="/" className="hover:text-white transition-colors">
+        <div className="text-center text-sm text-text-secondary">
+          <Link href="/" className="hover:text-text-primary transition-colors">
             &larr; Back to home
           </Link>
         </div>

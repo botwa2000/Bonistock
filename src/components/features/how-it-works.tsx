@@ -21,10 +21,10 @@ export function HowItWorks() {
             {idx + 1}
           </div>
           <div className="mt-2 text-3xl">{step.icon}</div>
-          <h3 className="mt-3 text-base font-semibold text-white">
+          <h3 className="mt-3 text-base font-semibold text-text-primary">
             {t(`${step.key}Title`)}
           </h3>
-          <p className="mt-1 text-sm text-white/60">
+          <p className="mt-1 text-sm text-text-secondary">
             {t(`${step.key}Text`)}
           </p>
         </Card>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getEtfs } from "@/lib/data";
+import { mapEtfToFrontend } from "@/lib/api-mappers";
 
 const filtersSchema = z.object({
   region: z.string().optional(),
@@ -21,5 +22,5 @@ export async function GET(req: NextRequest) {
   }
 
   const etfs = await getEtfs(parsed.data);
-  return NextResponse.json(etfs);
+  return NextResponse.json(etfs.map(mapEtfToFrontend));
 }

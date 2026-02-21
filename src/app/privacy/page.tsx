@@ -12,12 +12,12 @@ export default function PrivacyPage() {
     <div className="min-h-screen">
       <Navbar />
       <Container className="pb-24 pt-16" size="md">
-        <h1 className="text-3xl font-bold text-white">{t("title")}</h1>
-        <p className="mt-2 text-sm text-white/60">Last updated: February 20, 2026</p>
+        <h1 className="text-3xl font-bold text-text-primary">{t("title")}</h1>
+        <p className="mt-2 text-sm text-text-secondary">Last updated: February 20, 2026</p>
 
-        <div className="mt-10 space-y-8 text-sm leading-relaxed text-white/70">
+        <div className="mt-10 space-y-8 text-sm leading-relaxed text-text-secondary">
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               1. Who We Are
             </h2>
             <p className="mt-2">
@@ -31,27 +31,27 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               2. Information We Collect
             </h2>
-            <p className="mt-2 font-medium text-white/80">Account information:</p>
+            <p className="mt-2 font-medium text-text-secondary">Account information:</p>
             <ul className="mt-1 list-disc pl-5 space-y-1">
               <li>Email address, name, and profile picture (provided directly or via Google/Facebook login)</li>
               <li>Password hash (if using email/password authentication)</li>
               <li>Investment goal preference, region, language, and theme settings</li>
             </ul>
-            <p className="mt-3 font-medium text-white/80">Payment information:</p>
+            <p className="mt-3 font-medium text-text-secondary">Payment information:</p>
             <ul className="mt-1 list-disc pl-5 space-y-1">
               <li>Subscription tier and billing status (managed by Stripe)</li>
               <li>We do NOT store credit card numbers, CVVs, or full payment details &mdash; Stripe handles all payment data directly</li>
             </ul>
-            <p className="mt-3 font-medium text-white/80">Usage data:</p>
+            <p className="mt-3 font-medium text-text-secondary">Usage data:</p>
             <ul className="mt-1 list-disc pl-5 space-y-1">
               <li>Watchlist items, saved mixes, alerts, and portfolio holdings you create</li>
               <li>Login timestamps, IP addresses, and user agent strings (for security auditing)</li>
               <li>Pages viewed and features used (if analytics cookies are accepted)</li>
             </ul>
-            <p className="mt-3 font-medium text-white/80">Data from third-party login providers:</p>
+            <p className="mt-3 font-medium text-text-secondary">Data from third-party login providers:</p>
             <ul className="mt-1 list-disc pl-5 space-y-1">
               <li><strong>Google:</strong> name, email address, profile picture</li>
               <li><strong>Facebook:</strong> name, email address, profile picture. We do NOT access your friends list, posts, or any other Facebook data.</li>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               3. How We Use Your Information
             </h2>
             <ul className="mt-2 list-disc pl-5 space-y-1">
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               4. Legal Basis for Processing (GDPR)
             </h2>
             <ul className="mt-2 list-disc pl-5 space-y-1">
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               5. Data Sharing
             </h2>
             <p className="mt-2">
@@ -102,7 +102,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               6. Data Storage &amp; Security
             </h2>
             <p className="mt-2">
@@ -122,7 +122,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               7. Data Retention
             </h2>
             <p className="mt-2">
@@ -134,7 +134,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               8. Your Rights (GDPR)
             </h2>
             <p className="mt-2">You have the right to:</p>
@@ -155,7 +155,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               9. Cookies
             </h2>
             <p className="mt-2">
@@ -173,7 +173,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               10. Facebook Data
             </h2>
             <p className="mt-2">
@@ -191,7 +191,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               11. Children&apos;s Privacy
             </h2>
             <p className="mt-2">
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               12. Changes to This Policy
             </h2>
             <p className="mt-2">
@@ -214,7 +214,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-white">13. Contact</h2>
+            <h2 className="text-lg font-semibold text-text-primary">13. Contact</h2>
             <p className="mt-2">
               For privacy-related inquiries:<br />
               Email: <a href="mailto:privacy@bonistock.com" className="text-white underline">privacy@bonistock.com</a><br />

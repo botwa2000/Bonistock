@@ -31,10 +31,10 @@ function ProblemSection() {
       {problems.map((p) => (
         <Card key={p.key} variant="default">
           <div className="text-3xl">{p.icon}</div>
-          <h3 className="mt-3 text-base font-semibold text-white">
+          <h3 className="mt-3 text-base font-semibold text-text-primary">
             {t(`${p.key}Title`)}
           </h3>
-          <p className="mt-2 text-sm text-white/60">{t(`${p.key}Text`)}</p>
+          <p className="mt-2 text-sm text-text-secondary">{t(`${p.key}Text`)}</p>
         </Card>
       ))}
     </div>
@@ -56,7 +56,7 @@ function ProofSection() {
       {stats.map((s) => (
         <Card key={s.label} variant="glass" className="text-center">
           <div className="text-3xl font-bold text-emerald-300">{s.value}</div>
-          <div className="mt-1 text-sm text-white/60">{s.label}</div>
+          <div className="mt-1 text-sm text-text-secondary">{s.label}</div>
         </Card>
       ))}
     </div>
@@ -111,7 +111,7 @@ export default function LandingPage() {
             <Card variant="glass" className="flex items-center justify-center min-h-[200px]">
               <div className="text-center">
                 <Badge variant="accent">+{remainingStocks} more</Badge>
-                <p className="mt-2 text-sm text-white/60">
+                <p className="mt-2 text-sm text-text-secondary">
                   Sign up to see the full Upside List
                 </p>
                 <Link href="/login">
@@ -158,10 +158,10 @@ export default function LandingPage() {
         {/* Bottom CTA */}
         <section className="text-center">
           <Card variant="accent" padding="lg" className="mx-auto max-w-2xl">
-            <h2 className="text-2xl font-semibold text-white">
+            <h2 className="text-2xl font-semibold text-text-primary">
               {t("ctaTitle")}
             </h2>
-            <p className="mt-2 text-white/70">{t("ctaSubtitle")}</p>
+            <p className="mt-2 text-text-secondary">{t("ctaSubtitle")}</p>
             <Link href="/login">
               <Button size="lg" className="mt-6">
                 {t("ctaCta")}

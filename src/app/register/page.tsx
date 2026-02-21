@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
+import { GoogleIcon, FacebookIcon } from "@/components/ui/icons";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { loginWithGoogle, loginWithFacebook } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,9 +62,9 @@ export default function RegisterPage() {
         <div className="w-full max-w-md space-y-6 text-center">
           <Logo size="lg" showText={false} />
           <Card variant="glass" padding="lg">
-            <h2 className="text-xl font-semibold text-white">Check your email</h2>
-            <p className="mt-2 text-sm text-white/60">
-              We sent a verification link to <strong className="text-white">{email}</strong>.
+            <h2 className="text-xl font-semibold text-text-primary">Check your email</h2>
+            <p className="mt-2 text-sm text-text-secondary">
+              We sent a verification link to <strong className="text-text-primary">{email}</strong>.
               Click the link to activate your account.
             </p>
             <Link href="/login">
@@ -82,11 +85,37 @@ export default function RegisterPage() {
           <div className="flex justify-center">
             <Logo size="lg" showText={false} />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold text-white">Create your account</h1>
-          <p className="mt-1 text-sm text-white/60">Start tracking the best stock picks</p>
+          <h1 className="mt-4 text-2xl font-semibold text-text-primary">Create your account</h1>
+          <p className="mt-1 text-sm text-text-secondary">Start tracking the best stock picks</p>
         </div>
 
         <Card variant="glass" padding="lg">
+          {/* OAuth Buttons */}
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={loginWithGoogle}
+            >
+              <GoogleIcon /> <span className="ml-2">Continue with Google</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={loginWithFacebook}
+            >
+              <FacebookIcon /> <span className="ml-2">Continue with Facebook</span>
+            </Button>
+          </div>
+
+          <div className="my-4 flex items-center gap-3">
+            <div className="flex-1 border-t border-border" />
+            <span className="text-xs text-text-tertiary">or</span>
+            <div className="flex-1 border-t border-border" />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Name"
@@ -131,12 +160,12 @@ export default function RegisterPage() {
                               : passwordStrength.level <= 3
                               ? "bg-emerald-400"
                               : "bg-emerald-300"
-                            : "bg-white/10"
+                            : "bg-surface"
                         }`}
                       />
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-white/50">{passwordStrength.label}</p>
+                  <p className="mt-1 text-xs text-text-tertiary">{passwordStrength.label}</p>
                 </div>
               )}
             </div>
@@ -149,9 +178,9 @@ export default function RegisterPage() {
                   onChange={(e) => setTosAccepted(e.target.checked)}
                   className="mt-0.5 accent-emerald-400"
                 />
-                <span className="text-white/70">
+                <span className="text-text-secondary">
                   I accept the{" "}
-                  <Link href="/terms" className="text-white underline">Terms of Service</Link>
+                  <Link href="/terms" className="text-text-primary underline">Terms of Service</Link>
                   {" "}(required)
                 </span>
               </label>
@@ -162,9 +191,9 @@ export default function RegisterPage() {
                   onChange={(e) => setPrivacyAccepted(e.target.checked)}
                   className="mt-0.5 accent-emerald-400"
                 />
-                <span className="text-white/70">
+                <span className="text-text-secondary">
                   I accept the{" "}
-                  <Link href="/privacy" className="text-white underline">Privacy Policy</Link>
+                  <Link href="/privacy" className="text-text-primary underline">Privacy Policy</Link>
                   {" "}(required)
                 </span>
               </label>
@@ -175,7 +204,7 @@ export default function RegisterPage() {
                   onChange={(e) => setAnalyticsConsent(e.target.checked)}
                   className="mt-0.5 accent-emerald-400"
                 />
-                <span className="text-white/50">Analytics cookies (optional)</span>
+                <span className="text-text-tertiary">Analytics cookies (optional)</span>
               </label>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -184,7 +213,7 @@ export default function RegisterPage() {
                   onChange={(e) => setMarketingConsent(e.target.checked)}
                   className="mt-0.5 accent-emerald-400"
                 />
-                <span className="text-white/50">Marketing cookies (optional)</span>
+                <span className="text-text-tertiary">Marketing cookies (optional)</span>
               </label>
             </div>
 
@@ -203,16 +232,16 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm text-white/50">
+          <div className="mt-4 text-center text-sm text-text-tertiary">
             Already have an account?{" "}
-            <Link href="/login" className="text-white hover:underline">
+            <Link href="/login" className="text-text-primary hover:underline">
               Sign in
             </Link>
           </div>
         </Card>
 
-        <div className="text-center text-sm text-white/60">
-          <Link href="/" className="hover:text-white transition-colors">
+        <div className="text-center text-sm text-text-secondary">
+          <Link href="/" className="hover:text-text-primary transition-colors">
             &larr; Back to home
           </Link>
         </div>

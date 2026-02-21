@@ -57,7 +57,7 @@ export function StockFilterBar({
     <Card variant="glass" padding="md" className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white">{t("title")}</h3>
+          <h3 className="text-sm font-semibold text-text-primary">{t("title")}</h3>
           <Badge variant="accent">
             {resultCount} {t("results")}
           </Badge>
@@ -154,7 +154,7 @@ export function StockFilterBar({
         />
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-white/60" htmlFor="filter-upside">
+          <label className="text-xs text-text-secondary" htmlFor="filter-upside">
             {t("minUpside")} ({filters.minUpside}%)
           </label>
           <input
@@ -170,7 +170,7 @@ export function StockFilterBar({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-white/60" htmlFor="filter-analysts">
+          <label className="text-xs text-text-secondary" htmlFor="filter-analysts">
             {t("minAnalysts")} ({filters.minAnalysts})
           </label>
           <input
@@ -186,7 +186,7 @@ export function StockFilterBar({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-white/60" htmlFor="filter-price">
+          <label className="text-xs text-text-secondary" htmlFor="filter-price">
             {t("maxPrice")} (${filters.maxPrice.toLocaleString()})
           </label>
           <input
@@ -202,12 +202,12 @@ export function StockFilterBar({
         </div>
 
         <div className="flex items-end pb-1">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-white/70">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
             <input
               type="checkbox"
               checked={filters.dividendOnly}
               onChange={(e) => set("dividendOnly", e.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-white/10 accent-emerald-400"
+              className="h-4 w-4 rounded border-input-border bg-input-bg accent-emerald-400"
             />
             {t("dividendOnly")}
           </label>
@@ -215,7 +215,7 @@ export function StockFilterBar({
       </div>
 
       {filters.broker !== "any" && (
-        <p className="text-xs text-white/40">{t("brokerNote")}</p>
+        <p className="text-xs text-text-tertiary">{t("brokerNote")}</p>
       )}
     </Card>
   );
@@ -264,7 +264,7 @@ export function EtfFilterBar({
     <Card variant="glass" padding="md" className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white">{t("title")}</h3>
+          <h3 className="text-sm font-semibold text-text-primary">{t("title")}</h3>
           <Badge variant="accent">
             {resultCount} {t("results")}
           </Badge>
@@ -319,7 +319,7 @@ export function EtfFilterBar({
         />
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-white/60" htmlFor="etf-filter-fee">
+          <label className="text-xs text-text-secondary" htmlFor="etf-filter-fee">
             {t("maxFee")} ({filters.maxFee}%)
           </label>
           <input
@@ -335,7 +335,7 @@ export function EtfFilterBar({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-white/60" htmlFor="etf-filter-sharpe">
+          <label className="text-xs text-text-secondary" htmlFor="etf-filter-sharpe">
             {t("minSharpe")} ({filters.minSharpe.toFixed(1)})
           </label>
           <input
@@ -352,7 +352,7 @@ export function EtfFilterBar({
       </div>
 
       {filters.broker !== "any" && (
-        <p className="text-xs text-white/40">{t("brokerNote")}</p>
+        <p className="text-xs text-text-tertiary">{t("brokerNote")}</p>
       )}
     </Card>
   );

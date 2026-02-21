@@ -19,7 +19,7 @@ export default function AlertsPage() {
     return (
       <div className="space-y-6">
         <SectionHeader title={t("title")} subtitle={t("subtitle")} />
-        <p className="text-center text-sm text-white/60">
+        <p className="text-center text-sm text-text-secondary">
           {t("plusRequired")}
         </p>
         <UpgradePaywall feature="Alerts require Plus" />
@@ -53,7 +53,7 @@ export default function AlertsPage() {
 
       {triggered.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-white/60">
+          <h3 className="text-sm font-medium text-text-secondary">
             {t("triggered")}
           </h3>
           {triggered.map((alert) => (
@@ -61,7 +61,7 @@ export default function AlertsPage() {
               <div className="flex items-center gap-3">
                 <Link
                   href={`/dashboard/stock/${alert.symbol}`}
-                  className="font-semibold text-white hover:text-emerald-300"
+                  className="font-semibold text-text-primary hover:text-emerald-300"
                 >
                   {alert.symbol}
                 </Link>
@@ -70,8 +70,8 @@ export default function AlertsPage() {
                 </Badge>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-white/70">{alert.message}</span>
-                <span className="text-xs text-white/40">{alert.createdAt}</span>
+                <span className="text-sm text-text-secondary">{alert.message}</span>
+                <span className="text-xs text-text-tertiary">{alert.createdAt}</span>
               </div>
             </Card>
           ))}
@@ -80,7 +80,7 @@ export default function AlertsPage() {
 
       {watching.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-white/60">
+          <h3 className="text-sm font-medium text-text-secondary">
             {t("watching")}
           </h3>
           {watching.map((alert) => (
@@ -88,7 +88,7 @@ export default function AlertsPage() {
               <div className="flex items-center gap-3">
                 <Link
                   href={`/dashboard/stock/${alert.symbol}`}
-                  className="font-semibold text-white hover:text-emerald-300"
+                  className="font-semibold text-text-primary hover:text-emerald-300"
                 >
                   {alert.symbol}
                 </Link>
@@ -97,8 +97,8 @@ export default function AlertsPage() {
                 </Badge>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-white/70">{alert.message}</span>
-                <span className="text-xs text-white/40">{alert.createdAt}</span>
+                <span className="text-sm text-text-secondary">{alert.message}</span>
+                <span className="text-xs text-text-tertiary">{alert.createdAt}</span>
               </div>
             </Card>
           ))}

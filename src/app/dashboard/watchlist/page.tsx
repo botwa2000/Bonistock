@@ -19,7 +19,7 @@ export default function WatchlistPage() {
     return (
       <div className="space-y-6">
         <SectionHeader title={t("title")} subtitle={t("subtitle")} />
-        <p className="text-center text-sm text-white/60">
+        <p className="text-center text-sm text-text-secondary">
           {t("plusRequired")}
         </p>
         <UpgradePaywall feature="Watchlists require Plus" />
@@ -38,7 +38,7 @@ export default function WatchlistPage() {
       <Card variant="glass" padding="none">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5 text-left text-xs uppercase text-white/60">
+            <tr className="border-b border-border-subtle text-left text-xs uppercase text-text-secondary">
               <th className="px-4 py-3">Symbol</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3 text-right">Price</th>
@@ -52,17 +52,17 @@ export default function WatchlistPage() {
             {mockWatchlist.map((item) => (
               <tr
                 key={item.symbol}
-                className="border-b border-white/5 hover:bg-white/5"
+                className="border-b border-border-subtle hover:bg-surface"
               >
                 <td className="px-4 py-3">
                   <Link
                     href={`/dashboard/stock/${item.symbol}`}
-                    className="font-semibold text-white hover:text-emerald-300"
+                    className="font-semibold text-text-primary hover:text-emerald-300"
                   >
                     {item.symbol}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-white/70">{item.name}</td>
+                <td className="px-4 py-3 text-text-secondary">{item.name}</td>
                 <td className="px-4 py-3 text-right text-white">
                   ${item.price.toFixed(2)}
                 </td>
@@ -75,7 +75,7 @@ export default function WatchlistPage() {
                 <td className="px-4 py-3 text-right text-emerald-300">
                   +{item.upside}%
                 </td>
-                <td className="px-4 py-3 text-right text-white/50">
+                <td className="px-4 py-3 text-right text-text-tertiary">
                   {item.addedAt}
                 </td>
                 <td className="px-4 py-3 text-right">

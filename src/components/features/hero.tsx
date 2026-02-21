@@ -13,10 +13,10 @@ export function Hero() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(56,232,165,0.08),transparent_60%)]" />
       <Container className="relative">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-4xl font-bold leading-tight text-white md:text-6xl">
+          <h1 className="text-4xl font-bold leading-tight text-text-primary md:text-6xl">
             {t("heroTitle")}
           </h1>
-          <p className="mt-5 text-lg text-white/70 md:text-xl">
+          <p className="mt-5 text-lg text-text-secondary md:text-xl">
             {t("heroSubtitle")}
           </p>
           <div className="mt-8 flex items-center justify-center gap-4">

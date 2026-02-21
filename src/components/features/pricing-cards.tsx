@@ -14,23 +14,23 @@ export function PricingCards() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-center gap-3 text-sm text-white/70">
+      <div className="flex items-center justify-center gap-3 text-sm text-text-secondary">
         <button
-          className={`transition-colors ${!annual ? "text-white font-semibold" : ""}`}
+          className={`transition-colors ${!annual ? "text-text-primary font-semibold" : ""}`}
           onClick={() => setAnnual(false)}
         >
           {t("monthly")}
         </button>
         <button
           onClick={() => setAnnual(!annual)}
-          className={`relative h-6 w-11 rounded-full transition-colors ${annual ? "bg-emerald-400" : "bg-white/20"}`}
+          className={`relative h-6 w-11 rounded-full transition-colors ${annual ? "bg-emerald-400" : "bg-surface"}`}
         >
           <span
             className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${annual ? "left-[22px]" : "left-0.5"}`}
           />
         </button>
         <button
-          className={`transition-colors ${annual ? "text-white font-semibold" : ""}`}
+          className={`transition-colors ${annual ? "text-text-primary font-semibold" : ""}`}
           onClick={() => setAnnual(true)}
         >
           {t("annual")}
@@ -56,13 +56,13 @@ export function PricingCards() {
               </Badge>
             )}
             <div>
-              <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
-              <p className="text-sm text-white/60">{tier.description}</p>
+              <h3 className="text-lg font-semibold text-text-primary">{tier.name}</h3>
+              <p className="text-sm text-text-secondary">{tier.description}</p>
             </div>
-            <div className="text-3xl font-semibold text-white">
+            <div className="text-3xl font-semibold text-text-primary">
               {annual && tier.priceAnnual ? tier.priceAnnual : tier.price}
             </div>
-            <ul className="flex-1 space-y-2 text-sm text-white/80">
+            <ul className="flex-1 space-y-2 text-sm text-text-secondary">
               {tier.features.map((f) => (
                 <li key={f} className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-300" />
@@ -82,7 +82,7 @@ export function PricingCards() {
         ))}
       </div>
 
-      <p className="text-center text-xs text-white/50">{t("guarantee")}</p>
+      <p className="text-center text-xs text-text-tertiary">{t("guarantee")}</p>
     </div>
   );
 }

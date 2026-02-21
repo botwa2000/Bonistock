@@ -11,13 +11,13 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 const variantClasses: Record<CardVariant, string> = {
   default:
-    "border border-white/5 bg-white/5 backdrop-blur",
+    "border border-border-subtle bg-surface backdrop-blur",
   glass:
-    "border border-white/10 bg-black/30 backdrop-blur shadow-[0_15px_50px_rgba(0,0,0,0.35)]",
-  dark: "border border-white/5 bg-black/40 backdrop-blur",
+    "border border-border bg-surface-glass backdrop-blur shadow-[0_15px_50px_rgba(0,0,0,0.35)] light:shadow-[0_1px_3px_rgba(0,0,0,0.08)]",
+  dark: "border border-border-subtle bg-surface-elevated backdrop-blur",
   accent:
     "border border-emerald-200/30 bg-emerald-400/10 shadow-[0_15px_45px_rgba(0,0,0,0.4)]",
-  outline: "border border-white/10 bg-transparent",
+  outline: "border border-border bg-transparent",
 };
 
 const paddingClasses: Record<string, string> = {
@@ -37,7 +37,7 @@ export function Card({
 }: CardProps) {
   return (
     <div
-      className={`rounded-2xl ${variantClasses[variant]} ${paddingClasses[padding]} ${hover ? "transition-colors hover:bg-white/[0.08]" : ""} ${className}`}
+      className={`rounded-2xl ${variantClasses[variant]} ${paddingClasses[padding]} ${hover ? "transition-colors hover:bg-surface" : ""} ${className}`}
       {...props}
     >
       {children}

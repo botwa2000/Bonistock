@@ -31,14 +31,14 @@ export function AccountSection() {
 
   return (
     <Card variant="glass" padding="lg" className="border-rose-400/20">
-      <h2 className="text-lg font-semibold text-white">{t("account")}</h2>
+      <h2 className="text-lg font-semibold text-text-primary">{t("account")}</h2>
 
       <div className="mt-4 space-y-4">
         {/* Data Export */}
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-white">{t("exportData")}</div>
-            <div className="text-xs text-white/50">{t("exportDataDescription")}</div>
+            <div className="text-sm text-text-primary">{t("exportData")}</div>
+            <div className="text-xs text-text-tertiary">{t("exportDataDescription")}</div>
           </div>
           <Button variant="secondary" size="sm" onClick={handleExport}>
             {t("export")}
@@ -46,13 +46,13 @@ export function AccountSection() {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-white/5" />
+        <div className="border-t border-border-subtle" />
 
         {/* Account Deletion */}
         <div className="space-y-3">
           <div>
-            <div className="text-sm text-white">{t("deleteAccount")}</div>
-            <div className="text-xs text-white/50">{t("deleteAccountDescription")}</div>
+            <div className="text-sm text-text-primary">{t("deleteAccount")}</div>
+            <div className="text-xs text-text-tertiary">{t("deleteAccountDescription")}</div>
           </div>
           <Input
             id="deleteConfirm"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getStocks } from "@/lib/data";
+import { mapStockToFrontend } from "@/lib/api-mappers";
 
 const filtersSchema = z.object({
   region: z.string().optional(),
@@ -25,5 +26,5 @@ export async function GET(req: NextRequest) {
   }
 
   const stocks = await getStocks(parsed.data);
-  return NextResponse.json(stocks);
+  return NextResponse.json(stocks.map(mapStockToFrontend));
 }
