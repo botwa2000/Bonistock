@@ -183,18 +183,8 @@ $SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.y
 3. **Developers > API Keys** — Copy:
    - **Publishable key** (`pk_test_...`)
    - **Secret key** (`sk_test_...`)
-4. **Create Products** in the Stripe Dashboard:
-
-   | Product | Price | Type |
-   |---------|-------|------|
-   | Bonistock Plus Monthly | $6.99/mo | Recurring |
-   | Bonistock Plus Annual | $59.00/yr | Recurring |
-   | 1-Day Pass | $2.99 | One-time |
-   | 3-Day Pass | $5.99 | One-time |
-   | 12-Day Pass | $14.99 | One-time |
-
-5. Copy each **Price ID** (starts with `price_`)
-6. **Developers > Webhooks > Add Endpoint**:
+4. **Products are created via the admin dashboard** — no manual Stripe Dashboard setup needed. The admin dashboard auto-creates Stripe products and prices via the API.
+5. **Developers > Webhooks > Add Endpoint**:
    - URL: `https://dev.bonistock.com/api/stripe/webhook`
    - Events to listen for:
      - `checkout.session.completed`
@@ -212,11 +202,6 @@ $SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.y
 | `STRIPE_SECRET_KEY` | `sk_test_...` |
 | `STRIPE_PUBLISHABLE_KEY` | `pk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` |
-| `STRIPE_PRICE_PLUS_MONTHLY` | `price_...` |
-| `STRIPE_PRICE_PLUS_ANNUAL` | `price_...` |
-| `STRIPE_PRICE_PASS_1DAY` | `price_...` |
-| `STRIPE_PRICE_PASS_3DAY` | `price_...` |
-| `STRIPE_PRICE_PASS_12DAY` | `price_...` |
 
 **Update command:**
 
@@ -230,17 +215,60 @@ echo -n 'sk_test_...' | $SSH "docker secret create bonistock_dev_STRIPE_SECRET_K
 echo -n 'pk_test_...' | $SSH "docker secret create bonistock_dev_STRIPE_PUBLISHABLE_KEY -"
 echo -n 'whsec_...' | $SSH "docker secret create bonistock_dev_STRIPE_WEBHOOK_SECRET -"
 
-# Price IDs
-$SSH "docker secret rm bonistock_dev_STRIPE_PRICE_PLUS_MONTHLY && docker secret rm bonistock_dev_STRIPE_PRICE_PLUS_ANNUAL"
-$SSH "docker secret rm bonistock_dev_STRIPE_PRICE_PASS_1DAY && docker secret rm bonistock_dev_STRIPE_PRICE_PASS_3DAY && docker secret rm bonistock_dev_STRIPE_PRICE_PASS_12DAY"
-echo -n 'price_monthly_id' | $SSH "docker secret create bonistock_dev_STRIPE_PRICE_PLUS_MONTHLY -"
-echo -n 'price_annual_id' | $SSH "docker secret create bonistock_dev_STRIPE_PRICE_PLUS_ANNUAL -"
-echo -n 'price_1day_id' | $SSH "docker secret create bonistock_dev_STRIPE_PRICE_PASS_1DAY -"
-echo -n 'price_3day_id' | $SSH "docker secret create bonistock_dev_STRIPE_PRICE_PASS_3DAY -"
-echo -n 'price_12day_id' | $SSH "docker secret create bonistock_dev_STRIPE_PRICE_PASS_12DAY -"
-
 $SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.yml bonistock-dev"
 ```
+
+### Webhook Setup (required for payments to work)
+
+Without webhooks, Stripe cannot notify the app when payments succeed, subscriptions renew, or customers cancel. **Payments will appear to work (checkout redirects) but the database will never update.**
+
+**Events required (6 total):**
+
+| Event | What it does in the app |
+|-------|------------------------|
+| `checkout.session.completed` | Activates a new subscription after checkout (sets tier to PLUS, stores Stripe subscription ID) and sends confirmation email |
+| `invoice.paid` | Renews an existing subscription (updates period dates, confirms ACTIVE status) |
+| `invoice.payment_failed` | Marks subscription as PAST_DUE and sends payment-failed email to the user |
+| `customer.subscription.updated` | Syncs status changes (active, trialing, past_due, canceled) and cancel-at-period-end flag |
+| `customer.subscription.deleted` | Downgrades user to FREE tier and sends cancellation email |
+| `payment_intent.succeeded` | Records a day-pass purchase (creates PassPurchase row with activations) and sends confirmation email |
+
+**Step-by-step setup (Dev):**
+
+1. Go to https://dashboard.stripe.com — make sure **Test Mode** is toggled on (top-right)
+2. **Developers > Webhooks** (left sidebar)
+3. Click **Add endpoint**
+4. **Endpoint URL:** `https://dev.bonistock.com/api/stripe/webhook`
+5. Click **Select events** and check exactly these 6:
+   - `checkout.session.completed`
+   - `invoice.paid`
+   - `invoice.payment_failed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `payment_intent.succeeded`
+6. Click **Add endpoint**
+7. On the endpoint detail page, click **Reveal** under **Signing secret** — copy the `whsec_...` value
+8. Store this as the `STRIPE_WEBHOOK_SECRET` Docker secret (see update command above)
+
+**Step-by-step setup (Prod):**
+
+1. Switch to **Live Mode** in the Stripe Dashboard (top-right toggle)
+2. Repeat steps 2-7 above but with endpoint URL: `https://bonistock.com/api/stripe/webhook`
+3. Store the new `whsec_...` as `bonistock_prod_STRIPE_WEBHOOK_SECRET`
+
+> **Important:** Dev and prod use separate webhook endpoints with separate signing secrets. The dev endpoint uses test-mode keys, the prod endpoint uses live-mode keys. Never mix them.
+
+**Testing webhooks locally (optional):**
+
+```bash
+# Install Stripe CLI: https://stripe.com/docs/stripe-cli
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+# Copy the whsec_... it prints and set as STRIPE_WEBHOOK_SECRET in your .env
+```
+
+**Verify webhook is working:**
+
+After setting up the webhook, go to **Developers > Webhooks > your endpoint** in the Stripe Dashboard. The "Recent deliveries" tab shows all events sent to your endpoint with response codes. A `200` response means the app processed it successfully.
 
 ---
 
@@ -259,10 +287,10 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 3 | FMP (Stock Data) | 1 | Free (250 req/day) | Easy |
 | 4 | Google OAuth | 2 | Free | Medium |
 | 5 | Facebook OAuth | 2 | Free | Medium |
-| 6 | Stripe (Payments) | 8 | Free setup (2.9%+30c/tx) | Medium |
+| 6 | Stripe (Payments) | 3 | Free setup (2.9%+30c/tx) | Medium |
 | 7 | Encryption Key | 0 | N/A | Already done |
 
-**Total: 16 secrets to replace across 6 services.** All free tier.
+**Total: 11 secrets to replace across 6 services.** All free tier.
 
 ---
 

@@ -41,6 +41,17 @@ function LoginContent() {
     try {
       const result = await login(email, password);
       if (result.ok) {
+        // Check if user is admin to redirect appropriately
+        try {
+          const userRes = await fetch("/api/user/settings");
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            if (userData.role === "ADMIN") {
+              window.location.href = "/dashboard/admin";
+              return;
+            }
+          }
+        } catch { /* fallback to /dashboard */ }
         window.location.href = "/dashboard";
       } else if (result.error === "2FA_REQUIRED") {
         setShow2FA(true);
@@ -67,6 +78,16 @@ function LoginContent() {
         // Re-login after 2FA verification
         const result = await login(email, password);
         if (result.ok) {
+          try {
+            const userRes = await fetch("/api/user/settings");
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData.role === "ADMIN") {
+                window.location.href = "/dashboard/admin";
+                return;
+              }
+            }
+          } catch { /* fallback to /dashboard */ }
           window.location.href = "/dashboard";
         }
       } else {

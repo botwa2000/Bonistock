@@ -48,6 +48,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, loading, router]);
 
+  // Redirect admin users from /dashboard to /dashboard/admin
+  useEffect(() => {
+    if (!loading && isLoggedIn && user?.role === "ADMIN" && pathname === "/dashboard") {
+      router.replace("/dashboard/admin");
+    }
+  }, [loading, isLoggedIn, user, pathname, router]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -96,6 +103,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               );
             })}
           </ul>
+
+          {user?.role === "ADMIN" && (
+            <div className="mt-3 border-t border-border-subtle pt-3">
+              <Link
+                href="/dashboard/admin"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+                  pathname.startsWith("/dashboard/admin")
+                    ? "bg-surface text-text-primary"
+                    : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                }`}
+              >
+                <span className="w-5 text-center">{"\u2692"}</span>
+                <span>{t("nav.admin") ?? "Admin"}</span>
+                <Badge variant="warning" className="ml-auto text-[10px]">
+                  ADMIN
+                </Badge>
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className="border-t border-border-subtle p-3 space-y-1">

@@ -24,7 +24,7 @@ export interface EtfFilters {
 export async function getStocks(filters?: StockFilters) {
   const where: Record<string, unknown> = {};
   if (filters?.region && filters.region !== "all") where.region = filters.region;
-  if (filters?.sector) where.sector = filters.sector;
+  if (filters?.sector && filters.sector !== "all") where.sector = filters.sector;
   if (filters?.risk) where.risk = filters.risk;
   if (filters?.minUpside) where.upside = { gte: filters.minUpside };
   if (filters?.minAnalysts) where.analysts = { gte: filters.minAnalysts };
@@ -57,7 +57,7 @@ export async function getStock(symbol: string) {
 export async function getEtfs(filters?: EtfFilters) {
   const where: Record<string, unknown> = {};
   if (filters?.region && filters.region !== "all") where.region = filters.region;
-  if (filters?.theme) where.theme = filters.theme;
+  if (filters?.theme && filters.theme !== "all") where.theme = filters.theme;
   if (filters?.maxFee) where.fee = { lte: filters.maxFee };
   if (filters?.minSharpe) where.sharpe = { gte: filters.minSharpe };
 

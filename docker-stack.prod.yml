@@ -20,11 +20,6 @@ services:
       - bonistock_prod_FACEBOOK_CLIENT_SECRET
       - bonistock_prod_FMP_API_KEY
       - bonistock_prod_ENCRYPTION_KEY
-      - bonistock_prod_STRIPE_PRICE_PLUS_MONTHLY
-      - bonistock_prod_STRIPE_PRICE_PLUS_ANNUAL
-      - bonistock_prod_STRIPE_PRICE_PASS_1DAY
-      - bonistock_prod_STRIPE_PRICE_PASS_3DAY
-      - bonistock_prod_STRIPE_PRICE_PASS_12DAY
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -74,14 +69,4 @@ secrets:
   bonistock_prod_FMP_API_KEY:
     external: true
   bonistock_prod_ENCRYPTION_KEY:
-    external: true
-  bonistock_prod_STRIPE_PRICE_PLUS_MONTHLY:
-    external: true
-  bonistock_prod_STRIPE_PRICE_PLUS_ANNUAL:
-    external: true
-  bonistock_prod_STRIPE_PRICE_PASS_1DAY:
-    external: true
-  bonistock_prod_STRIPE_PRICE_PASS_3DAY:
-    external: true
-  bonistock_prod_STRIPE_PRICE_PASS_12DAY:
     external: true

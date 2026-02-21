@@ -5,6 +5,7 @@ import { createCheckoutSession } from "@/lib/stripe";
 
 const schema = z.object({
   priceId: z.string().min(1),
+  trialDays: z.number().int().positive().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -18,6 +19,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const url = await createCheckoutSession(session.user.id, session.user.email, parsed.data.priceId);
+  const url = await createCheckoutSession(
+    session.user.id,
+    session.user.email,
+    parsed.data.priceId,
+    parsed.data.trialDays
+  );
   return NextResponse.json({ url });
 }

@@ -44,7 +44,8 @@ export async function getOrCreateCustomer(
 export async function createCheckoutSession(
   userId: string,
   email: string,
-  priceId: string
+  priceId: string,
+  trialDays?: number
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
@@ -54,6 +55,7 @@ export async function createCheckoutSession(
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
+    ...(trialDays ? { subscription_data: { trial_period_days: trialDays } } : {}),
     success_url: `${appUrl}/dashboard?subscription=success`,
     cancel_url: `${appUrl}/pricing?canceled=true`,
     metadata: { userId },

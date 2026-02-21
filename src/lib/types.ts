@@ -108,29 +108,6 @@ export interface FaqItem {
   answer: string;
 }
 
-export interface PricingTier {
-  name: string;
-  tier: Tier;
-  price: string;
-  priceAnnual?: string;
-  description: string;
-  features: string[];
-  cta: string;
-  highlighted: boolean;
-  duration?: string;
-}
-
-export interface PassOption {
-  duration: PassDuration;
-  name: string;
-  price: string;
-  priceNumeric: number;
-  days: number;
-  description: string;
-  perDay: string;
-  savings?: string;
-}
-
 export interface Alert {
   id: string;
   symbol: string;

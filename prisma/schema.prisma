@@ -371,7 +371,42 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ──── Product catalog ────
+
+model Product {
+  id              String           @id @default(cuid())
+  name            String           // "Plus Monthly", "1-Day Pass"
+  description     String           // shown on pricing page
+  features        Json?            // string[] for subscription feature bullets
+  type            ProductType      // SUBSCRIPTION or PASS
+  priceAmount     Int              // cents: 699 = $6.99
+  currency        String           @default("usd")
+  billingInterval BillingInterval? // MONTH or YEAR (null for passes)
+  passType        PassType?        // ONE_DAY, THREE_DAY, TWELVE_DAY (null for subs)
+  passDays        Int?             // 1, 3, 12 (null for subs)
+  trialDays       Int?             // e.g. 14 for subscriptions (null for passes)
+  stripeProductId String           @unique
+  stripePriceId   String           @unique
+  active          Boolean          @default(true)
+  highlighted     Boolean          @default(false)
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("products")
+}
+
 // ──── Enums ────
+
+enum ProductType {
+  SUBSCRIPTION
+  PASS
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
 
 enum Role {
   USER

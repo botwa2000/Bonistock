@@ -2,8 +2,6 @@ import type {
   StockPick,
   EtfPick,
   Broker,
-  PricingTier,
-  PassOption,
   FaqItem,
   WatchlistItem,
   Alert,
@@ -1003,78 +1001,6 @@ export const regionConfigs: Record<
       "Abgeltungssteuer: 25% + Soli on capital gains above EUR 1,000 Freibetrag (2024+). Accumulating ETFs defer tax until sale.",
   },
 };
-
-// ── Pricing ──
-
-export const pricingTiers: PricingTier[] = [
-  {
-    name: "Free",
-    tier: "free",
-    price: "$0",
-    priceAnnual: "$0",
-    description: "Get started with the essentials",
-    features: [
-      "Top 5 upside stocks (weekly rotation)",
-      "1 auto-mix per month",
-      "Basic ETF explorer",
-      "Broker comparison",
-      "Onboarding goal picker",
-    ],
-    cta: "Get Started",
-    highlighted: false,
-  },
-  {
-    name: "Plus",
-    tier: "plus",
-    price: "$6.99/mo",
-    priceAnnual: "$59/yr",
-    description: "Full access for active investors",
-    features: [
-      "Full upside list (refreshed daily)",
-      "Unlimited auto-mix + saved mixes",
-      "Unlimited watchlists",
-      "Price-target alerts",
-      "ETF fact sheets & metrics",
-      '"Why this pick" detail pages',
-      "All filters (sector, risk, region)",
-      "Broker comparison",
-    ],
-    cta: "Start Plus",
-    highlighted: true,
-  },
-];
-
-export const passOptions: PassOption[] = [
-  {
-    duration: "1day",
-    name: "1-Day Pass",
-    price: "$2.99",
-    priceNumeric: 2.99,
-    days: 1,
-    description: "1 activation (24 hours of full access)",
-    perDay: "$2.99/day",
-  },
-  {
-    duration: "3day",
-    name: "3-Day Pass",
-    price: "$5.99",
-    priceNumeric: 5.99,
-    days: 3,
-    description: "3 activations (24 hours each, use anytime)",
-    perDay: "$2.00/day",
-    savings: "Save 33%",
-  },
-  {
-    duration: "12day",
-    name: "12-Day Pass",
-    price: "$14.99",
-    priceNumeric: 14.99,
-    days: 12,
-    description: "12 activations (24 hours each, use anytime)",
-    perDay: "$1.25/day",
-    savings: "Best per-day rate",
-  },
-];
 
 // ── FAQ ──
 
