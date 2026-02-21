@@ -11,10 +11,11 @@ const SECURITY_HEADERS = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' js.stripe.com",
     "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-    "font-src fonts.gstatic.com",
+    "font-src 'self' fonts.gstatic.com",
     "connect-src 'self' api.stripe.com *.sentry.io",
     "frame-src js.stripe.com",
     "img-src 'self' data: *.googleusercontent.com *.fbsbx.com",
+    "worker-src 'self' blob:",
   ].join("; "),
 };
 
