@@ -94,6 +94,7 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
   type       TokenType @default(EMAIL_VERIFICATION)
+  metadata   Json?
 
   @@unique([identifier, token])
   @@map("verification_tokens")
@@ -442,4 +443,5 @@ enum Strategy {
 enum TokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+  EMAIL_CHANGE
 }

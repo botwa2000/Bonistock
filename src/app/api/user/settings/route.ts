@@ -32,6 +32,7 @@ export async function GET() {
       goal: true,
       twoFactorEnabled: true,
       emailVerified: true,
+      passwordHash: true,
       createdAt: true,
     },
   });
@@ -43,9 +44,12 @@ export async function GET() {
   const tier = await getUserTier(user.id);
   const passInfo = await getPassInfo(user.id);
 
+  const { passwordHash, ...safeUser } = user;
+
   return NextResponse.json({
-    ...user,
+    ...safeUser,
     emailVerified: !!user.emailVerified,
+    hasPassword: !!passwordHash,
     tier,
     passActivationsRemaining: passInfo?.activationsRemaining ?? 0,
     passExpiry: passInfo?.expiry ?? null,

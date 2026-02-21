@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -20,7 +20,6 @@ export default function LoginPage() {
 
 function LoginContent() {
   const t = useTranslations("login");
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   const [email, setEmail] = useState("");
@@ -41,7 +40,7 @@ function LoginContent() {
     try {
       const result = await login(email, password);
       if (result.ok) {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       } else if (result.error === "2FA_REQUIRED") {
         setShow2FA(true);
       } else {
@@ -67,7 +66,7 @@ function LoginContent() {
         // Re-login after 2FA verification
         const result = await login(email, password);
         if (result.ok) {
-          router.push("/dashboard");
+          window.location.href = "/dashboard";
         }
       } else {
         const data = await res.json();

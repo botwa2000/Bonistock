@@ -102,6 +102,18 @@ export function subscriptionCanceledEmail(name: string, endDate: string): string
   `);
 }
 
+export function emailChangeConfirmation(name: string, newEmail: string, confirmUrl: string): string {
+  return layout(`
+    <h1>Confirm your new email</h1>
+    <p>Hi ${name},</p>
+    <p>You requested to change your Bonistock email to <strong>${newEmail}</strong>. Click the button below to confirm this change.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${confirmUrl}" class="btn">Confirm Email Change</a>
+    </p>
+    <p>This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+  `);
+}
+
 export function paymentFailedEmail(name: string): string {
   return layout(`
     <h1>Payment failed</h1>

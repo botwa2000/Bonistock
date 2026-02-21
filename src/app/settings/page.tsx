@@ -188,50 +188,6 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          {/* Danger Zone */}
-          <Card variant="glass" padding="lg" className="border-rose-400/20">
-            <h2 className="text-lg font-semibold text-white">
-              {t("dangerZone")}
-            </h2>
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-white">Export data</div>
-                  <div className="text-xs text-white/50">
-                    Download all your data (GDPR)
-                  </div>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => window.open("/api/user/export", "_blank")}
-                >
-                  Export
-                </Button>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-white">{t("deleteAccount")}</div>
-                  <div className="text-xs text-white/50">
-                    {t("deleteAccountDescription")}
-                  </div>
-                </div>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={async () => {
-                    if (confirm("Are you sure? This cannot be undone.")) {
-                      await fetch("/api/user/delete", { method: "POST" });
-                      router.push("/");
-                    }
-                  }}
-                >
-                  {t("deleteAccount")}
-                </Button>
-              </div>
-            </div>
-          </Card>
-
           {saving && (
             <p className="text-xs text-white/40 text-center">Saving...</p>
           )}

@@ -15,6 +15,7 @@ export type AuditAction =
   | "DATA_EXPORT"
   | "ACCOUNT_DELETE"
   | "SETTINGS_CHANGE"
+  | "EMAIL_CHANGE"
   | "REGISTER";
 
 export async function logAudit(

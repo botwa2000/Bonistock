@@ -22,6 +22,7 @@ interface UserData {
   goal: "GROWTH" | "INCOME" | "BALANCED";
   twoFactorEnabled: boolean;
   emailVerified: boolean;
+  hasPassword: boolean;
   passActivationsRemaining: number;
   passExpiry: string | null;
 }
