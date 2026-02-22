@@ -433,7 +433,13 @@
     "editProduct": "Edit",
     "saveProduct": "Save",
     "saving": "Saving...",
-    "editPrice": "Edit Price"
+    "editPrice": "Edit Price",
+    "statsError": "Failed to load statistics. Click Refresh to retry.",
+    "retry": "Retry",
+    "emailTemplates": "Email Templates",
+    "preview": "Preview",
+    "sendTest": "Send Test",
+    "close": "Close"
   },
   "tiers": {
     "free": "Free",

@@ -79,6 +79,8 @@ export function PricingCards() {
 
   const activeProduct = dbProduct ?? fallbackPlus;
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubscribe = async (tier: "free" | "plus") => {
     if (!isLoggedIn) {
       router.push("/login?redirect=/pricing");
@@ -90,8 +92,12 @@ export function PricingCards() {
       return;
     }
 
-    if (!activeProduct) return;
+    if (!activeProduct?.stripePriceId) {
+      setError("Products are not configured yet. Please contact support.");
+      return;
+    }
 
+    setError(null);
     setCheckingOut(true);
     try {
       const res = await fetch("/api/stripe/checkout", {
@@ -105,7 +111,11 @@ export function PricingCards() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        setError(data.error ?? "Something went wrong. Please try again.");
       }
+    } catch {
+      setError("Network error. Please try again.");
     } finally {
       setCheckingOut(false);
     }
@@ -211,7 +221,7 @@ export function PricingCards() {
           <Button
             variant="primary"
             fullWidth
-            disabled={checkingOut || !activeProduct.stripePriceId}
+            disabled={checkingOut}
             onClick={() => handleSubscribe("plus")}
           >
             {checkingOut ? "..." : "Start Plus"}
@@ -219,6 +229,9 @@ export function PricingCards() {
         </Card>
       </div>
 
+      {error && (
+        <p className="text-center text-sm text-rose-300">{error}</p>
+      )}
       <p className="text-center text-xs text-text-tertiary">{t("guarantee")}</p>
     </div>
   );

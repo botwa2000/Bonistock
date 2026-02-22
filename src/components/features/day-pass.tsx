@@ -47,12 +47,20 @@ export function DayPassSection() {
 
   const passProducts = products.filter((p) => p.type === "PASS");
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleBuyPass = async (product: Product) => {
     if (!isLoggedIn) {
       router.push("/login?redirect=/pricing");
       return;
     }
 
+    if (!product.stripePriceId) {
+      setError("Products are not configured yet. Please contact support.");
+      return;
+    }
+
+    setError(null);
     setBuying(product.id);
     try {
       const res = await fetch("/api/stripe/pass", {
@@ -66,7 +74,11 @@ export function DayPassSection() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        setError(data.error ?? "Something went wrong. Please try again.");
       }
+    } catch {
+      setError("Network error. Please try again.");
     } finally {
       setBuying(null);
     }
@@ -139,6 +151,9 @@ export function DayPassSection() {
         })}
       </div>
 
+      {error && (
+        <p className="mt-4 text-center text-sm text-rose-300">{error}</p>
+      )}
       <p className="mt-4 text-center text-xs text-text-tertiary">
         {t("dayPassNote")}
       </p>

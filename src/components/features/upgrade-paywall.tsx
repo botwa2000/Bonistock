@@ -40,6 +40,8 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
       .catch(() => {});
   }, []);
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleBuyPass = async (passType: string) => {
     if (!isLoggedIn) {
       router.push("/login?redirect=/pricing");
@@ -47,8 +49,12 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
     }
 
     const product = passProducts.find((p) => p.passType === passType);
-    if (!product) return;
+    if (!product) {
+      setError("Products are not configured yet. Please contact support.");
+      return;
+    }
 
+    setError(null);
     setBuying(passType);
     try {
       const res = await fetch("/api/stripe/pass", {
@@ -62,7 +68,11 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        setError(data.error ?? "Something went wrong. Please try again.");
       }
+    } catch {
+      setError("Network error. Please try again.");
     } finally {
       setBuying(null);
     }
@@ -75,6 +85,10 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
       <p className="mt-1 text-sm text-text-secondary">
         {feature} &mdash; {t("subtitle")}
       </p>
+
+      {error && (
+        <p className="mt-3 text-sm text-rose-300">{error}</p>
+      )}
 
       <div className="mt-6 space-y-3">
         <div className="rounded-xl border border-border bg-surface-elevated p-4">

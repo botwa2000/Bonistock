@@ -40,6 +40,12 @@ export default function DashboardPage() {
     [stocks]
   );
 
+  // Top 5 stocks (by upside, the default sort) are free-tier visible
+  const freeSymbols = useMemo(
+    () => new Set(stocks.slice(0, 5).map((s) => s.symbol)),
+    [stocks]
+  );
+
   const filtered = useMemo(() => {
     return stocks.filter((p) => {
       if (filters.region !== "all" && p.region !== filters.region) return false;
@@ -58,9 +64,6 @@ export default function DashboardPage() {
       return true;
     });
   }, [stocks, filters]);
-
-  const visiblePicks =
-    tier === "free" ? filtered.slice(0, 5) : filtered;
 
   const avgUpside =
     stocks.length > 0 ? stocks.reduce((sum, p) => sum + p.upside, 0) / stocks.length : 0;
@@ -116,7 +119,7 @@ export default function DashboardPage() {
         action={
           tier === "free" ? (
             <Badge variant="warning">
-              Free tier: showing top 5 of {filtered.length}
+              Free tier: {filtered.filter((p) => freeSymbols.has(p.symbol)).length} live of {filtered.length}
             </Badge>
           ) : tier === "pass" ? (
             <Badge variant="accent">
@@ -128,14 +131,18 @@ export default function DashboardPage() {
         }
       />
 
-      {visiblePicks.length === 0 ? (
+      {filtered.length === 0 ? (
         <Card variant="glass" className="py-12 text-center">
           <p className="text-text-secondary">{tf("noResults")}</p>
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {visiblePicks.map((pick) => (
-            <TickerCard key={pick.symbol} pick={pick} />
+          {filtered.map((pick) => (
+            <TickerCard
+              key={pick.symbol}
+              pick={pick}
+              locked={tier === "free" && !freeSymbols.has(pick.symbol)}
+            />
           ))}
         </div>
       )}
