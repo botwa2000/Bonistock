@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
+import { log } from "@/lib/logger";
 import {
   subscriptionConfirmationEmail,
   subscriptionCanceledEmail,
@@ -35,9 +36,12 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(body, signature, webhookSecret);
-  } catch {
+  } catch (err) {
+    log.error("stripe/webhook", "Invalid signature:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
+
+  log.info("stripe/webhook", `Event: ${event.type} (${event.id})`);
 
   switch (event.type) {
     case "checkout.session.completed": {
@@ -79,6 +83,7 @@ export async function POST(req: NextRequest) {
             subscriptionConfirmationEmail(user.name ?? "there", "Plus", session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "")
           );
         }
+        log.info("stripe/webhook", `Subscription activated for user ${userId}, status=${dbStatus}`);
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS" });
       } else if (session.mode === "payment") {
         const passTypeKey = session.metadata?.passType;
@@ -106,6 +111,7 @@ export async function POST(req: NextRequest) {
             passConfirmationEmail(user.name ?? "there", passNames[passConfig.type], passConfig.count)
           );
         }
+        log.info("stripe/webhook", `Pass purchased for user ${userId}: ${passConfig.type} (${passConfig.count} activations)`);
         await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count });
       }
       break;

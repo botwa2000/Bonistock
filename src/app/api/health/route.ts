@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 const startTime = Date.now();
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "unknown";
+const isDev = appUrl.includes("dev.");
+console.log(`[boot] Bonistock started — env=${isDev ? "dev" : "prod"} url=${appUrl}`);
 
 export async function GET() {
   let dbStatus = "disconnected";

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getStocks } from "@/lib/data";
 import { mapStockToFrontend } from "@/lib/api-mappers";
+import { log } from "@/lib/logger";
 
 const filtersSchema = z.object({
   region: z.string().optional(),
@@ -16,9 +17,13 @@ const filtersSchema = z.object({
 }).strict();
 
 export async function GET(req: NextRequest) {
+  const start = Date.now();
   const params = Object.fromEntries(req.nextUrl.searchParams.entries());
+  log.debug("stocks", "GET /api/stocks", params);
+
   const parsed = filtersSchema.safeParse(params);
   if (!parsed.success) {
+    log.warn("stocks", "Invalid filters", parsed.error.issues);
     return NextResponse.json(
       { error: "Invalid filters", code: "VALIDATION_ERROR", details: parsed.error.issues },
       { status: 400 }
@@ -26,5 +31,6 @@ export async function GET(req: NextRequest) {
   }
 
   const stocks = await getStocks(parsed.data);
+  log.info("stocks", `Returning ${stocks.length} stocks (${Date.now() - start}ms)`);
   return NextResponse.json(stocks.map(mapStockToFrontend));
 }

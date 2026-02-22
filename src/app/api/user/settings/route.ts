@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getUserTier, getPassInfo } from "@/lib/tier";
 import { logAudit } from "@/lib/audit";
+import { log } from "@/lib/logger";
 
 const updateSchema = z.object({
   region: z.enum(["US", "DE"]).optional(),
@@ -45,6 +46,8 @@ export async function GET() {
   const passInfo = await getPassInfo(user.id);
 
   const { passwordHash, ...safeUser } = user;
+
+  log.debug("user/settings", `GET user=${user.id} tier=${tier} pass=${passInfo?.activationsRemaining ?? 0}`);
 
   return NextResponse.json({
     ...safeUser,

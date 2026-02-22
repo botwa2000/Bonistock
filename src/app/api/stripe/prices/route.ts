@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 export async function GET() {
+  log.debug("stripe/prices", "Fetching active products");
+
   const products = await db.product.findMany({
     where: { active: true },
     orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
@@ -23,5 +26,6 @@ export async function GET() {
     },
   });
 
+  log.info("stripe/prices", `Returning ${products.length} active products`);
   return NextResponse.json(products);
 }

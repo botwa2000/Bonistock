@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 
+const isDev = (process.env.NEXT_PUBLIC_APP_URL ?? "").includes("dev.");
+
 const SECURITY_HEADERS = {
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   "X-Frame-Options": "DENY",
@@ -36,6 +38,11 @@ function getClientIP(req: NextRequest): string {
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Dev: log all API requests
+  if (isDev && pathname.startsWith("/api/")) {
+    console.log(`[proxy] ${req.method} ${pathname}`);
+  }
+
   // Rate limiting for API routes
   if (pathname.startsWith("/api/")) {
     const ip = getClientIP(req);
@@ -54,6 +61,7 @@ export function proxy(req: NextRequest) {
 
     const result = rateLimit(key, limit, window);
     if (!result.success) {
+      console.warn(`[proxy] RATE_LIMITED ip=${ip} path=${pathname} bucket=${isStrictAuthRoute ? "auth" : "api"}`);
       return new NextResponse(
         JSON.stringify({ error: "Too many requests", code: "RATE_LIMITED" }),
         {
@@ -75,6 +83,7 @@ export function proxy(req: NextRequest) {
       const origin = req.headers.get("origin");
       const appUrl = process.env.NEXT_PUBLIC_APP_URL;
       if (origin && appUrl && !origin.startsWith(appUrl)) {
+        console.warn(`[proxy] CSRF_REJECTED origin=${origin} expected=${appUrl} path=${pathname}`);
         return new NextResponse(
           JSON.stringify({ error: "CSRF validation failed", code: "CSRF_REJECTED" }),
           { status: 403, headers: { "Content-Type": "application/json", ...SECURITY_HEADERS } }
