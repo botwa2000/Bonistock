@@ -21,9 +21,9 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bonistock — Smart Picks. Simple Moves.",
+  title: "Bonistock — Stock Picks & ETF Rankings",
   description:
-    "Wall Street's top picks, simplified. From analyst consensus to a diversified portfolio in 60 seconds.",
+    "200+ stocks scored nightly by analyst consensus. 100+ ETFs ranked by actual 1/3/5-year returns. Free to start.",
   icons: {
     icon: "/favicon.ico",
     apple: "/logo-icon.png",

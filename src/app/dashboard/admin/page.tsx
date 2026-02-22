@@ -1051,7 +1051,7 @@ export default function AdminPage() {
                           className="w-full rounded"
                           style={{ minHeight: 400, border: "none" }}
                           title="Template preview"
-                          sandbox=""
+                          sandbox="allow-same-origin"
                         />
                       </details>
 
@@ -1096,7 +1096,7 @@ export default function AdminPage() {
                   className="w-full rounded"
                   style={{ minHeight: 500, border: "none" }}
                   title="Email preview"
-                  sandbox=""
+                  sandbox="allow-same-origin"
                 />
               </div>
             </div>
