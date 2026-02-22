@@ -1,6 +1,7 @@
 import { db } from "./db";
 import {
-  fetchScreenerStocksMulti,
+  getStockUniverse,
+  fetchStockQuote,
   fetchBatchQuotes,
   fetchPriceTarget,
   fetchStockProfile,
@@ -108,63 +109,98 @@ export async function snapshotAllStocks(): Promise<number> {
 }
 
 // ── Weekly Discovery (prod only) ──
+// Uses a curated stock universe instead of FMP screener (which is restricted on current plan).
+// Flow: fetch price targets for universe → rank by upside → fetch quotes for top picks
+// → profile+grade only for new-to-DB stocks.
 
 export async function discoverAndPopulateStocks(): Promise<{
   candidates: number;
   populated: number;
   errors: number;
 }> {
-  console.log("[discovery] Starting stock discovery via FMP multi-band screener");
+  console.log("[discovery] Starting stock discovery via curated universe");
   let errors = 0;
 
-  // 1. Multi-band screener: 3 calls → ~400 unique candidates
-  const candidates = await fetchScreenerStocksMulti();
-  console.log(`[discovery] Screener returned ${candidates.length} candidates`);
+  const universe = getStockUniverse();
+  console.log(`[discovery] Universe: ${universe.length} candidate symbols`);
 
-  // 2. Batch quotes: ~8 calls → prices + priceAvg200
-  const symbols = candidates.map((c) => c.symbol);
-  const quotes = await fetchBatchQuotes(symbols);
-  const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
+  // 1. Check which symbols already exist in DB (no API call)
+  const existingStocks = await db.stock.findMany({
+    select: { symbol: true, price: true },
+  });
+  const existingMap = new Map(existingStocks.map((s) => [s.symbol, s.price]));
 
-  // 3. Price targets: 1 call per symbol, stop at 30 remaining
+  // 2. Fetch price targets for as many candidates as budget allows
+  //    ~150 calls, stop at 40 remaining to save budget for quotes+profiles
   const targetMap = new Map<string, { targetConsensus: number; targetHigh: number; targetLow: number }>();
-  for (const sym of symbols) {
-    if (getRemainingRequests() < 30) {
+  for (const sym of universe) {
+    if (getRemainingRequests() < 40) {
       console.log("[discovery] Rate limit approaching, stopping target fetches");
       break;
     }
     try {
       const pt = await fetchPriceTarget(sym);
-      if (pt) targetMap.set(sym, pt);
+      if (pt && pt.targetConsensus > 0) targetMap.set(sym, pt);
     } catch {
       errors++;
+    }
+  }
+  console.log(`[discovery] Got price targets for ${targetMap.size} symbols`);
+
+  // 3. Rank by upside using existing DB prices or fetch individual quotes
+  //    For symbols in DB: use stored price (saves calls)
+  //    For new symbols: need a quote to calculate upside
+  interface Candidate {
+    symbol: string;
+    price: number;
+    target: number;
+    upside: number;
+    priceAvg200?: number;
+    exchange: string;
+    name: string;
+    marketCap: number;
+    isNew: boolean;
+  }
+  const candidates: Candidate[] = [];
+
+  for (const [sym, pt] of targetMap) {
+    const dbPrice = existingMap.get(sym);
+    if (dbPrice && dbPrice > 0) {
+      // Use DB price — no API call needed
+      const upside = ((pt.targetConsensus - dbPrice) / dbPrice) * 100;
+      candidates.push({
+        symbol: sym, price: dbPrice, target: pt.targetConsensus,
+        upside, exchange: "", name: "", marketCap: 0, isNew: false,
+      });
+    } else {
+      // New symbol: fetch quote (1 call)
+      if (getRemainingRequests() < 30) continue;
+      try {
+        const quote = await fetchStockQuote(sym);
+        if (quote && quote.price > 0) {
+          const upside = ((pt.targetConsensus - quote.price) / quote.price) * 100;
+          candidates.push({
+            symbol: sym, price: quote.price, target: pt.targetConsensus,
+            upside, priceAvg200: quote.priceAvg200,
+            exchange: quote.exchange ?? "", name: quote.name ?? sym,
+            marketCap: quote.marketCap ?? 0, isNew: true,
+          });
+        }
+      } catch {
+        errors++;
+      }
     }
   }
 
   // 4. Rank by upside, pick top 80
   const ranked = candidates
-    .filter((c) => quoteMap.has(c.symbol) && targetMap.has(c.symbol))
-    .map((c) => {
-      const quote = quoteMap.get(c.symbol)!;
-      const target = targetMap.get(c.symbol)!;
-      const price = quote.price || c.price;
-      const upside = price > 0 ? ((target.targetConsensus - price) / price) * 100 : 0;
-      return { ...c, price, target: target.targetConsensus, upside, priceAvg200: quote.priceAvg200 };
-    })
-    .filter((c) => c.upside > 0 && c.upside < 200) // filter unrealistic targets
+    .filter((c) => c.upside > 0 && c.upside < 200)
     .sort((a, b) => b.upside - a.upside)
     .slice(0, 80);
 
   console.log(`[discovery] Ranked ${ranked.length} stocks by upside`);
 
-  // 5. Check which symbols already exist in DB
-  const existingStocks = await db.stock.findMany({
-    where: { symbol: { in: ranked.map((r) => r.symbol) } },
-    select: { symbol: true },
-  });
-  const existingSet = new Set(existingStocks.map((s) => s.symbol));
-
-  // 6. Profiles + Grades — only for NEW stocks not already in DB
+  // 5. Populate stocks
   let populated = 0;
   for (const stock of ranked) {
     if (getRemainingRequests() < 5) {
@@ -173,15 +209,13 @@ export async function discoverAndPopulateStocks(): Promise<{
     }
 
     try {
-      if (existingSet.has(stock.symbol)) {
-        // Existing stock: just update price/target/upside
+      if (!stock.isNew) {
+        // Existing stock: just update price/target/upside (already fetched target)
         await db.stock.update({
           where: { symbol: stock.symbol },
           data: {
-            price: stock.price,
             target: stock.target,
             upside: Math.round(stock.upside),
-            belowSma200: stock.priceAvg200 ? stock.price < stock.priceAvg200 : false,
           },
         });
         populated++;
@@ -200,8 +234,8 @@ export async function discoverAndPopulateStocks(): Promise<{
       const totalAnalysts = buys + holds + sells;
       const buyPct = totalAnalysts > 0 ? Math.round((buys / totalAnalysts) * 100) : 0;
 
-      const exchange = profile?.exchangeShortName ?? stock.exchangeShortName ?? stock.exchange;
-      const mktCap = profile?.mktCap ?? stock.marketCap;
+      const exchange = profile?.exchange ?? stock.exchange;
+      const mktCap = profile?.marketCap ?? stock.marketCap;
       const upside = Math.round(stock.upside);
 
       const whyThisPick = totalAnalysts > 0
@@ -210,7 +244,7 @@ export async function discoverAndPopulateStocks(): Promise<{
 
       const stockData = {
         symbol: stock.symbol,
-        name: profile?.companyName ?? stock.companyName,
+        name: profile?.companyName ?? stock.name,
         price: stock.price,
         target: stock.target,
         upside,
@@ -218,7 +252,7 @@ export async function discoverAndPopulateStocks(): Promise<{
         holds,
         sells,
         analysts: totalAnalysts,
-        sector: profile?.sector ?? stock.sector ?? "Unknown",
+        sector: profile?.sector ?? "Unknown",
         risk: deriveRisk(mktCap),
         horizon: "12M",
         region: deriveRegion(exchange),
@@ -255,22 +289,22 @@ export async function discoverAndPopulateStocks(): Promise<{
     }
   }
 
-  // 7. Save daily snapshot
+  // 6. Save daily snapshot
   await snapshotAllStocks();
 
   console.log(`[discovery] Complete: ${populated} stocks populated, ${errors} errors`);
-  return { candidates: candidates.length, populated, errors };
+  return { candidates: universe.length, populated, errors };
 }
 
 // ── Daily Refresh (reuses existing pattern, for prod) ──
+// Note: batch quotes now use individual calls since FMP multi-symbol is restricted.
 
 export async function refreshStockData(): Promise<void> {
   const stocks = await db.stock.findMany({ select: { id: true, symbol: true } });
   console.log(`[refresh] Refreshing ${stocks.length} stocks`);
 
-  // Batch quotes for all stocks at once (much more efficient)
-  const symbols = stocks.map((s) => s.symbol);
-  const quotes = await fetchBatchQuotes(symbols);
+  // Fetch quotes individually (batch multi-symbol is restricted on current FMP plan)
+  const quotes = await fetchBatchQuotes(stocks.map((s) => s.symbol));
   const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
 
   for (const stock of stocks) {
