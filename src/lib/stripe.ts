@@ -22,21 +22,37 @@ export async function getOrCreateCustomer(
     select: { stripeCustomerId: true },
   });
 
-  if (existing) return existing.stripeCustomerId;
+  // Validate the stored customer actually exists in Stripe
+  if (existing?.stripeCustomerId) {
+    try {
+      await getStripeClient().customers.retrieve(existing.stripeCustomerId);
+      return existing.stripeCustomerId;
+    } catch {
+      // Customer doesn't exist in Stripe — create a new one below
+    }
+  }
 
   const customer = await getStripeClient().customers.create({
     email,
     metadata: { userId },
   });
 
-  await db.subscription.create({
-    data: {
-      userId,
-      stripeCustomerId: customer.id,
-      status: "INACTIVE",
-      tier: "FREE",
-    },
-  });
+  if (existing) {
+    // Update existing subscription record with real Stripe customer ID
+    await db.subscription.update({
+      where: { userId },
+      data: { stripeCustomerId: customer.id },
+    });
+  } else {
+    await db.subscription.create({
+      data: {
+        userId,
+        stripeCustomerId: customer.id,
+        status: "INACTIVE",
+        tier: "FREE",
+      },
+    });
+  }
 
   return customer.id;
 }
