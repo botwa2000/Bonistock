@@ -419,7 +419,21 @@
     "cancel": "Cancel",
     "discoverStocks": "Discover Stocks",
     "refreshingStocks": "Discovering...",
-    "stocksDiscovered": "Discovery complete: {candidates} screened, {populated} stocks populated, {errors} errors."
+    "stocksDiscovered": "Discovery complete: {candidates} screened, {populated} stocks populated, {errors} errors.",
+    "users": "Users",
+    "email": "Email",
+    "name": "Name",
+    "role": "Role",
+    "joined": "Joined",
+    "noUsers": "No users found.",
+    "searchUsers": "Search by name or email...",
+    "previous": "Previous",
+    "nextPage": "Next",
+    "pageOf": "Page {page} of {total}",
+    "editProduct": "Edit",
+    "saveProduct": "Save",
+    "saving": "Saving...",
+    "editPrice": "Edit Price"
   },
   "tiers": {
     "free": "Free",

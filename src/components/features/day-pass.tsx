@@ -64,8 +64,8 @@ export function DayPassSection() {
         }),
       });
       const data = await res.json();
-      if (data.clientSecret) {
-        router.push(`/dashboard?passPayment=${data.clientSecret}`);
+      if (data.url) {
+        window.location.href = data.url;
       }
     } finally {
       setBuying(null);

@@ -58,6 +58,17 @@ interface Product {
   sortOrder: number;
 }
 
+interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  region: string;
+  tier: string;
+  status: string;
+  createdAt: string;
+}
+
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
@@ -88,6 +99,26 @@ export default function AdminPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Edit product state
+  const [editingProduct, setEditingProduct] = useState<string | null>(null);
+  const [editFields, setEditFields] = useState<{
+    name: string;
+    description: string;
+    priceAmount: string;
+    trialDays: string;
+    highlighted: boolean;
+  }>({ name: "", description: "", priceAmount: "", trialDays: "", highlighted: false });
+  const [saving, setSaving] = useState(false);
+
+  // Users state
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [usersSearch, setUsersSearch] = useState("");
+  const [usersSearchInput, setUsersSearchInput] = useState("");
 
   // Create form state
   const [formName, setFormName] = useState("");
@@ -132,12 +163,31 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchUsers = useCallback(async (page: number, search: string) => {
+    setUsersLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page) });
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/admin/users?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users);
+        setUsersPage(data.page);
+        setUsersTotalPages(data.totalPages);
+        setUsersTotal(data.total);
+      }
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user?.role === "ADMIN") {
       fetchStats();
       fetchProducts();
+      fetchUsers(1, "");
     }
-  }, [user, fetchStats, fetchProducts]);
+  }, [user, fetchStats, fetchProducts, fetchUsers]);
 
   const handleToggleActive = async (product: Product) => {
     const res = await fetch(`/api/admin/products/${product.id}`, {
@@ -149,6 +199,55 @@ export default function AdminPage() {
       setProducts((prev) =>
         prev.map((p) => (p.id === product.id ? { ...p, active: !p.active } : p))
       );
+    }
+  };
+
+  const startEditing = (product: Product) => {
+    setEditingProduct(product.id);
+    setEditFields({
+      name: product.name,
+      description: product.description,
+      priceAmount: (product.priceAmount / 100).toFixed(2),
+      trialDays: product.trialDays != null ? String(product.trialDays) : "",
+      highlighted: product.highlighted,
+    });
+  };
+
+  const handleSaveProduct = async (product: Product) => {
+    setSaving(true);
+    const priceInCents = Math.round(parseFloat(editFields.priceAmount) * 100);
+    if (isNaN(priceInCents) || priceInCents <= 0) {
+      setSaving(false);
+      return;
+    }
+
+    const body: Record<string, unknown> = {
+      name: editFields.name,
+      description: editFields.description,
+      highlighted: editFields.highlighted,
+    };
+
+    if (priceInCents !== product.priceAmount) {
+      body.priceAmount = priceInCents;
+    }
+
+    if (product.type === "SUBSCRIPTION") {
+      body.trialDays = editFields.trialDays ? parseInt(editFields.trialDays, 10) : null;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProducts((prev) => prev.map((p) => (p.id === product.id ? updated : p)));
+        setEditingProduct(null);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -243,6 +342,11 @@ export default function AdminPage() {
     }
   };
 
+  const handleUsersSearch = () => {
+    setUsersSearch(usersSearchInput);
+    fetchUsers(1, usersSearchInput);
+  };
+
   if (loading || user?.role !== "ADMIN") {
     return (
       <div className="flex items-center justify-center py-20">
@@ -311,6 +415,99 @@ export default function AdminPage() {
                 </div>
               </Card>
             </div>
+
+            {/* Users Section */}
+            <Card variant="glass">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-text-primary">
+                  {t("users")} ({usersTotal})
+                </h3>
+                <div className="flex gap-2">
+                  <input
+                    className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary"
+                    placeholder={t("searchUsers")}
+                    value={usersSearchInput}
+                    onChange={(e) => setUsersSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleUsersSearch(); }}
+                  />
+                  <Button variant="secondary" size="sm" onClick={handleUsersSearch}>
+                    {t("action")}
+                  </Button>
+                </div>
+              </div>
+
+              {usersLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+                </div>
+              ) : users.length === 0 ? (
+                <p className="text-sm text-text-tertiary">{t("noUsers")}</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border-subtle text-left text-text-tertiary">
+                          <th className="pb-2">{t("name")}</th>
+                          <th className="pb-2">{t("email")}</th>
+                          <th className="pb-2">{t("role")}</th>
+                          <th className="pb-2">{t("tier")}</th>
+                          <th className="pb-2">{t("region")}</th>
+                          <th className="pb-2">{t("joined")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => (
+                          <tr key={u.id} className="border-b border-border-subtle/50">
+                            <td className="py-2 text-text-primary">{u.name ?? "\u2014"}</td>
+                            <td className="py-2 text-text-secondary">{u.email}</td>
+                            <td className="py-2">
+                              <Badge variant={u.role === "ADMIN" ? "warning" : "default"}>
+                                {u.role}
+                              </Badge>
+                            </td>
+                            <td className="py-2">
+                              <Badge variant={u.tier === "PLUS" ? "accent" : u.tier === "PASS" ? "info" : "default"}>
+                                {u.tier}
+                              </Badge>
+                            </td>
+                            <td className="py-2 text-text-secondary">{u.region}</td>
+                            <td className="py-2 text-text-tertiary whitespace-nowrap">
+                              {new Date(u.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {usersTotalPages > 1 && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={usersPage <= 1}
+                        onClick={() => fetchUsers(usersPage - 1, usersSearch)}
+                      >
+                        {t("previous")}
+                      </Button>
+                      <span className="text-xs text-text-tertiary">
+                        {t("pageOf", { page: usersPage, total: usersTotalPages })}
+                      </span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={usersPage >= usersTotalPages}
+                        onClick={() => fetchUsers(usersPage + 1, usersSearch)}
+                      >
+                        {t("nextPage")}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </Card>
 
             {/* Products Section */}
             <Card variant="glass">
@@ -504,9 +701,19 @@ export default function AdminPage() {
                       {products.map((product) => (
                         <tr key={product.id} className="border-b border-border-subtle/50">
                           <td className="py-2 text-text-primary">
-                            {product.name}
-                            {product.highlighted && (
-                              <Badge variant="accent" className="ml-2">{t("highlighted")}</Badge>
+                            {editingProduct === product.id ? (
+                              <input
+                                className="w-full rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                                value={editFields.name}
+                                onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))}
+                              />
+                            ) : (
+                              <>
+                                {product.name}
+                                {product.highlighted && (
+                                  <Badge variant="accent" className="ml-2">{t("highlighted")}</Badge>
+                                )}
+                              </>
                             )}
                           </td>
                           <td className="py-2 text-text-secondary">
@@ -524,20 +731,64 @@ export default function AdminPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-2 text-text-secondary">{formatCents(product.priceAmount)}</td>
+                          <td className="py-2 text-text-secondary">
+                            {editingProduct === product.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                                value={editFields.priceAmount}
+                                onChange={(e) => setEditFields((f) => ({ ...f, priceAmount: e.target.value }))}
+                              />
+                            ) : (
+                              formatCents(product.priceAmount)
+                            )}
+                          </td>
                           <td className="py-2">
                             <Badge variant={product.active ? "success" : "danger"}>
                               {product.active ? t("active") : t("inactive")}
                             </Badge>
                           </td>
                           <td className="py-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleToggleActive(product)}
-                            >
-                              {product.active ? t("deactivate") : t("activate")}
-                            </Button>
+                            <div className="flex gap-1">
+                              {editingProduct === product.id ? (
+                                <>
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    disabled={saving}
+                                    onClick={() => handleSaveProduct(product)}
+                                  >
+                                    {saving ? t("saving") : t("saveProduct")}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setEditingProduct(null)}
+                                  >
+                                    {t("cancel")}
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => startEditing(product)}
+                                  >
+                                    {t("editProduct")}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleToggleActive(product)}
+                                  >
+                                    {product.active ? t("deactivate") : t("activate")}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

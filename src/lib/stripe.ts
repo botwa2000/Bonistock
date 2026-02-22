@@ -65,27 +65,28 @@ export async function createCheckoutSession(
   return session.url;
 }
 
-export async function createPassPaymentIntent(
+export async function createPassCheckoutSession(
   userId: string,
   email: string,
   priceId: string,
   passType: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"
-): Promise<{ clientSecret: string }> {
+): Promise<string> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
+
   const customerId = await getOrCreateCustomer(userId, email);
 
-  // Fetch the price to get the amount
-  const price = await getStripeClient().prices.retrieve(priceId);
-  if (!price.unit_amount) throw new Error("Price has no unit_amount");
-
-  const paymentIntent = await getStripeClient().paymentIntents.create({
-    amount: price.unit_amount,
-    currency: price.currency,
+  const session = await getStripeClient().checkout.sessions.create({
     customer: customerId,
+    mode: "payment",
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${appUrl}/dashboard?pass=success`,
+    cancel_url: `${appUrl}/pricing?canceled=true`,
     metadata: { userId, passType },
   });
 
-  if (!paymentIntent.client_secret) throw new Error("No client_secret returned");
-  return { clientSecret: paymentIntent.client_secret };
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  return session.url;
 }
 
 export async function createCustomerPortalSession(

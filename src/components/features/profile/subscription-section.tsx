@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
@@ -8,10 +8,29 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+interface SubscriptionInfo {
+  tier: string;
+  planName?: string;
+  planPrice?: string;
+  billingInterval?: string | null;
+  currentPeriodEnd?: string | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
 export function SubscriptionSection() {
   const t = useTranslations("profile");
   const { user } = useAuth();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
+
+  useEffect(() => {
+    if (user?.tier === "plus") {
+      fetch("/api/user/subscription")
+        .then((res) => res.json())
+        .then((data) => setSubInfo(data))
+        .catch(() => {});
+    }
+  }, [user?.tier]);
 
   if (!user) return null;
 
@@ -32,6 +51,8 @@ export function SubscriptionSection() {
     }
   };
 
+  const intervalLabel = subInfo?.billingInterval === "MONTH" ? "/mo" : subInfo?.billingInterval === "YEAR" ? "/yr" : "";
+
   return (
     <Card variant="glass" padding="lg">
       <div className="flex items-center justify-between">
@@ -46,6 +67,24 @@ export function SubscriptionSection() {
             ? t("passTierMessage", { remaining: user.passActivationsRemaining })
             : t("freeTierMessage")}
       </p>
+
+      {tier === "plus" && subInfo && subInfo.planName && (
+        <div className="mt-2 space-y-1">
+          <p className="text-sm font-medium text-text-primary">
+            {subInfo.planName} {subInfo.planPrice ? `\u2014 ${subInfo.planPrice}${intervalLabel}` : ""}
+          </p>
+          {subInfo.cancelAtPeriodEnd && subInfo.currentPeriodEnd && (
+            <p className="text-sm text-amber-400">
+              Cancels at end of period ({new Date(subInfo.currentPeriodEnd).toLocaleDateString()})
+            </p>
+          )}
+          {!subInfo.cancelAtPeriodEnd && subInfo.currentPeriodEnd && (
+            <p className="text-xs text-text-tertiary">
+              Next billing date: {new Date(subInfo.currentPeriodEnd).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+      )}
 
       {tier === "pass" && user.passExpiry && (
         <p className="mt-1 text-xs text-text-tertiary">

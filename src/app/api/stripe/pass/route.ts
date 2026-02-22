@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { createPassPaymentIntent } from "@/lib/stripe";
+import { createPassCheckoutSession } from "@/lib/stripe";
 
 const schema = z.object({
   priceId: z.string().min(1),
@@ -19,12 +19,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const result = await createPassPaymentIntent(
+  const url = await createPassCheckoutSession(
     session.user.id,
     session.user.email,
     parsed.data.priceId,
     parsed.data.passType
   );
 
-  return NextResponse.json(result);
+  return NextResponse.json({ url });
 }

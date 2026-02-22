@@ -51,12 +51,20 @@ export async function POST(req: NextRequest) {
           : session.subscription.id;
         const stripeSubscription = await getStripe().subscriptions.retrieve(subscriptionId);
 
+        const statusMap: Record<string, "ACTIVE" | "PAST_DUE" | "CANCELED" | "TRIALING"> = {
+          active: "ACTIVE",
+          past_due: "PAST_DUE",
+          canceled: "CANCELED",
+          trialing: "TRIALING",
+        };
+        const dbStatus = statusMap[stripeSubscription.status] ?? "ACTIVE";
+
         await db.subscription.update({
           where: { stripeCustomerId: session.customer as string },
           data: {
             stripeSubscriptionId: subscriptionId,
             stripePriceId: stripeSubscription.items.data[0]?.price.id,
-            status: "ACTIVE",
+            status: dbStatus,
             tier: "PLUS",
             currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
             currentPeriodEnd: new Date((stripeSubscription as any).current_period_end * 1000),
@@ -72,6 +80,33 @@ export async function POST(req: NextRequest) {
           );
         }
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS" });
+      } else if (session.mode === "payment") {
+        const passTypeKey = session.metadata?.passType;
+        if (!passTypeKey) break;
+
+        const passConfig = PASS_ACTIVATIONS[passTypeKey];
+        if (!passConfig) break;
+
+        await db.passPurchase.create({
+          data: {
+            userId,
+            passType: passConfig.type,
+            activationsTotal: passConfig.count,
+            activationsUsed: 0,
+            stripePaymentIntentId: session.payment_intent as string,
+          },
+        });
+
+        const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+        if (user) {
+          const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
+          await sendEmail(
+            user.email,
+            "Your pass is ready",
+            passConfirmationEmail(user.name ?? "there", passNames[passConfig.type], passConfig.count)
+          );
+        }
+        await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count });
       }
       break;
     }
@@ -163,37 +198,6 @@ export async function POST(req: NextRequest) {
       break;
     }
 
-    case "payment_intent.succeeded": {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      const userId = paymentIntent.metadata?.userId;
-      const passTypeKey = paymentIntent.metadata?.passType;
-      if (!userId || !passTypeKey) break;
-
-      const passConfig = PASS_ACTIVATIONS[passTypeKey];
-      if (!passConfig) break;
-
-      await db.passPurchase.create({
-        data: {
-          userId,
-          passType: passConfig.type,
-          activationsTotal: passConfig.count,
-          activationsUsed: 0,
-          stripePaymentIntentId: paymentIntent.id,
-        },
-      });
-
-      const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
-      if (user) {
-        const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
-        await sendEmail(
-          user.email,
-          "Your pass is ready",
-          passConfirmationEmail(user.name ?? "there", passNames[passConfig.type], passConfig.count)
-        );
-      }
-      await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count });
-      break;
-    }
   }
 
   return NextResponse.json({ received: true });

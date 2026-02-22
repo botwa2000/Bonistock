@@ -7,7 +7,7 @@ export async function getUserTier(userId: string): Promise<"free" | "pass" | "pl
     select: { status: true, tier: true },
   });
 
-  if (subscription?.status === "ACTIVE" && subscription.tier === "PLUS") {
+  if ((subscription?.status === "ACTIVE" || subscription?.status === "TRIALING") && subscription.tier === "PLUS") {
     return "plus";
   }
 

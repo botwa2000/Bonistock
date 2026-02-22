@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { TickerCard } from "@/components/features/ticker-card";
 import { DayPassBanner } from "@/components/features/day-pass-banner";
 import { StockFilterBar, defaultStockFilters } from "@/components/features/filter-bar";
+import { PaymentToast } from "@/components/features/payment-toast";
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -76,6 +77,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <PaymentToast />
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">
           {t("welcome")}, {username}

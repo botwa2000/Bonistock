@@ -12,6 +12,8 @@ const updateProductSchema = z.object({
   active: z.boolean().optional(),
   highlighted: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  priceAmount: z.number().int().positive().optional(),
+  trialDays: z.number().int().min(0).nullable().optional(),
 });
 
 export const PATCH = adminRoute(async (req: NextRequest) => {
@@ -43,6 +45,27 @@ export const PATCH = adminRoute(async (req: NextRequest) => {
     await stripe.products.update(existing.stripeProductId, stripeUpdate);
   }
 
+  // If price changed, create a new Stripe price and archive the old one
+  let newStripePriceId = existing.stripePriceId;
+  if (data.priceAmount !== undefined && data.priceAmount !== existing.priceAmount) {
+    const priceParams: Stripe.PriceCreateParams = {
+      product: existing.stripeProductId,
+      unit_amount: data.priceAmount,
+      currency: existing.currency,
+    };
+
+    if (existing.type === "SUBSCRIPTION" && existing.billingInterval) {
+      priceParams.recurring = {
+        interval: existing.billingInterval === "MONTH" ? "month" : "year",
+      };
+    }
+
+    const newPrice = await stripe.prices.create(priceParams);
+    // Archive old price
+    await stripe.prices.update(existing.stripePriceId, { active: false });
+    newStripePriceId = newPrice.id;
+  }
+
   const product = await db.product.update({
     where: { id },
     data: {
@@ -52,6 +75,9 @@ export const PATCH = adminRoute(async (req: NextRequest) => {
       ...(data.active !== undefined && { active: data.active }),
       ...(data.highlighted !== undefined && { highlighted: data.highlighted }),
       ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+      ...(data.priceAmount !== undefined && { priceAmount: data.priceAmount }),
+      ...(data.trialDays !== undefined && { trialDays: data.trialDays }),
+      ...(newStripePriceId !== existing.stripePriceId && { stripePriceId: newStripePriceId }),
     },
   });
 

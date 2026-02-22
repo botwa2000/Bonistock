@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { PricingCards } from "@/components/features/pricing-cards";
 import { DayPassSection } from "@/components/features/day-pass";
 import { FaqSection } from "@/components/features/faq-section";
+import { PaymentToast } from "@/components/features/payment-toast";
 
 export default function PricingPage() {
   const t = useTranslations("pricing");
@@ -15,6 +16,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen">
+      <PaymentToast />
       <Navbar />
       <Container className="space-y-16 pb-24 pt-16">
         <SectionHeader

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import Stripe from "stripe";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const db = new PrismaClient({ adapter });
@@ -172,7 +173,142 @@ async function main() {
   }
   console.log(`Seeded ${demoPortfolios.length} demo portfolios with snapshots`);
 
+  // ── Products ──
+  await seedProducts();
+
   console.log("Seeding complete!");
+}
+
+async function seedProducts() {
+  const existing = await db.product.count();
+  if (existing > 0) {
+    console.log(`Skipping product seed — ${existing} products already exist`);
+    return;
+  }
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) {
+    console.warn("[seed] STRIPE_SECRET_KEY not set — skipping product seed");
+    return;
+  }
+
+  const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
+
+  const products = [
+    {
+      name: "Plus Monthly",
+      description: "Full access to all stock picks, ETF rankings, and portfolio tools — billed monthly.",
+      features: ["Unlimited stock picks", "Full ETF rankings", "Auto-Mix portfolio builder", "Priority support"],
+      type: "SUBSCRIPTION" as const,
+      priceAmount: 699,
+      currency: "usd",
+      billingInterval: "MONTH" as const,
+      passType: null,
+      passDays: null,
+      trialDays: 14,
+      highlighted: false,
+      sortOrder: 0,
+    },
+    {
+      name: "Plus Annual",
+      description: "Full access to all stock picks, ETF rankings, and portfolio tools — billed annually. Save 40%!",
+      features: ["Unlimited stock picks", "Full ETF rankings", "Auto-Mix portfolio builder", "Priority support"],
+      type: "SUBSCRIPTION" as const,
+      priceAmount: 4999,
+      currency: "usd",
+      billingInterval: "YEAR" as const,
+      passType: null,
+      passDays: null,
+      trialDays: 14,
+      highlighted: true,
+      sortOrder: 1,
+    },
+    {
+      name: "1-Day Pass",
+      description: "24 hours of full Plus access. Use it when you need it.",
+      features: null,
+      type: "PASS" as const,
+      priceAmount: 299,
+      currency: "usd",
+      billingInterval: null,
+      passType: "ONE_DAY" as const,
+      passDays: 1,
+      trialDays: null,
+      highlighted: false,
+      sortOrder: 10,
+    },
+    {
+      name: "3-Day Pass",
+      description: "3 separate 24-hour activations of full Plus access.",
+      features: null,
+      type: "PASS" as const,
+      priceAmount: 599,
+      currency: "usd",
+      billingInterval: null,
+      passType: "THREE_DAY" as const,
+      passDays: 3,
+      trialDays: null,
+      highlighted: false,
+      sortOrder: 11,
+    },
+    {
+      name: "12-Day Pass",
+      description: "12 separate 24-hour activations of full Plus access. Best per-day value.",
+      features: null,
+      type: "PASS" as const,
+      priceAmount: 1499,
+      currency: "usd",
+      billingInterval: null,
+      passType: "TWELVE_DAY" as const,
+      passDays: 12,
+      trialDays: null,
+      highlighted: true,
+      sortOrder: 12,
+    },
+  ];
+
+  for (const p of products) {
+    // Create Stripe product + price
+    const stripeProduct = await stripe.products.create({ name: p.name, description: p.description });
+
+    const priceParams: Stripe.PriceCreateParams = {
+      product: stripeProduct.id,
+      unit_amount: p.priceAmount,
+      currency: p.currency,
+    };
+
+    if (p.type === "SUBSCRIPTION" && p.billingInterval) {
+      priceParams.recurring = {
+        interval: p.billingInterval === "MONTH" ? "month" : "year",
+      };
+    }
+
+    const stripePrice = await stripe.prices.create(priceParams);
+
+    // Insert into DB
+    await db.product.create({
+      data: {
+        name: p.name,
+        description: p.description,
+        features: p.features ?? undefined,
+        type: p.type,
+        priceAmount: p.priceAmount,
+        currency: p.currency,
+        billingInterval: p.billingInterval,
+        passType: p.passType,
+        passDays: p.passDays,
+        trialDays: p.trialDays,
+        stripeProductId: stripeProduct.id,
+        stripePriceId: stripePrice.id,
+        highlighted: p.highlighted,
+        sortOrder: p.sortOrder,
+      },
+    });
+
+    console.log(`  Created product: ${p.name} (${stripePrice.id})`);
+  }
+
+  console.log(`Seeded ${products.length} products in Stripe + DB`);
 }
 
 main()

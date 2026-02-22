@@ -1,10 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+interface PassProduct {
+  id: string;
+  stripePriceId: string;
+  passType: string;
+  name: string;
+}
 
 interface UpgradePaywallProps {
   feature: string;
@@ -12,6 +22,51 @@ interface UpgradePaywallProps {
 
 export function UpgradePaywall({ feature }: UpgradePaywallProps) {
   const t = useTranslations("paywall");
+  const router = useRouter();
+  const { isLoggedIn } = useAuth();
+  const [passProducts, setPassProducts] = useState<PassProduct[]>([]);
+  const [buying, setBuying] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stripe/prices")
+      .then((res) => res.json())
+      .then((data: Array<{ id: string; type: string; stripePriceId: string; passType: string | null; name: string }>) => {
+        setPassProducts(
+          data
+            .filter((p) => p.type === "PASS" && p.passType)
+            .map((p) => ({ id: p.id, stripePriceId: p.stripePriceId, passType: p.passType!, name: p.name }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleBuyPass = async (passType: string) => {
+    if (!isLoggedIn) {
+      router.push("/login?redirect=/pricing");
+      return;
+    }
+
+    const product = passProducts.find((p) => p.passType === passType);
+    if (!product) return;
+
+    setBuying(passType);
+    try {
+      const res = await fetch("/api/stripe/pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId: product.stripePriceId,
+          passType: product.passType,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } finally {
+      setBuying(null);
+    }
+  };
 
   return (
     <Card variant="glass" padding="lg" className="mx-auto max-w-lg text-center">
@@ -32,8 +87,13 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
                 {t("oneDayDescription")}
               </div>
             </div>
-            <Button variant="secondary" size="sm">
-              Buy
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={buying === "ONE_DAY"}
+              onClick={() => handleBuyPass("ONE_DAY")}
+            >
+              {buying === "ONE_DAY" ? "..." : "Buy"}
             </Button>
           </div>
         </div>
@@ -48,8 +108,13 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
                 {t("threeDayDescription")}
               </div>
             </div>
-            <Button variant="secondary" size="sm">
-              Buy
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={buying === "THREE_DAY"}
+              onClick={() => handleBuyPass("THREE_DAY")}
+            >
+              {buying === "THREE_DAY" ? "..." : "Buy"}
             </Button>
           </div>
         </div>
@@ -64,8 +129,13 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
                 {t("twelveDayDescription")}
               </div>
             </div>
-            <Button variant="secondary" size="sm">
-              Buy
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={buying === "TWELVE_DAY"}
+              onClick={() => handleBuyPass("TWELVE_DAY")}
+            >
+              {buying === "TWELVE_DAY" ? "..." : "Buy"}
             </Button>
           </div>
         </div>

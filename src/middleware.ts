@@ -39,10 +39,18 @@ export function middleware(req: NextRequest) {
   // Rate limiting for API routes
   if (pathname.startsWith("/api/")) {
     const ip = getClientIP(req);
-    const isAuthRoute = pathname.startsWith("/api/auth/");
-    const limit = isAuthRoute ? AUTH_LIMIT : API_LIMIT;
-    const window = isAuthRoute ? AUTH_WINDOW : API_WINDOW;
-    const key = `${ip}:${isAuthRoute ? "auth" : "api"}`;
+    // Only rate-limit sensitive auth endpoints (login, register, password reset) strictly.
+    // OAuth callback/session/csrf routes need the general limit — a single OAuth
+    // sign-in triggers multiple rapid requests (csrf, callback, session, providers).
+    const isStrictAuthRoute =
+      pathname.startsWith("/api/auth/") &&
+      !pathname.startsWith("/api/auth/callback") &&
+      pathname !== "/api/auth/csrf" &&
+      pathname !== "/api/auth/session" &&
+      pathname !== "/api/auth/providers";
+    const limit = isStrictAuthRoute ? AUTH_LIMIT : API_LIMIT;
+    const window = isStrictAuthRoute ? AUTH_WINDOW : API_WINDOW;
+    const key = `${ip}:${isStrictAuthRoute ? "auth" : "api"}`;
 
     const result = rateLimit(key, limit, window);
     if (!result.success) {
