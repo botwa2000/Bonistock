@@ -44,6 +44,7 @@ export async function GET() {
 
   return NextResponse.json({
     tier: "plus",
+    status: subscription.status,
     planName,
     planPrice,
     billingInterval,
