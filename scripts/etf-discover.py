@@ -24,9 +24,17 @@ import time
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
+import numpy as np
 import psycopg2
 import psycopg2.extras
 import yfinance as yf
+
+
+def to_float(val):
+    """Convert numpy/pandas numeric types to Python float for psycopg2."""
+    if val is None:
+        return None
+    return float(val)
 
 
 # -- CUID generator (Prisma-compatible) --
@@ -222,17 +230,29 @@ def fetch_etf_data(symbol):
         close = hist["Close"]
 
         # -- CAGR calculations --
-        end_price = close.iloc[-1]
+        end_price = float(close.iloc[-1])
+        total_days = len(close)
 
         def calc_cagr(series, years):
-            """Calculate CAGR from a price series over the given number of years."""
-            trading_days = int(years * 252)
-            if len(series) < trading_days:
+            """Calculate CAGR from a price series over the given number of years.
+
+            Uses 90% of expected trading days as minimum threshold to handle
+            holidays, short years, and ETFs with slightly less history.
+            """
+            min_days = int(years * 252 * 0.9)
+            target_days = int(years * 252)
+            if total_days < min_days:
                 return None
-            start_price = series.iloc[-trading_days]
+            # Use the actual day count available, capped at target
+            offset = min(target_days, total_days - 1)
+            start_price = float(series.iloc[-1 - offset])
             if start_price <= 0:
                 return None
-            return ((end_price / start_price) ** (1.0 / years) - 1) * 100
+            # Actual elapsed years based on calendar dates
+            actual_years = (series.index[-1] - series.index[-1 - offset]).days / 365.25
+            if actual_years <= 0:
+                return None
+            return ((end_price / start_price) ** (1.0 / actual_years) - 1) * 100
 
         cagr1y = calc_cagr(close, 1)
         cagr3y = calc_cagr(close, 3)
@@ -279,12 +299,12 @@ def fetch_etf_data(symbol):
         return {
             "symbol": symbol,
             "name": name,
-            "cagr1y": round(cagr1y, 2) if cagr1y is not None else None,
-            "cagr3y": round(cagr3y, 2) if cagr3y is not None else None,
-            "cagr5y": round(cagr5y, 2) if cagr5y is not None else None,
-            "drawdown": round(drawdown, 2),
-            "fee": round(fee, 4) if fee else 0.0,
-            "sharpe": round(sharpe, 2),
+            "cagr1y": round(to_float(cagr1y), 2) if cagr1y is not None else None,
+            "cagr3y": round(to_float(cagr3y), 2) if cagr3y is not None else None,
+            "cagr5y": round(to_float(cagr5y), 2) if cagr5y is not None else None,
+            "drawdown": round(to_float(drawdown), 2),
+            "fee": round(to_float(fee), 4) if fee else 0.0,
+            "sharpe": round(to_float(sharpe), 2),
             "theme": theme,
             "region": region,
             "exchange": exchange,
@@ -299,19 +319,30 @@ def fetch_etf_data(symbol):
 # -- Phase 2: Rank and select top 100 --
 
 def rank_etfs(etfs):
-    """Rank ETFs by cagr5y descending, keep top 100."""
-    # Only rank those with a valid cagr5y
-    with_cagr = [e for e in etfs if e["cagr5y"] is not None]
-    without_cagr = [e for e in etfs if e["cagr5y"] is None]
+    """Rank ETFs by best available CAGR (5Y > 3Y > 1Y), keep top 100."""
+    def sort_key(e):
+        """Use 5Y CAGR if available, fall back to 3Y, then 1Y. None sorts last."""
+        if e["cagr5y"] is not None:
+            return (2, e["cagr5y"])  # highest priority
+        if e["cagr3y"] is not None:
+            return (1, e["cagr3y"])
+        if e["cagr1y"] is not None:
+            return (0, e["cagr1y"])
+        return (-1, 0)
 
-    with_cagr.sort(key=lambda e: e["cagr5y"], reverse=True)
+    # Filter: must have at least 1Y CAGR
+    valid = [e for e in etfs if e["cagr1y"] is not None]
+    invalid = len(etfs) - len(valid)
+    if invalid:
+        print(f"[phase2] {invalid} ETFs have no CAGR data at all (excluded)")
 
-    # Keep top 100 with cagr5y; append those without (they still get persisted
-    # but won't displace ranked ones)
-    ranked = with_cagr[:100]
-    print(f"[phase2] {len(with_cagr)} ETFs have 5Y data, keeping top {len(ranked)}")
-    if without_cagr:
-        print(f"[phase2] {len(without_cagr)} ETFs lack 5Y data (excluded from ranking)")
+    valid.sort(key=sort_key, reverse=True)
+    ranked = valid[:100]
+
+    has_5y = sum(1 for e in ranked if e["cagr5y"] is not None)
+    has_3y = sum(1 for e in ranked if e["cagr3y"] is not None and e["cagr5y"] is None)
+    has_1y = sum(1 for e in ranked if e["cagr3y"] is None and e["cagr5y"] is None)
+    print(f"[phase2] Keeping top {len(ranked)} ETFs ({has_5y} with 5Y, {has_3y} with 3Y only, {has_1y} with 1Y only)")
 
     return ranked
 
