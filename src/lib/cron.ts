@@ -46,9 +46,10 @@ export function initCronJobs(): void {
 }
 
 async function refreshEtfData(): Promise<void> {
-  // ETF data refresh via yfinance would be called here
-  // For now, this is a placeholder — ETF data is less frequently updated
-  console.log("[cron] ETF refresh — using seeded data (yfinance integration pending server Python setup)");
+  // ETF data is now handled by external Python script (scripts/etf-discover.py)
+  // Runs weekly at 3 AM UTC Sunday via system crontab on the Hetzner host.
+  // The cron job here is kept as a no-op placeholder for logging purposes.
+  console.log("[cron] ETF refresh — handled by external Python script (scripts/etf-discover.py)");
 }
 
 async function updateDemoPortfolioSnapshots(): Promise<void> {

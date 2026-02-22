@@ -128,7 +128,6 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId: activeSubscription.stripePriceId,
-          trialDays: activeSubscription.trialDays ?? undefined,
         }),
       });
       const data = await res.json();
@@ -247,12 +246,10 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
             </div>
           )}
 
-          {/* Trial info */}
-          {activeSubscription?.trialDays && (
-            <p className="mt-2 text-center text-xs text-text-tertiary">
-              {activeSubscription.trialDays}-day free trial included
-            </p>
-          )}
+          {/* Guarantee */}
+          <p className="mt-2 text-center text-xs text-text-tertiary">
+            {t("guarantee")}
+          </p>
 
           <div className="mt-3 text-center">
             <Button

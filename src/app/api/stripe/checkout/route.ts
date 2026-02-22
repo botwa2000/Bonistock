@@ -6,7 +6,6 @@ import { log } from "@/lib/logger";
 
 const schema = z.object({
   priceId: z.string().min(1),
-  trialDays: z.number().int().positive().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -24,14 +23,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  log.info("stripe/checkout", `User ${session.user.id} → priceId=${parsed.data.priceId} trial=${parsed.data.trialDays ?? "none"}`);
+  log.info("stripe/checkout", `User ${session.user.id} → priceId=${parsed.data.priceId}`);
 
   try {
     const url = await createCheckoutSession(
       session.user.id,
       session.user.email,
-      parsed.data.priceId,
-      parsed.data.trialDays
+      parsed.data.priceId
     );
     log.info("stripe/checkout", `Checkout URL created for user ${session.user.id}`);
     return NextResponse.json({ url });

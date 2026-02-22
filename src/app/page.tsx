@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Navbar } from "@/components/layout/navbar";
@@ -21,9 +22,9 @@ function ProblemSection() {
   const t = useTranslations("landing");
 
   const problems = [
-    { key: "problem1", icon: "\uD83D\uDD12" },
-    { key: "problem2", icon: "\uD83E\uDD2F" },
-    { key: "problem3", icon: "\uD83D\uDCCA" },
+    { key: "problem1", icon: "\u2728" },
+    { key: "problem2", icon: "\uD83C\uDFAF" },
+    { key: "problem3", icon: "\u26A1" },
   ];
 
   return (
@@ -46,7 +47,7 @@ function ProofSection() {
 
   const stats = [
     { value: "200+", label: t("proof1") },
-    { value: "30+", label: t("proof2") },
+    { value: "100+", label: t("proof2") },
     { value: "48", label: t("proof3") },
     { value: "$0", label: t("proof4") },
   ];
@@ -63,6 +64,84 @@ function ProofSection() {
   );
 }
 
+interface EtfData {
+  symbol: string;
+  name: string;
+  cagr1y: number;
+  cagr3y: number;
+  cagr5y: number;
+  fee: number;
+  theme: string;
+}
+
+function EtfPreviewSection() {
+  const t = useTranslations("landing");
+  const [etfs, setEtfs] = useState<EtfData[]>([]);
+
+  useEffect(() => {
+    fetch("/api/etfs")
+      .then((res) => res.json())
+      .then((data: EtfData[]) => {
+        if (Array.isArray(data)) setEtfs(data.slice(0, 6));
+      })
+      .catch(() => {});
+  }, []);
+
+  if (etfs.length === 0) return null;
+
+  return (
+    <section>
+      <SectionHeader
+        title={t("etfTitle")}
+        subtitle={t("etfSubtitle")}
+        action={
+          <Link href="/login">
+            <Button variant="secondary" size="sm">
+              {t("heroCta")}
+            </Button>
+          </Link>
+        }
+      />
+      <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {etfs.map((etf) => (
+          <Card key={etf.symbol} variant="glass">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-semibold text-text-primary">{etf.symbol}</span>
+                <span className="ml-2 text-xs text-text-tertiary">{etf.name}</span>
+              </div>
+              <Badge variant="accent">{etf.theme}</Badge>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <div>
+                <div className="text-text-tertiary">1Y</div>
+                <div className={`font-semibold ${etf.cagr1y >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {etf.cagr1y >= 0 ? "+" : ""}{etf.cagr1y.toFixed(1)}%
+                </div>
+              </div>
+              <div>
+                <div className="text-text-tertiary">3Y</div>
+                <div className={`font-semibold ${etf.cagr3y >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {etf.cagr3y >= 0 ? "+" : ""}{etf.cagr3y.toFixed(1)}%
+                </div>
+              </div>
+              <div>
+                <div className="text-text-tertiary">5Y</div>
+                <div className={`font-semibold ${etf.cagr5y >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {etf.cagr5y >= 0 ? "+" : ""}{etf.cagr5y.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+            <div className="mt-2 text-right text-xs text-text-tertiary">
+              Fee: {etf.fee.toFixed(2)}%
+            </div>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const t = useTranslations("landing");
 
@@ -74,23 +153,7 @@ export default function LandingPage() {
       <Hero />
 
       <Container className="space-y-20 pb-24">
-        {/* Problem */}
-        <section>
-          <SectionHeader title={t("problemTitle")} centered />
-          <div className="mt-8">
-            <ProblemSection />
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section id="how-it-works">
-          <SectionHeader title={t("howTitle")} centered />
-          <div className="mt-8">
-            <HowItWorks />
-          </div>
-        </section>
-
-        {/* Feature preview: Upside List */}
+        {/* Stock Preview (show the product immediately) */}
         <section>
           <SectionHeader
             overline="Preview"
@@ -123,6 +186,25 @@ export default function LandingPage() {
             </Card>
           </div>
         </section>
+
+        {/* Why Bonistock? */}
+        <section>
+          <SectionHeader title={t("problemTitle")} centered />
+          <div className="mt-8">
+            <ProblemSection />
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section id="how-it-works">
+          <SectionHeader title={t("howTitle")} centered />
+          <div className="mt-8">
+            <HowItWorks />
+          </div>
+        </section>
+
+        {/* ETF Preview */}
+        <EtfPreviewSection />
 
         {/* Social proof */}
         <section>

@@ -4,10 +4,10 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 
 const steps = [
-  { icon: "\uD83C\uDFAF", key: "step1" },
-  { icon: "\uD83D\uDCC8", key: "step2" },
-  { icon: "\u2726", key: "step3" },
-  { icon: "\uD83D\uDE80", key: "step4" },
+  { icon: "\uD83D\uDCC8", key: "step1" },
+  { icon: "\uD83D\uDD0D", key: "step2" },
+  { icon: "\u2728", key: "step3" },
+  { icon: "\u2705", key: "step4" },
 ] as const;
 
 export function HowItWorks() {

@@ -71,7 +71,7 @@ export function PricingCards() {
     billingInterval: annual ? ("YEAR" as const) : ("MONTH" as const),
     passType: null,
     passDays: null,
-    trialDays: 14,
+    trialDays: null,
     stripePriceId: "",
     highlighted: true,
     sortOrder: 0,
@@ -105,7 +105,6 @@ export function PricingCards() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId: activeProduct.stripePriceId,
-          ...(activeProduct.trialDays ? { trialDays: activeProduct.trialDays } : {}),
         }),
       });
       const data = await res.json();
@@ -205,11 +204,7 @@ export function PricingCards() {
           <div className="text-3xl font-semibold text-text-primary">
             {formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
           </div>
-          {activeProduct.trialDays && (
-            <Badge variant="info" className="w-fit">
-              {activeProduct.trialDays}-day free trial
-            </Badge>
-          )}
+          <p className="text-xs text-emerald-400/80">{t("guarantee")}</p>
           <ul className="flex-1 space-y-2 text-sm text-text-secondary">
             {(activeProduct.features as string[]).map((f) => (
               <li key={f} className="flex items-start gap-2">

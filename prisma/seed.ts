@@ -17,22 +17,12 @@ const fallbackStocks = [
   { symbol: "TSM", name: "Taiwan Semiconductor", price: 168.4, target: 200.4, upside: 19, buys: 32, holds: 3, sells: 0, analysts: 35, sector: "Semiconductors", risk: "BALANCED" as const, horizon: "12M", region: "em", exchange: "NYSE (ADR)", currency: "USD", dividendYield: 1.42, marketCap: "mega", description: "World's largest semiconductor foundry.", whyThisPick: "Zero sell ratings. TSMC manufactures the most advanced chips on earth.", belowSma200: false, brokers: ["ibkr", "t212", "robinhood", "etoro"] },
 ];
 
-// ── Fallback ETFs ──
-const fallbackEtfs = [
-  { symbol: "VTI", name: "Vanguard Total Stock Market", cagr1y: 14.2, cagr3y: 9.8, cagr5y: 11.2, drawdown: -33, fee: 0.03, sharpe: 0.78, theme: "Core US Market", region: "us", exchange: "NYSE Arca", currency: "USD", description: "Tracks the entire US equity market.", brokers: ["ibkr", "t212", "robinhood", "etoro"] },
-  { symbol: "QQQM", name: "Invesco NASDAQ 100", cagr1y: 22.1, cagr3y: 14.3, cagr5y: 16.1, drawdown: -35, fee: 0.15, sharpe: 0.95, theme: "Growth / Tech", region: "us", exchange: "NASDAQ", currency: "USD", description: "Concentrated exposure to the 100 largest non-financial NASDAQ stocks.", brokers: ["ibkr", "t212", "robinhood", "etoro"] },
-  { symbol: "SCHD", name: "Schwab US Dividend Equity", cagr1y: 8.6, cagr3y: 7.2, cagr5y: 10.4, drawdown: -26, fee: 0.06, sharpe: 0.82, theme: "Income / Dividends", region: "us", exchange: "NYSE Arca", currency: "USD", description: "Focuses on high-quality dividend-paying US stocks.", brokers: ["ibkr", "t212", "robinhood"] },
-  { symbol: "VXUS", name: "Vanguard Total International", cagr1y: 5.8, cagr3y: 4.1, cagr5y: 6.1, drawdown: -37, fee: 0.07, sharpe: 0.55, theme: "International", region: "global", exchange: "NYSE Arca", currency: "USD", description: "Broad international equity exposure outside the US.", brokers: ["ibkr", "t212", "robinhood", "etoro"] },
-  { symbol: "BND", name: "Vanguard Total Bond Market", cagr1y: 3.2, cagr3y: -0.8, cagr5y: 1.1, drawdown: -18, fee: 0.03, sharpe: 0.31, theme: "Bonds / Stability", region: "us", exchange: "NYSE Arca", currency: "USD", description: "US investment-grade bond exposure.", brokers: ["ibkr", "t212", "robinhood"] },
-  { symbol: "VGT", name: "Vanguard Information Technology", cagr1y: 25.3, cagr3y: 16.8, cagr5y: 19.4, drawdown: -34, fee: 0.1, sharpe: 0.92, theme: "Technology Sector", region: "us", exchange: "NYSE Arca", currency: "USD", description: "Pure technology sector exposure.", brokers: ["ibkr", "t212", "robinhood", "etoro"] },
-  { symbol: "VWCE", name: "Vanguard FTSE All-World (Acc)", cagr1y: 12.1, cagr3y: 8.4, cagr5y: 10.2, drawdown: -34, fee: 0.22, sharpe: 0.72, theme: "Core Global Market", region: "global", exchange: "Euronext Amsterdam", currency: "EUR", description: "UCITS-compliant all-world equity ETF popular with European investors.", brokers: ["ibkr", "t212", "etoro"] },
-  { symbol: "EIMI", name: "iShares Core MSCI EM IMI", cagr1y: 4.2, cagr3y: 1.8, cagr5y: 4.6, drawdown: -38, fee: 0.18, sharpe: 0.42, theme: "Emerging Markets", region: "em", exchange: "London", currency: "GBP", description: "Broad emerging market exposure.", brokers: ["ibkr", "t212"] },
-  { symbol: "CSPX", name: "iShares Core S&P 500 (Acc)", cagr1y: 15.8, cagr3y: 11.2, cagr5y: 12.9, drawdown: -33, fee: 0.07, sharpe: 0.85, theme: "Core US Large Cap", region: "us", exchange: "London", currency: "USD", description: "UCITS-compliant S&P 500 tracker, accumulating.", brokers: ["ibkr", "t212", "etoro"] },
-  { symbol: "IWDA", name: "iShares MSCI World (Acc)", cagr1y: 13.4, cagr3y: 9.6, cagr5y: 11.0, drawdown: -34, fee: 0.2, sharpe: 0.76, theme: "Core Global Market", region: "global", exchange: "XETRA", currency: "EUR", description: "The most popular UCITS ETF for German Sparplan investors.", brokers: ["ibkr", "t212", "traderepublic", "scalable"] },
-  { symbol: "XDWD", name: "Xtrackers MSCI World (Acc)", cagr1y: 13.2, cagr3y: 9.4, cagr5y: 10.8, drawdown: -34, fee: 0.19, sharpe: 0.75, theme: "Core Global Market", region: "global", exchange: "XETRA", currency: "EUR", description: "DWS/Xtrackers alternative to iShares MSCI World.", brokers: ["ibkr", "t212", "traderepublic", "scalable"] },
-  { symbol: "ISAC", name: "iShares MSCI ACWI (Acc)", cagr1y: 11.8, cagr3y: 8.1, cagr5y: 9.6, drawdown: -35, fee: 0.2, sharpe: 0.7, theme: "Core Global Market", region: "global", exchange: "XETRA", currency: "EUR", description: "All-Country World Index including emerging markets.", brokers: ["ibkr", "t212", "traderepublic", "scalable"] },
-  { symbol: "DBXD", name: "Xtrackers DAX (Acc)", cagr1y: 16.2, cagr3y: 8.8, cagr5y: 9.1, drawdown: -40, fee: 0.09, sharpe: 0.62, theme: "Germany / DAX", region: "europe", exchange: "XETRA", currency: "EUR", description: "Tracks the DAX 40.", brokers: ["ibkr", "traderepublic", "scalable", "ing", "comdirect"] },
-];
+// ── ETF type (for sync from prod) ──
+type EtfRow = {
+  symbol: string; name: string; cagr1y: number; cagr3y: number; cagr5y: number;
+  drawdown: number; fee: number; sharpe: number; theme: string; region: string;
+  exchange: string; currency: string; description: string; brokers: string[];
+};
 
 // ── Upsert helpers ──
 
@@ -52,7 +42,7 @@ async function upsertStocks(stocks: typeof fallbackStocks) {
   return stocks.length;
 }
 
-async function upsertEtfs(etfs: typeof fallbackEtfs) {
+async function upsertEtfs(etfs: EtfRow[]) {
   for (const e of etfs) {
     const { brokers, ...etfData } = e;
     const etf = await db.etf.upsert({
@@ -132,9 +122,8 @@ async function main() {
     // PROD or fallback: use hardcoded stocks
     const stockCount = await upsertStocks(fallbackStocks);
     console.log(`Seeded ${stockCount} stocks (fallback)`);
-
-    const etfCount = await upsertEtfs(fallbackEtfs);
-    console.log(`Seeded ${etfCount} ETFs (fallback)`);
+    // ETFs are populated exclusively by scripts/etf-discover.py (real yfinance data)
+    console.log(`Skipping ETF seed — run scripts/etf-discover.py for real data`);
   }
 
   // ── Demo Portfolios ──
@@ -208,7 +197,7 @@ async function seedProducts() {
       billingInterval: "MONTH" as const,
       passType: null,
       passDays: null,
-      trialDays: 14,
+      trialDays: null,
       highlighted: false,
       sortOrder: 0,
     },
@@ -222,7 +211,7 @@ async function seedProducts() {
       billingInterval: "YEAR" as const,
       passType: null,
       passDays: null,
-      trialDays: 14,
+      trialDays: null,
       highlighted: true,
       sortOrder: 1,
     },
