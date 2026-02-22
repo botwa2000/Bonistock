@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -246,17 +245,14 @@ export default function AdminPage() {
 
   if (loading || user?.role !== "ADMIN") {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
-        </div>
-      </DashboardLayout>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -677,6 +673,5 @@ export default function AdminPage() {
           </>
         )}
       </div>
-    </DashboardLayout>
   );
 }

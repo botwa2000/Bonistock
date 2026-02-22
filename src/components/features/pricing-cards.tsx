@@ -50,7 +50,34 @@ export function PricingCards() {
   const subscriptions = products.filter((p) => p.type === "SUBSCRIPTION");
   const monthlyProduct = subscriptions.find((p) => p.billingInterval === "MONTH");
   const annualProduct = subscriptions.find((p) => p.billingInterval === "YEAR");
-  const activeProduct = annual ? annualProduct : monthlyProduct;
+  const dbProduct = annual ? annualProduct : monthlyProduct;
+
+  // Fallback when no products exist in DB yet
+  const fallbackPlus = {
+    id: "fallback",
+    name: "Plus",
+    description: "Full access for active investors",
+    features: [
+      "Full upside list (60+ stocks, updated weekly)",
+      "Unlimited auto-mix generation",
+      "Stock detail pages with analyst breakdown",
+      "Advanced filters (sector, broker, cap, dividend)",
+      "Watchlists & price alerts",
+      "Priority data refresh",
+    ],
+    type: "SUBSCRIPTION" as const,
+    priceAmount: annual ? 4999 : 699,
+    currency: "usd",
+    billingInterval: annual ? ("YEAR" as const) : ("MONTH" as const),
+    passType: null,
+    passDays: null,
+    trialDays: 14,
+    stripePriceId: "",
+    highlighted: true,
+    sortOrder: 0,
+  };
+
+  const activeProduct = dbProduct ?? fallbackPlus;
 
   const handleSubscribe = async (tier: "free" | "plus") => {
     if (!isLoggedIn) {
@@ -148,50 +175,48 @@ export function PricingCards() {
           </Button>
         </Card>
 
-        {/* Plus tier card (from DB) */}
-        {activeProduct && (
-          <Card
-            variant={activeProduct.highlighted ? "accent" : "glass"}
-            className={`relative flex flex-col gap-4 ${activeProduct.highlighted ? "ring-2 ring-emerald-300/50" : ""}`}
-          >
-            {activeProduct.highlighted && (
-              <Badge
-                variant="accent"
-                className="absolute -top-3 left-1/2 -translate-x-1/2"
-              >
-                {t("popular")}
-              </Badge>
-            )}
-            <div>
-              <h3 className="text-lg font-semibold text-text-primary">{activeProduct.name}</h3>
-              <p className="text-sm text-text-secondary">{activeProduct.description}</p>
-            </div>
-            <div className="text-3xl font-semibold text-text-primary">
-              {formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
-            </div>
-            {activeProduct.trialDays && (
-              <Badge variant="info" className="w-fit">
-                {activeProduct.trialDays}-day free trial
-              </Badge>
-            )}
-            <ul className="flex-1 space-y-2 text-sm text-text-secondary">
-              {(activeProduct.features as string[]).map((f) => (
-                <li key={f} className="flex items-start gap-2">
-                  <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-300" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Button
-              variant="primary"
-              fullWidth
-              disabled={checkingOut}
-              onClick={() => handleSubscribe("plus")}
+        {/* Plus tier card (from DB or fallback) */}
+        <Card
+          variant={activeProduct.highlighted ? "accent" : "glass"}
+          className={`relative flex flex-col gap-4 ${activeProduct.highlighted ? "ring-2 ring-emerald-300/50" : ""}`}
+        >
+          {activeProduct.highlighted && (
+            <Badge
+              variant="accent"
+              className="absolute -top-3 left-1/2 -translate-x-1/2"
             >
-              {checkingOut ? "..." : "Start Plus"}
-            </Button>
-          </Card>
-        )}
+              {t("popular")}
+            </Badge>
+          )}
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">{activeProduct.name}</h3>
+            <p className="text-sm text-text-secondary">{activeProduct.description}</p>
+          </div>
+          <div className="text-3xl font-semibold text-text-primary">
+            {formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
+          </div>
+          {activeProduct.trialDays && (
+            <Badge variant="info" className="w-fit">
+              {activeProduct.trialDays}-day free trial
+            </Badge>
+          )}
+          <ul className="flex-1 space-y-2 text-sm text-text-secondary">
+            {(activeProduct.features as string[]).map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-300" />
+                {f}
+              </li>
+            ))}
+          </ul>
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={checkingOut || !activeProduct.stripePriceId}
+            onClick={() => handleSubscribe("plus")}
+          >
+            {checkingOut ? "..." : "Start Plus"}
+          </Button>
+        </Card>
       </div>
 
       <p className="text-center text-xs text-text-tertiary">{t("guarantee")}</p>
