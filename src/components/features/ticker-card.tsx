@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { StockPick } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getRegionFlag, getSectorIcon } from "@/lib/stock-icons";
 
 interface TickerCardProps {
   pick: StockPick;
@@ -34,7 +35,8 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Badge>{pick.sector}</Badge>
+                  <Badge className="text-xs">{getRegionFlag(pick.region)}</Badge>
+                  <Badge>{getSectorIcon(pick.sector)} {pick.sector}</Badge>
                   <Badge>
                     {pick.analysts} {t("analysts")}
                   </Badge>
@@ -104,7 +106,8 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <Badge>{pick.sector}</Badge>
+              <Badge className="text-xs">{getRegionFlag(pick.region)}</Badge>
+              <Badge>{getSectorIcon(pick.sector)} {pick.sector}</Badge>
               <Badge>
                 {pick.analysts} {t("analysts")}
               </Badge>

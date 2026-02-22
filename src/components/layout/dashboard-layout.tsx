@@ -18,6 +18,7 @@ interface SidebarLink {
 
 const sidebarLinks: SidebarLink[] = [
   { href: "/dashboard", labelKey: "nav.stocks", icon: "chart" },
+  { href: "/dashboard/history", labelKey: "nav.history", icon: "history", tier: "plus" },
   { href: "/dashboard/etfs", labelKey: "nav.etfs", icon: "layers" },
   { href: "/dashboard/mix", labelKey: "nav.mix", icon: "mix" },
   { href: "/dashboard/brokers", labelKey: "nav.brokers", icon: "compare" },
@@ -27,6 +28,7 @@ const sidebarLinks: SidebarLink[] = [
 
 const iconMap: Record<string, string> = {
   chart: "\u2191",
+  history: "\u23F1",
   layers: "\u25A6",
   mix: "\u2726",
   compare: "\u21C4",

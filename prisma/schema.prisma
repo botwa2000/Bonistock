@@ -354,6 +354,31 @@ model Broker {
   @@map("brokers")
 }
 
+// ──── Stock snapshot (daily pick history) ────
+
+model StockSnapshot {
+  id        String    @id @default(cuid())
+  symbol    String
+  name      String
+  price     Float
+  target    Float
+  upside    Float
+  buys      Int
+  holds     Int
+  sells     Int
+  analysts  Int
+  sector    String
+  risk      RiskLevel
+  region    String
+  marketCap String
+  date      DateTime  // normalized to midnight UTC
+
+  @@unique([symbol, date])
+  @@index([date])
+  @@index([symbol])
+  @@map("stock_snapshots")
+}
+
 // ──── Security models ────
 
 model AuditLog {

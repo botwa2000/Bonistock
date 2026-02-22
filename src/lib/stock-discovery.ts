@@ -1,11 +1,10 @@
 import { db } from "./db";
 import {
-  fetchScreenerStocks,
+  fetchScreenerStocksMulti,
   fetchBatchQuotes,
   fetchPriceTarget,
   fetchStockProfile,
   fetchAnalystConsensus,
-  fetchStockQuote,
   getRemainingRequests,
 } from "./fmp";
 
@@ -53,6 +52,61 @@ function deriveBrokers(exchange: string): string[] {
   return ["ibkr", "t212", "etoro"];
 }
 
+// ── Snapshot helper ──
+
+export async function snapshotAllStocks(): Promise<number> {
+  const stocks = await db.stock.findMany();
+  if (stocks.length === 0) return 0;
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  let count = 0;
+  for (const s of stocks) {
+    try {
+      await db.stockSnapshot.upsert({
+        where: { symbol_date: { symbol: s.symbol, date: today } },
+        update: {
+          name: s.name,
+          price: s.price,
+          target: s.target,
+          upside: s.upside,
+          buys: s.buys,
+          holds: s.holds,
+          sells: s.sells,
+          analysts: s.analysts,
+          sector: s.sector,
+          risk: s.risk,
+          region: s.region,
+          marketCap: s.marketCap,
+        },
+        create: {
+          symbol: s.symbol,
+          name: s.name,
+          price: s.price,
+          target: s.target,
+          upside: s.upside,
+          buys: s.buys,
+          holds: s.holds,
+          sells: s.sells,
+          analysts: s.analysts,
+          sector: s.sector,
+          risk: s.risk,
+          region: s.region,
+          marketCap: s.marketCap,
+          date: today,
+        },
+      });
+      count++;
+    } catch {
+      // skip duplicates / errors
+    }
+  }
+
+  console.log(`[snapshot] Saved ${count} stock snapshots for ${today.toISOString().split("T")[0]}`);
+  return count;
+}
+
 // ── Weekly Discovery (prod only) ──
 
 export async function discoverAndPopulateStocks(): Promise<{
@@ -60,22 +114,22 @@ export async function discoverAndPopulateStocks(): Promise<{
   populated: number;
   errors: number;
 }> {
-  console.log("[discovery] Starting stock discovery via FMP screener");
+  console.log("[discovery] Starting stock discovery via FMP multi-band screener");
   let errors = 0;
 
-  // 1. Screener: 1 call → ~100 candidate symbols
-  const candidates = await fetchScreenerStocks(100);
+  // 1. Multi-band screener: 3 calls → ~400 unique candidates
+  const candidates = await fetchScreenerStocksMulti();
   console.log(`[discovery] Screener returned ${candidates.length} candidates`);
 
-  // 2. Batch quotes: ~2 calls → prices + priceAvg200
+  // 2. Batch quotes: ~8 calls → prices + priceAvg200
   const symbols = candidates.map((c) => c.symbol);
   const quotes = await fetchBatchQuotes(symbols);
   const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
 
-  // 3. Price targets: 1 call per symbol
+  // 3. Price targets: 1 call per symbol, stop at 30 remaining
   const targetMap = new Map<string, { targetConsensus: number; targetHigh: number; targetLow: number }>();
   for (const sym of symbols) {
-    if (getRemainingRequests() < 20) {
+    if (getRemainingRequests() < 30) {
       console.log("[discovery] Rate limit approaching, stopping target fetches");
       break;
     }
@@ -87,7 +141,7 @@ export async function discoverAndPopulateStocks(): Promise<{
     }
   }
 
-  // 4. Rank by upside, pick top 60
+  // 4. Rank by upside, pick top 80
   const ranked = candidates
     .filter((c) => quoteMap.has(c.symbol) && targetMap.has(c.symbol))
     .map((c) => {
@@ -99,11 +153,18 @@ export async function discoverAndPopulateStocks(): Promise<{
     })
     .filter((c) => c.upside > 0 && c.upside < 200) // filter unrealistic targets
     .sort((a, b) => b.upside - a.upside)
-    .slice(0, 60);
+    .slice(0, 80);
 
   console.log(`[discovery] Ranked ${ranked.length} stocks by upside`);
 
-  // 5. Profiles + 6. Grades for top 60
+  // 5. Check which symbols already exist in DB
+  const existingStocks = await db.stock.findMany({
+    where: { symbol: { in: ranked.map((r) => r.symbol) } },
+    select: { symbol: true },
+  });
+  const existingSet = new Set(existingStocks.map((s) => s.symbol));
+
+  // 6. Profiles + Grades — only for NEW stocks not already in DB
   let populated = 0;
   for (const stock of ranked) {
     if (getRemainingRequests() < 5) {
@@ -112,7 +173,22 @@ export async function discoverAndPopulateStocks(): Promise<{
     }
 
     try {
-      // Fetch profile (1 call) + analyst consensus (1 call)
+      if (existingSet.has(stock.symbol)) {
+        // Existing stock: just update price/target/upside
+        await db.stock.update({
+          where: { symbol: stock.symbol },
+          data: {
+            price: stock.price,
+            target: stock.target,
+            upside: Math.round(stock.upside),
+            belowSma200: stock.priceAvg200 ? stock.price < stock.priceAvg200 : false,
+          },
+        });
+        populated++;
+        continue;
+      }
+
+      // New stock: fetch profile (1 call) + analyst consensus (1 call)
       const [profile, consensus] = await Promise.all([
         fetchStockProfile(stock.symbol).catch(() => null),
         fetchAnalystConsensus(stock.symbol).catch(() => null),
@@ -179,6 +255,9 @@ export async function discoverAndPopulateStocks(): Promise<{
     }
   }
 
+  // 7. Save daily snapshot
+  await snapshotAllStocks();
+
   console.log(`[discovery] Complete: ${populated} stocks populated, ${errors} errors`);
   return { candidates: candidates.length, populated, errors };
 }
@@ -189,6 +268,11 @@ export async function refreshStockData(): Promise<void> {
   const stocks = await db.stock.findMany({ select: { id: true, symbol: true } });
   console.log(`[refresh] Refreshing ${stocks.length} stocks`);
 
+  // Batch quotes for all stocks at once (much more efficient)
+  const symbols = stocks.map((s) => s.symbol);
+  const quotes = await fetchBatchQuotes(symbols);
+  const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
+
   for (const stock of stocks) {
     if (getRemainingRequests() < 10) {
       console.log("[refresh] FMP rate limit approaching, stopping refresh");
@@ -196,7 +280,7 @@ export async function refreshStockData(): Promise<void> {
     }
 
     try {
-      const quote = await fetchStockQuote(stock.symbol);
+      const quote = quoteMap.get(stock.symbol);
       const target = await fetchPriceTarget(stock.symbol);
 
       if (quote && target) {
@@ -214,6 +298,9 @@ export async function refreshStockData(): Promise<void> {
       console.error(`[refresh] Failed to refresh ${stock.symbol}:`, err);
     }
   }
+
+  // Save daily snapshot after refresh
+  await snapshotAllStocks();
 }
 
 // ── Dev Sync from Prod ──

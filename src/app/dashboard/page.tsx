@@ -11,10 +11,12 @@ import { TickerCard } from "@/components/features/ticker-card";
 import { DayPassBanner } from "@/components/features/day-pass-banner";
 import { StockFilterBar, defaultStockFilters } from "@/components/features/filter-bar";
 import { PaymentToast } from "@/components/features/payment-toast";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tf = useTranslations("filters");
+  const th = useTranslations("history");
   const { user } = useAuth();
   const username = user?.name ?? user?.email ?? "";
   const tier = user?.tier ?? "free";
@@ -146,6 +148,34 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      {/* History promo banner */}
+      <Card variant="glass" className="flex items-center gap-4">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-lg">
+          {"\u21BB"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-text-primary">
+            {th("promoBanner")}
+          </div>
+          <div className="text-xs text-text-secondary">
+            {th("promoSubtitle")}
+          </div>
+        </div>
+        {tier === "free" ? (
+          <Link href="/pricing">
+            <Badge variant="accent" className="cursor-pointer whitespace-nowrap">
+              {th("promoCtaFree")}
+            </Badge>
+          </Link>
+        ) : (
+          <Link href="/dashboard/history">
+            <Badge variant="accent" className="cursor-pointer whitespace-nowrap">
+              {th("promoCtaPaid")} {"\u2192"}
+            </Badge>
+          </Link>
+        )}
+      </Card>
     </div>
   );
 }

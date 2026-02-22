@@ -116,6 +116,43 @@ export async function fetchScreenerStocks(limit = 100) {
   return screenerSchema.parse(data);
 }
 
+// ── Multi-band Screener ──
+
+export async function fetchScreenerStocksMulti() {
+  const bands: { min: string; max?: string; limit: number }[] = [
+    { min: "50000000000", limit: 150 },                           // mega/large: $50B+
+    { min: "5000000000", max: "50000000000", limit: 150 },        // mid: $5B–$50B
+    { min: "1000000000", max: "5000000000", limit: 100 },         // small: $1B–$5B
+  ];
+
+  const seen = new Set<string>();
+  const results: Awaited<ReturnType<typeof fetchScreenerStocks>>  = [];
+
+  for (const band of bands) {
+    checkRateLimit();
+    const params = new URLSearchParams({
+      marketCapMoreThan: band.min,
+      isActivelyTrading: "true",
+      limit: String(band.limit),
+      apikey: getApiKey(),
+    });
+    if (band.max) params.set("marketCapLowerThan", band.max);
+    const url = `https://financialmodelingprep.com/api/v3/stock-screener?${params}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`FMP screener error: ${res.status}`);
+    const data = await res.json();
+    const parsed = screenerSchema.parse(data);
+    for (const stock of parsed) {
+      if (!seen.has(stock.symbol)) {
+        seen.add(stock.symbol);
+        results.push(stock);
+      }
+    }
+  }
+
+  return results;
+}
+
 // ── Batch Quotes ──
 
 const batchQuoteSchema = z.array(z.object({

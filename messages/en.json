@@ -39,7 +39,8 @@
     "profile": "Profile",
     "settings": "Settings",
     "account": "Account",
-    "admin": "Admin"
+    "admin": "Admin",
+    "history": "Pick History"
   },
   "landing": {
     "heroTitle": "Wall Street's top picks, simplified.",
@@ -479,5 +480,19 @@
     "activateDay": "Activate a Day",
     "passExpiredCta": "You explored {count} stocks today. Go unlimited with Plus for $6.99/mo.",
     "spentOnPasses": "You've spent {amount} on passes this month. Plus is $6.99/mo for unlimited access."
+  },
+  "history": {
+    "title": "Pick History",
+    "subtitle": "See how our stock picks evolve over time. Recurring picks signal strong, persistent analyst conviction.",
+    "recurring": "Most Recurring Picks",
+    "pickedTimes": "Picked {count} times",
+    "avgUpside": "Avg. upside: {value}%",
+    "nthTime": "\u21BB {count}x",
+    "loadMore": "Load More",
+    "noHistory": "No pick history available yet. Check back after the next stock refresh.",
+    "promoBanner": "Explore Pick History",
+    "promoSubtitle": "See which stocks our algorithm picks repeatedly \u2014 a signal of persistent analyst conviction.",
+    "promoCtaFree": "Upgrade to Plus",
+    "promoCtaPaid": "View History"
   }
 }
