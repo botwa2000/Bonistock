@@ -490,10 +490,11 @@ def main():
         cagr1y_str = f"{e['cagr1y']:.1f}%" if e["cagr1y"] is not None else "   N/A"
         cagr3y_str = f"{e['cagr3y']:.1f}%" if e["cagr3y"] is not None else "   N/A"
         cagr5y_str = f"{e['cagr5y']:.1f}%" if e["cagr5y"] is not None else "   N/A"
+        fee_str = f"{e['fee']:>5.2f}%" if e["fee"] is not None else "  N/A "
         print(
             f"{i:<5} {e['symbol']:<12} {e['name'][:28]:<30} "
             f"{cagr1y_str:>7} {cagr3y_str:>7} {cagr5y_str:>7} "
-            f"{e['drawdown']:>6.1f}% {e['fee']:>5.2f}% {e['sharpe']:>7.2f} "
+            f"{e['drawdown']:>6.1f}% {fee_str} {e['sharpe']:>7.2f} "
             f"{e['region']:<8} {e['theme']}"
         )
     if len(ranked) > 30:
