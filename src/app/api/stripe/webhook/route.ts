@@ -58,15 +58,20 @@ export async function POST(req: NextRequest) {
         };
         const dbStatus = statusMap[stripeSubscription.status] ?? "ACTIVE";
 
+        const subItem = stripeSubscription.items.data[0];
         await db.subscription.update({
           where: { stripeCustomerId: session.customer as string },
           data: {
             stripeSubscriptionId: subscriptionId,
-            stripePriceId: stripeSubscription.items.data[0]?.price.id,
+            stripePriceId: subItem?.price.id,
             status: dbStatus,
             tier: "PLUS",
-            currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
-            currentPeriodEnd: new Date((stripeSubscription as any).current_period_end * 1000),
+            ...(subItem?.current_period_start && {
+              currentPeriodStart: new Date(subItem.current_period_start * 1000),
+            }),
+            ...(subItem?.current_period_end && {
+              currentPeriodEnd: new Date(subItem.current_period_end * 1000),
+            }),
           },
         });
 
@@ -121,12 +126,17 @@ export async function POST(req: NextRequest) {
           ? (invoice as any).subscription
           : (invoice as any).subscription.id;
         const stripeSubscription = await getStripe().subscriptions.retrieve(subscriptionId);
+        const invSubItem = stripeSubscription.items.data[0];
         await db.subscription.updateMany({
           where: { stripeSubscriptionId: subscriptionId },
           data: {
             status: "ACTIVE",
-            currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
-            currentPeriodEnd: new Date((stripeSubscription as any).current_period_end * 1000),
+            ...(invSubItem?.current_period_start && {
+              currentPeriodStart: new Date(invSubItem.current_period_start * 1000),
+            }),
+            ...(invSubItem?.current_period_end && {
+              currentPeriodEnd: new Date(invSubItem.current_period_end * 1000),
+            }),
           },
         });
       }
@@ -167,12 +177,15 @@ export async function POST(req: NextRequest) {
         canceled: "CANCELED",
         trialing: "TRIALING",
       };
+      const updSubItem = subscription.items.data[0];
       await db.subscription.updateMany({
         where: { stripeSubscriptionId: subscription.id },
         data: {
           status: statusMap[subscription.status] ?? "INACTIVE",
-          cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
-          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          ...(updSubItem?.current_period_end && {
+            currentPeriodEnd: new Date(updSubItem.current_period_end * 1000),
+          }),
         },
       });
       break;
@@ -189,9 +202,11 @@ export async function POST(req: NextRequest) {
           where: { id: sub.id },
           data: { status: "CANCELED", tier: "FREE" },
         });
+        const delSubItem = subscription.items.data[0];
+        const endTimestamp = delSubItem?.current_period_end;
         const { subject: scSubject, html: scHtml } = await renderTemplate("subscriptionCanceled", {
           userName: sub.user.name ?? "there",
-          endDate: new Date((subscription as any).current_period_end * 1000).toLocaleDateString(),
+          endDate: endTimestamp ? new Date(endTimestamp * 1000).toLocaleDateString() : "soon",
         });
         await sendEmail(sub.user.email, scSubject, scHtml);
         await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel" });
