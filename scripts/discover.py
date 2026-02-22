@@ -205,55 +205,37 @@ def derive_brokers(exchange: str) -> list:
 
 
 # ── Phase 1: Discover candidates via yfinance screener ──
+# yfinance 1.2+ uses yf.screen() with EquityQuery objects.
 
-def build_screener_body(exchanges, min_cap, max_cap=None, size=250):
-    """Build a Yahoo Finance screener request body."""
-    operands = [
-        {"operator": "GT", "operands": ["intradaymarketcap", min_cap]},
+from yfinance import EquityQuery
+
+
+def build_screener_query(exchanges, min_cap, max_cap=None):
+    """Build an EquityQuery for yf.screen()."""
+    parts = [
+        EquityQuery("gt", ["intradaymarketcap", min_cap]),
     ]
     if max_cap:
-        operands.append({"operator": "LT", "operands": ["intradaymarketcap", max_cap]})
+        parts.append(EquityQuery("lt", ["intradaymarketcap", max_cap]))
 
     if len(exchanges) == 1:
-        operands.append({"operator": "EQ", "operands": ["exchange", exchanges[0]]})
+        parts.append(EquityQuery("eq", ["exchange", exchanges[0]]))
     else:
-        operands.append({
-            "operator": "OR",
-            "operands": [
-                {"operator": "EQ", "operands": ["exchange", ex]}
-                for ex in exchanges
-            ],
-        })
+        parts.append(EquityQuery("is-in", ["exchange"] + exchanges))
 
-    return {
-        "offset": 0,
-        "size": size,
-        "sortField": "intradaymarketcap",
-        "sortType": "DESC",
-        "quoteType": "EQUITY",
-        "query": {
-            "operator": "AND",
-            "operands": operands,
-        },
-    }
+    return EquityQuery("and", parts)
 
 
-def run_screener(body):
-    """Run a single yfinance screener call and return list of symbols."""
+def run_screener(query, size=250):
+    """Run a single yf.screen() call and return list of symbols."""
     try:
-        sc = yf.Screener()
-        sc.set_body(body)
-        response = sc.response
-
-        quotes = []
-        if isinstance(response, dict):
-            quotes = response.get("quotes", [])
-            # Alternate response format
-            if not quotes and "finance" in response:
-                results = response["finance"].get("result", [{}])
-                if results:
-                    quotes = results[0].get("quotes", [])
-
+        result = yf.screen(
+            query,
+            size=size,
+            sortField="intradaymarketcap",
+            sortAsc=False,
+        )
+        quotes = result.get("quotes", [])
         return [q["symbol"] for q in quotes if q.get("symbol")]
     except Exception as e:
         print(f"  [screener] Error: {e}")
@@ -267,10 +249,10 @@ def discover_candidates():
     # US screens (3 market cap bands)
     print("[phase1] Screening US stocks by market cap band...")
     for band in US_CAP_BANDS:
-        body = build_screener_body(
-            US_EXCHANGES, band["min_cap"], band["max_cap"], band["size"]
+        query = build_screener_query(
+            US_EXCHANGES, band["min_cap"], band["max_cap"]
         )
-        found = run_screener(body)
+        found = run_screener(query, size=band["size"])
         print(f"  US {band['label']}: {len(found)} symbols")
         symbols.update(found)
         time.sleep(0.5)
@@ -278,8 +260,8 @@ def discover_candidates():
     # EU/Asia screens (9 regions)
     print("[phase1] Screening EU/Asia stocks...")
     for region_code, cfg in REGION_SCREENS.items():
-        body = build_screener_body(cfg["exchanges"], cfg["min_cap"], size=cfg["size"])
-        found = run_screener(body)
+        query = build_screener_query(cfg["exchanges"], cfg["min_cap"])
+        found = run_screener(query, size=cfg["size"])
         print(f"  {region_code.upper()}: {len(found)} symbols")
         symbols.update(found)
         time.sleep(0.5)
