@@ -176,6 +176,9 @@ async function main() {
   // ── Products ──
   await seedProducts();
 
+  // ── Email Templates ──
+  await seedEmailTemplates();
+
   console.log("Seeding complete!");
 }
 
@@ -309,6 +312,117 @@ async function seedProducts() {
   }
 
   console.log(`Seeded ${products.length} products in Stripe + DB`);
+}
+
+async function seedEmailTemplates() {
+  const templates = [
+    {
+      slug: "verification",
+      name: "Email Verification",
+      subject: "Verify your email",
+      body: `<h1>Verify your email</h1>
+    <p>Hi {{userName}},</p>
+    <p>Thanks for creating your Bonistock account. Click the button below to verify your email address.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="{{verifyUrl}}" class="btn">Verify Email</a>
+    </p>
+    <p>This link expires in 24 hours. If you didn't create this account, you can safely ignore this email.</p>`,
+    },
+    {
+      slug: "passwordReset",
+      name: "Password Reset",
+      subject: "Reset your password",
+      body: `<h1>Reset your password</h1>
+    <p>Hi {{userName}},</p>
+    <p>We received a request to reset your password. Click the button below to set a new one.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="{{resetUrl}}" class="btn">Reset Password</a>
+    </p>
+    <p>This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>`,
+    },
+    {
+      slug: "welcome",
+      name: "Welcome",
+      subject: "Welcome to Bonistock!",
+      body: `<h1>Welcome to Bonistock!</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your account is set up and ready to go. Start exploring analyst-backed stock picks and build your first portfolio.</p>
+    <p>Here's what you can do:</p>
+    <ul style="color: #a3a3a3; font-size: 14px; line-height: 2;">
+      <li>Browse top upside stocks ranked by analyst consensus</li>
+      <li>Use Auto-Mix to build a diversified portfolio in seconds</li>
+      <li>Compare brokers and find the best fit for your region</li>
+    </ul>`,
+    },
+    {
+      slug: "passConfirmation",
+      name: "Pass Confirmation",
+      subject: "Your pass is ready!",
+      body: `<h1>Your pass is ready!</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your <strong>{{passType}}</strong> has been activated with <strong>{{activations}}</strong> activation(s).</p>
+    <p>Each activation gives you 24 hours of full Plus access. Activate from your dashboard whenever you're ready.</p>`,
+    },
+    {
+      slug: "subscriptionConfirmation",
+      name: "Subscription Confirmed",
+      subject: "Subscription confirmed",
+      body: `<h1>Subscription confirmed</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your <strong>{{tier}}</strong> subscription is now active at <strong>{{amount}}</strong>.</p>
+    <p>You now have full access to all Bonistock features. Enjoy!</p>`,
+    },
+    {
+      slug: "subscriptionCanceled",
+      name: "Subscription Canceled",
+      subject: "Subscription canceled",
+      body: `<h1>Subscription canceled</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your subscription has been canceled. You'll continue to have access until <strong>{{endDate}}</strong>.</p>
+    <p>You can resubscribe anytime from your account settings.</p>`,
+    },
+    {
+      slug: "emailChange",
+      name: "Email Change",
+      subject: "Confirm your new email",
+      body: `<h1>Confirm your new email</h1>
+    <p>Hi {{userName}},</p>
+    <p>You requested to change your Bonistock email to <strong>{{newEmail}}</strong>. Click the button below to confirm this change.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="{{confirmUrl}}" class="btn">Confirm Email Change</a>
+    </p>
+    <p>This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>`,
+    },
+    {
+      slug: "paymentFailed",
+      name: "Payment Failed",
+      subject: "Payment failed",
+      body: `<h1>Payment failed</h1>
+    <p>Hi {{userName}},</p>
+    <p>We couldn't process your latest payment. Please update your payment method to continue your subscription.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="{{settingsUrl}}" class="btn">Update Payment</a>
+    </p>`,
+    },
+    {
+      slug: "accountDeletion",
+      name: "Account Deleted",
+      subject: "Your account has been deleted",
+      body: `<h1>Account deleted</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your Bonistock account has been successfully deleted. All your personal data has been anonymized.</p>
+    <p>If you change your mind, you're welcome to create a new account anytime.</p>`,
+    },
+  ];
+
+  for (const t of templates) {
+    await db.emailTemplate.upsert({
+      where: { slug: t.slug },
+      update: {},
+      create: t,
+    });
+  }
+  console.log(`Seeded ${templates.length} email templates`);
 }
 
 main()

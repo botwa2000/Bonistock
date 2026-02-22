@@ -465,21 +465,21 @@
   "paywall": {
     "title": "Unlock full access",
     "subtitle": "Choose how you'd like to continue",
-    "oneDayOption": "1-Day Pass — $2.99",
+    "oneDayOption": "1-Day Pass",
     "oneDayDescription": "1 activation (24 hours of full access). No commitment.",
-    "threeDayOption": "3-Day Pass — $5.99",
+    "threeDayOption": "3-Day Pass",
     "threeDayDescription": "3 activations (24 hours each, use anytime). Save 33%.",
-    "twelveDayOption": "12-Day Pass — $14.99",
+    "twelveDayOption": "12-Day Pass",
     "twelveDayDescription": "12 activations (24 hours each, use anytime). Best per-day rate.",
-    "plusOption": "Plus — $6.99/mo",
+    "plusOption": "Plus",
     "plusDescription": "Unlimited access. Best value for regular use.",
     "or": "or",
     "passActive": "Pass active",
     "passExpires": "Expires in",
     "passExpired": "Your Pass has expired",
     "activateDay": "Activate a Day",
-    "passExpiredCta": "You explored {count} stocks today. Go unlimited with Plus for $6.99/mo.",
-    "spentOnPasses": "You've spent {amount} on passes this month. Plus is $6.99/mo for unlimited access."
+    "passExpiredCta": "You explored {count} stocks today. Go unlimited with Plus.",
+    "spentOnPasses": "You've spent {amount} on passes this month. Plus gives unlimited access."
   },
   "history": {
     "title": "Pick History",

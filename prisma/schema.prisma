@@ -421,6 +421,19 @@ model Product {
   @@map("products")
 }
 
+// ──── Email templates ────
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  slug      String   @unique  // "verification", "welcome", etc.
+  name      String             // "Email Verification"
+  subject   String             // "Verify your email"
+  body      String             // HTML body (inner content, not full layout)
+  updatedAt DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
 // ──── Enums ────
 
 enum ProductType {

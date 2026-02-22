@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { sendEmail } from "@/lib/email";
+import { renderTemplate } from "@/lib/email-renderer";
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
@@ -20,12 +22,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Token expired", code: "TOKEN_EXPIRED" }, { status: 400 });
   }
 
-  await db.user.update({
+  const user = await db.user.update({
     where: { email: record.identifier },
     data: { emailVerified: new Date() },
+    select: { email: true, name: true },
   });
 
   await db.verificationToken.delete({ where: { token } });
+
+  // Send welcome email
+  try {
+    const { subject, html } = await renderTemplate("welcome", {
+      userName: user.name ?? "there",
+    });
+    await sendEmail(user.email, subject, html);
+  } catch {
+    // Non-critical — don't block verification
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");

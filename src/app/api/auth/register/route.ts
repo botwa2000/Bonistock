@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { hashPassword, validatePasswordStrength } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
-import { verificationEmail } from "@/lib/email-templates";
+import { renderTemplate } from "@/lib/email-renderer";
 import { randomBytes } from "crypto";
 
 const registerSchema = z.object({
@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
   const verifyUrl = `${appUrl}/api/auth/verify-email?token=${token}`;
 
-  await sendEmail(email, "Verify your email address", verificationEmail(name, verifyUrl));
+  const { subject, html } = await renderTemplate("verification", { userName: name, verifyUrl });
+  await sendEmail(email, subject, html);
   await logAudit(user.id, "REGISTER", { email });
 
   return NextResponse.json({ message: "Registration successful. Check your email to verify." }, { status: 201 });

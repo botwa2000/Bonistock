@@ -87,7 +87,6 @@ export function StockFilterBar({
             { value: "us", label: t("regionUs") },
             { value: "europe", label: t("regionEurope") },
             { value: "em", label: t("regionEm") },
-            { value: "global", label: t("regionGlobal") },
           ]}
         />
         <Select

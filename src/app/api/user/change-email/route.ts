@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
-import { emailChangeConfirmation } from "@/lib/email-templates";
+import { renderTemplate } from "@/lib/email-renderer";
 
 const schema = z.object({
   newEmail: z.string().email(),
@@ -67,11 +67,12 @@ export async function POST(req: NextRequest) {
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
   const confirmUrl = `${appUrl}/api/auth/verify-email-change?token=${token}`;
 
-  await sendEmail(
+  const { subject, html } = await renderTemplate("emailChange", {
+    userName: user.name ?? "there",
     newEmail,
-    "Confirm your new email address",
-    emailChangeConfirmation(user.name ?? "there", newEmail, confirmUrl),
-  );
+    confirmUrl,
+  });
+  await sendEmail(newEmail, subject, html);
 
   return NextResponse.json({ message: "Verification email sent to your new address." });
 }

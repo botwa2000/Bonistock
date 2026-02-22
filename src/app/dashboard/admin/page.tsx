@@ -187,13 +187,24 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchEmailTemplates = useCallback(async () => {
+    setEmailTemplatesLoading(true);
+    try {
+      const res = await fetch("/api/admin/email-templates");
+      if (res.ok) setEmailTemplates(await res.json());
+    } finally {
+      setEmailTemplatesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user?.role === "ADMIN") {
       fetchStats();
       fetchProducts();
       fetchUsers(1, "");
+      fetchEmailTemplates();
     }
-  }, [user, fetchStats, fetchProducts, fetchUsers]);
+  }, [user, fetchStats, fetchProducts, fetchUsers, fetchEmailTemplates]);
 
   const handleToggleActive = async (product: Product) => {
     const res = await fetch(`/api/admin/products/${product.id}`, {
@@ -329,21 +340,29 @@ export default function AdminPage() {
   };
 
   // Email templates state
+  const [emailTemplates, setEmailTemplates] = useState<{ id: string; slug: string; name: string; subject: string; body: string; updatedAt: string }[]>([]);
+  const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
   const [sendingTest, setSendingTest] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ template: string; ok: boolean; message: string } | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
-  const emailTemplates = [
-    { id: "verification", name: "Email Verification", description: "Sent when a new user registers" },
-    { id: "passwordReset", name: "Password Reset", description: "Sent when user requests password reset" },
-    { id: "welcome", name: "Welcome", description: "Sent after email is verified" },
-    { id: "passConfirmation", name: "Pass Confirmation", description: "Sent after a day pass purchase" },
-    { id: "subscriptionConfirmation", name: "Subscription Confirmation", description: "Sent after subscribing to Plus" },
-    { id: "subscriptionCanceled", name: "Subscription Canceled", description: "Sent when subscription is canceled" },
-    { id: "emailChange", name: "Email Change", description: "Sent to confirm email address change" },
-    { id: "paymentFailed", name: "Payment Failed", description: "Sent when a payment fails" },
-  ];
+  // Placeholder metadata per slug
+  const templatePlaceholders: Record<string, string[]> = {
+    verification: ["userName", "verifyUrl"],
+    passwordReset: ["userName", "resetUrl"],
+    welcome: ["userName"],
+    passConfirmation: ["userName", "passType", "activations"],
+    subscriptionConfirmation: ["userName", "tier", "amount"],
+    subscriptionCanceled: ["userName", "endDate"],
+    emailChange: ["userName", "newEmail", "confirmUrl"],
+    paymentFailed: ["userName", "settingsUrl"],
+    accountDeletion: ["userName"],
+  };
 
   const handleSendTest = async (templateId: string) => {
     setSendingTest(templateId);
@@ -374,6 +393,55 @@ export default function AdminPage() {
     } catch {
       // ignore
     }
+  };
+
+  const startEditingTemplate = (tmpl: typeof emailTemplates[number]) => {
+    setEditingTemplate(tmpl.slug);
+    setEditSubject(tmpl.subject);
+    setEditBody(tmpl.body);
+  };
+
+  const cancelEditingTemplate = () => {
+    setEditingTemplate(null);
+    setEditSubject("");
+    setEditBody("");
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!editingTemplate) return;
+    setSavingTemplate(true);
+    try {
+      const res = await fetch(`/api/admin/email-templates/${editingTemplate}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: editSubject, body: editBody }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setEmailTemplates((prev) =>
+          prev.map((t) => (t.slug === editingTemplate ? updated : t))
+        );
+        setEditingTemplate(null);
+      }
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const execCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+  };
+
+  const insertPlaceholder = (placeholder: string) => {
+    document.execCommand("insertText", false, `{{${placeholder}}}`);
+  };
+
+  const insertCtaButton = () => {
+    document.execCommand(
+      "insertHTML",
+      false,
+      '<a href="#" class="btn" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Button Text</a>'
+    );
   };
 
   const [discovering, setDiscovering] = useState(false);
@@ -863,41 +931,149 @@ export default function AdminPage() {
         {/* Email Templates Section */}
         <Card variant="glass">
           <h3 className="mb-4 text-sm font-semibold text-text-primary">{t("emailTemplates")}</h3>
-          <div className="space-y-2">
-            {emailTemplates.map((tmpl) => (
-              <div
-                key={tmpl.id}
-                className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3"
-              >
-                <div>
-                  <div className="text-sm font-medium text-text-primary">{tmpl.name}</div>
-                  <div className="text-xs text-text-tertiary">{tmpl.description}</div>
-                  {testResult?.template === tmpl.id && (
-                    <div className={`mt-1 text-xs ${testResult.ok ? "text-emerald-400" : "text-rose-300"}`}>
-                      {testResult.message}
+          {emailTemplatesLoading ? (
+            <p className="text-sm text-text-secondary">Loading templates...</p>
+          ) : (
+            <div className="space-y-2">
+              {emailTemplates.map((tmpl) => (
+                <div key={tmpl.slug}>
+                  <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
+                    <div>
+                      <div className="text-sm font-medium text-text-primary">{tmpl.name}</div>
+                      <div className="text-xs text-text-tertiary">Subject: {tmpl.subject}</div>
+                      {testResult?.template === tmpl.slug && (
+                        <div className={`mt-1 text-xs ${testResult.ok ? "text-emerald-400" : "text-rose-300"}`}>
+                          {testResult.message}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => startEditingTemplate(tmpl)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handlePreview(tmpl.slug, tmpl.name)}
+                      >
+                        {t("preview")}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={sendingTest === tmpl.slug}
+                        onClick={() => handleSendTest(tmpl.slug)}
+                      >
+                        {sendingTest === tmpl.slug ? "..." : t("sendTest")}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Inline editor */}
+                  {editingTemplate === tmpl.slug && (
+                    <div className="mt-2 rounded-lg border border-emerald-300/30 bg-surface-elevated p-4 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-text-secondary mb-1">Subject</label>
+                        <input
+                          type="text"
+                          value={editSubject}
+                          onChange={(e) => setEditSubject(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-input-bg px-3 py-2 text-sm text-text-primary"
+                        />
+                      </div>
+
+                      {/* Toolbar */}
+                      <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-2">
+                        <button type="button" onClick={() => execCommand("bold")} className="rounded px-2 py-1 text-xs font-bold text-text-primary hover:bg-surface-elevated" title="Bold">B</button>
+                        <button type="button" onClick={() => execCommand("italic")} className="rounded px-2 py-1 text-xs italic text-text-primary hover:bg-surface-elevated" title="Italic">I</button>
+                        <button type="button" onClick={() => execCommand("underline")} className="rounded px-2 py-1 text-xs underline text-text-primary hover:bg-surface-elevated" title="Underline">U</button>
+                        <span className="mx-1 h-4 w-px bg-border" />
+                        <button type="button" onClick={() => execCommand("fontSize", "2")} className="rounded px-2 py-1 text-[10px] text-text-primary hover:bg-surface-elevated" title="Small">S</button>
+                        <button type="button" onClick={() => execCommand("fontSize", "3")} className="rounded px-2 py-1 text-xs text-text-primary hover:bg-surface-elevated" title="Normal">N</button>
+                        <button type="button" onClick={() => execCommand("fontSize", "5")} className="rounded px-2 py-1 text-sm text-text-primary hover:bg-surface-elevated" title="Large">L</button>
+                        <span className="mx-1 h-4 w-px bg-border" />
+                        <input
+                          type="color"
+                          defaultValue="#a3a3a3"
+                          onChange={(e) => execCommand("foreColor", e.target.value)}
+                          className="h-6 w-6 cursor-pointer rounded border-none bg-transparent"
+                          title="Text color"
+                        />
+                        <span className="mx-1 h-4 w-px bg-border" />
+                        <button type="button" onClick={() => execCommand("justifyLeft")} className="rounded px-2 py-1 text-xs text-text-primary hover:bg-surface-elevated" title="Align left">&#8676;</button>
+                        <button type="button" onClick={() => execCommand("justifyCenter")} className="rounded px-2 py-1 text-xs text-text-primary hover:bg-surface-elevated" title="Align center">&#8596;</button>
+                        <button type="button" onClick={() => execCommand("justifyRight")} className="rounded px-2 py-1 text-xs text-text-primary hover:bg-surface-elevated" title="Align right">&#8677;</button>
+                        <span className="mx-1 h-4 w-px bg-border" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = prompt("Enter URL:");
+                            if (url) execCommand("createLink", url);
+                          }}
+                          className="rounded px-2 py-1 text-xs text-text-primary hover:bg-surface-elevated"
+                          title="Insert link"
+                        >
+                          Link
+                        </button>
+                        <button type="button" onClick={insertCtaButton} className="rounded px-2 py-1 text-xs text-emerald-400 hover:bg-surface-elevated" title="Insert CTA button">CTA</button>
+                        <span className="mx-1 h-4 w-px bg-border" />
+                        <select
+                          onChange={(e) => { if (e.target.value) { insertPlaceholder(e.target.value); e.target.value = ""; } }}
+                          className="rounded border border-border bg-input-bg px-2 py-1 text-xs text-text-primary"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Placeholder...</option>
+                          {(templatePlaceholders[tmpl.slug] ?? []).map((p) => (
+                            <option key={p} value={p}>{`{{${p}}}`}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Contenteditable editor */}
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        dangerouslySetInnerHTML={{ __html: editBody }}
+                        onBlur={(e) => setEditBody(e.currentTarget.innerHTML)}
+                        className="min-h-[200px] rounded-lg border border-border bg-white p-4 text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                        style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
+                      />
+
+                      {/* Live preview */}
+                      <details className="rounded-lg border border-border">
+                        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-text-secondary">Live Preview</summary>
+                        <iframe
+                          srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:#e5e5e5;margin:0;padding:0}.container{max-width:560px;margin:0 auto;padding:40px 20px}.logo{font-size:24px;font-weight:700;color:#fff;text-align:center;margin-bottom:32px}.card{background:#171717;border:1px solid #262626;border-radius:12px;padding:32px}h1{color:#fff;font-size:20px;margin:0 0 16px}p{color:#a3a3a3;font-size:14px;line-height:1.6;margin:0 0 16px}.btn{display:inline-block;background:#10b981;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px}.footer{text-align:center;margin-top:32px;font-size:12px;color:#525252}</style></head><body><div class="container"><div class="logo">Bonistock</div><div class="card">${editBody}</div><div class="footer"><p>Bonistock — Upside-first Stock & ETF Advisor</p></div></div></body></html>`}
+                          className="w-full rounded"
+                          style={{ minHeight: 400, border: "none" }}
+                          title="Template preview"
+                          sandbox=""
+                        />
+                      </details>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          disabled={savingTemplate}
+                          onClick={handleSaveTemplate}
+                        >
+                          {savingTemplate ? "Saving..." : "Save"}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={cancelEditingTemplate}>
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handlePreview(tmpl.id, tmpl.name)}
-                  >
-                    {t("preview")}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={sendingTest === tmpl.id}
-                    onClick={() => handleSendTest(tmpl.id)}
-                  >
-                    {sendingTest === tmpl.id ? "..." : t("sendTest")}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Email Preview Modal */}

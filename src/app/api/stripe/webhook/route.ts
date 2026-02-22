@@ -4,12 +4,7 @@ import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/logger";
-import {
-  subscriptionConfirmationEmail,
-  subscriptionCanceledEmail,
-  passConfirmationEmail,
-  paymentFailedEmail,
-} from "@/lib/email-templates";
+import { renderTemplate } from "@/lib/email-renderer";
 
 const PASS_ACTIVATIONS: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; count: number }> = {
   ONE_DAY: { type: "ONE_DAY", count: 1 },
@@ -77,11 +72,12 @@ export async function POST(req: NextRequest) {
 
         const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
         if (user) {
-          await sendEmail(
-            user.email,
-            "Subscription confirmed",
-            subscriptionConfirmationEmail(user.name ?? "there", "Plus", session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "")
-          );
+          const { subject, html } = await renderTemplate("subscriptionConfirmation", {
+            userName: user.name ?? "there",
+            tier: "Plus",
+            amount: session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "",
+          });
+          await sendEmail(user.email, subject, html);
         }
         log.info("stripe/webhook", `Subscription activated for user ${userId}, status=${dbStatus}`);
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS" });
@@ -105,11 +101,12 @@ export async function POST(req: NextRequest) {
         const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
         if (user) {
           const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
-          await sendEmail(
-            user.email,
-            "Your pass is ready",
-            passConfirmationEmail(user.name ?? "there", passNames[passConfig.type], passConfig.count)
-          );
+          const { subject, html } = await renderTemplate("passConfirmation", {
+            userName: user.name ?? "there",
+            passType: passNames[passConfig.type],
+            activations: String(passConfig.count),
+          });
+          await sendEmail(user.email, subject, html);
         }
         log.info("stripe/webhook", `Pass purchased for user ${userId}: ${passConfig.type} (${passConfig.count} activations)`);
         await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count });
@@ -151,11 +148,12 @@ export async function POST(req: NextRequest) {
             where: { id: sub.id },
             data: { status: "PAST_DUE" },
           });
-          await sendEmail(
-            sub.user.email,
-            "Payment failed",
-            paymentFailedEmail(sub.user.name ?? "there")
-          );
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+          const { subject: pfSubject, html: pfHtml } = await renderTemplate("paymentFailed", {
+            userName: sub.user.name ?? "there",
+            settingsUrl: `${appUrl}/settings`,
+          });
+          await sendEmail(sub.user.email, pfSubject, pfHtml);
         }
       }
       break;
@@ -191,14 +189,11 @@ export async function POST(req: NextRequest) {
           where: { id: sub.id },
           data: { status: "CANCELED", tier: "FREE" },
         });
-        await sendEmail(
-          sub.user.email,
-          "Subscription canceled",
-          subscriptionCanceledEmail(
-            sub.user.name ?? "there",
-            new Date((subscription as any).current_period_end * 1000).toLocaleDateString()
-          )
-        );
+        const { subject: scSubject, html: scHtml } = await renderTemplate("subscriptionCanceled", {
+          userName: sub.user.name ?? "there",
+          endDate: new Date((subscription as any).current_period_end * 1000).toLocaleDateString(),
+        });
+        await sendEmail(sub.user.email, scSubject, scHtml);
         await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel" });
       }
       break;

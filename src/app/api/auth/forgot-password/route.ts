@@ -3,7 +3,7 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { passwordResetEmail } from "@/lib/email-templates";
+import { renderTemplate } from "@/lib/email-renderer";
 
 const schema = z.object({
   email: z.string().email(),
@@ -42,7 +42,8 @@ export async function POST(req: NextRequest) {
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
   const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
-  await sendEmail(email, "Reset your password", passwordResetEmail(user.name ?? "there", resetUrl));
+  const { subject, html } = await renderTemplate("passwordReset", { userName: user.name ?? "there", resetUrl });
+  await sendEmail(email, subject, html);
 
   return NextResponse.json({ message: "If an account exists, a reset link has been sent." });
 }

@@ -2,53 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute } from "@/lib/api-utils";
 import { sendEmail } from "@/lib/email";
-import {
-  verificationEmail,
-  passwordResetEmail,
-  welcomeEmail,
-  passConfirmationEmail,
-  subscriptionConfirmationEmail,
-  subscriptionCanceledEmail,
-  emailChangeConfirmation,
-  paymentFailedEmail,
-} from "@/lib/email-templates";
+import { renderTemplate } from "@/lib/email-renderer";
 
 const SAMPLE_URL = "https://example.com/action";
 const SAMPLE_NAME = "Test User";
 
-const templates: Record<string, { subject: string; html: string }> = {
-  verification: {
-    subject: "Verify your email",
-    html: verificationEmail(SAMPLE_NAME, SAMPLE_URL),
-  },
-  passwordReset: {
-    subject: "Reset your password",
-    html: passwordResetEmail(SAMPLE_NAME, SAMPLE_URL),
-  },
-  welcome: {
-    subject: "Welcome to Bonistock!",
-    html: welcomeEmail(SAMPLE_NAME),
-  },
-  passConfirmation: {
-    subject: "Your pass is ready!",
-    html: passConfirmationEmail(SAMPLE_NAME, "3-Day Pass", 3),
-  },
-  subscriptionConfirmation: {
-    subject: "Subscription confirmed",
-    html: subscriptionConfirmationEmail(SAMPLE_NAME, "Plus Monthly", "$6.99/mo"),
-  },
-  subscriptionCanceled: {
-    subject: "Subscription canceled",
-    html: subscriptionCanceledEmail(SAMPLE_NAME, "March 15, 2026"),
-  },
-  emailChange: {
-    subject: "Confirm your new email",
-    html: emailChangeConfirmation(SAMPLE_NAME, "new@example.com", SAMPLE_URL),
-  },
-  paymentFailed: {
-    subject: "Payment failed",
-    html: paymentFailedEmail(SAMPLE_NAME),
-  },
+const sampleVars: Record<string, Record<string, string>> = {
+  verification: { userName: SAMPLE_NAME, verifyUrl: SAMPLE_URL },
+  passwordReset: { userName: SAMPLE_NAME, resetUrl: SAMPLE_URL },
+  welcome: { userName: SAMPLE_NAME },
+  passConfirmation: { userName: SAMPLE_NAME, passType: "3-Day Pass", activations: "3" },
+  subscriptionConfirmation: { userName: SAMPLE_NAME, tier: "Plus Monthly", amount: "$6.99/mo" },
+  subscriptionCanceled: { userName: SAMPLE_NAME, endDate: "March 15, 2026" },
+  emailChange: { userName: SAMPLE_NAME, newEmail: "new@example.com", confirmUrl: SAMPLE_URL },
+  paymentFailed: { userName: SAMPLE_NAME, settingsUrl: SAMPLE_URL },
+  accountDeletion: { userName: SAMPLE_NAME },
 };
 
 const sendSchema = z.object({
@@ -58,11 +26,16 @@ const sendSchema = z.object({
 // GET — return rendered HTML for preview
 export async function GET(req: NextRequest) {
   const templateId = req.nextUrl.searchParams.get("template");
-  if (!templateId || !templates[templateId]) {
+  if (!templateId || !sampleVars[templateId]) {
     return NextResponse.json({ error: "Unknown template" }, { status: 400 });
   }
 
-  return NextResponse.json({ html: templates[templateId].html });
+  try {
+    const { html } = await renderTemplate(templateId, sampleVars[templateId]);
+    return NextResponse.json({ html });
+  } catch {
+    return NextResponse.json({ error: "Failed to render template" }, { status: 500 });
+  }
 }
 
 // POST — send test email to admin's address
@@ -73,8 +46,8 @@ export const POST = adminRoute(async (req, context) => {
   }
 
   const { template: templateId } = parsed.data;
-  const tmpl = templates[templateId];
-  if (!tmpl) {
+  const vars = sampleVars[templateId];
+  if (!vars) {
     return NextResponse.json({ error: "Unknown template" }, { status: 400 });
   }
 
@@ -90,7 +63,8 @@ export const POST = adminRoute(async (req, context) => {
   }
 
   try {
-    await sendEmail(user.email, `[TEST] ${tmpl.subject}`, tmpl.html);
+    const { subject, html } = await renderTemplate(templateId, vars);
+    await sendEmail(user.email, `[TEST] ${subject}`, html);
     return NextResponse.json({ message: `Test email sent to ${user.email}` });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";

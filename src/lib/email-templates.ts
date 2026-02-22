@@ -1,4 +1,4 @@
-function layout(content: string): string {
+export function layout(content: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
