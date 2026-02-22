@@ -289,8 +289,108 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 5 | Facebook OAuth | 2 | Free | Medium |
 | 6 | Stripe (Payments) | 3 | Free setup (2.9%+30c/tx) | Medium |
 | 7 | Encryption Key | 0 | N/A | Already done |
+| 8 | Finnhub (Analyst Data) | 1 | Free (60 calls/min) | Easy |
+| 9 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
 
-**Total: 11 secrets to replace across 6 services.** All free tier.
+**Total: 12 secrets to replace across 7 services.** All free tier.
+
+---
+
+## 8. Finnhub (Analyst Data Supplement) — FREE, 60 calls/min
+
+**What you need:** API key for supplementing analyst consensus data on stocks where yfinance has gaps.
+
+**Steps:**
+
+1. Go to https://finnhub.io — Sign up (free, no credit card required)
+2. **Dashboard** — Copy your **API Key**
+
+**Note:** Finnhub is optional. The Python discovery script (`scripts/discover.py`) works without it — yfinance provides the primary data. Finnhub only supplements stocks where yfinance returned 0 analyst recommendations.
+
+**Secrets to update (both envs):**
+
+| Secret | Value |
+|--------|-------|
+| `FINNHUB_API_KEY` | Your Finnhub API key |
+
+**Update command:**
+
+```bash
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183"
+
+# Dev
+$SSH "docker stack rm bonistock-dev && sleep 5"
+$SSH "docker secret rm bonistock_dev_FINNHUB_API_KEY"
+echo -n 'your-finnhub-key' | $SSH "docker secret create bonistock_dev_FINNHUB_API_KEY -"
+$SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.yml bonistock-dev"
+
+# Prod
+$SSH "docker stack rm bonistock-prod && sleep 5"
+$SSH "docker secret rm bonistock_prod_FINNHUB_API_KEY"
+echo -n 'your-finnhub-key' | $SSH "docker secret create bonistock_prod_FINNHUB_API_KEY -"
+$SSH "cd /home/deploy/bonistock-prod && docker stack deploy -c docker-stack.prod.yml bonistock-prod"
+```
+
+---
+
+## 9. yfinance (Primary Stock Data) — FREE, no API key
+
+**No setup required.** yfinance uses Yahoo Finance's public API. Just install the Python package:
+
+```bash
+pip3 install yfinance
+```
+
+This is the primary data source for the Python discovery script — provides stock screener, price targets, analyst recommendations, and company info globally (US, EU, Asia).
+
+---
+
+## Python Discovery Script — Server Setup
+
+The Python discovery script (`scripts/discover.py`) runs on the **Hetzner host** (not inside Docker). It reads DB credentials and Finnhub API key from Docker Swarm secrets via the running containers. Data is fetched once and written to both prod and dev databases in a single run.
+
+### Install Dependencies
+
+```bash
+ssh root@159.69.180.183
+pip3 install -r /home/deploy/bonistock/scripts/requirements.txt
+```
+
+### Manual Test Run
+
+```bash
+# Dry run (no DB writes, just prints results):
+python3 /home/deploy/bonistock/scripts/discover.py --dry-run
+
+# Real run (fetches data → writes to prod → copies to dev):
+python3 /home/deploy/bonistock/scripts/discover.py
+
+# Prod only (skip dev copy):
+python3 /home/deploy/bonistock/scripts/discover.py --prod-only
+```
+
+### Crontab Setup
+
+```bash
+crontab -e
+```
+
+Add this entry (single job handles both prod and dev):
+
+```cron
+# Bonistock stock discovery — daily 2 AM UTC (fetches once, writes prod + dev)
+0 2 * * * python3 /home/deploy/bonistock/scripts/discover.py >> /var/log/bonistock-discover.log 2>&1
+```
+
+### Monitor
+
+```bash
+# Check last run output:
+tail -100 /var/log/bonistock-discover.log
+
+# Check if cron ran:
+grep bonistock /var/log/syslog
+```
 
 ---
 

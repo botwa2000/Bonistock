@@ -1,10 +1,6 @@
 import cron from "node-cron";
 import { db } from "./db";
-import {
-  discoverAndPopulateStocks,
-  refreshStockData as refreshStocksViaDiscovery,
-  syncFromProd,
-} from "./stock-discovery";
+import { syncFromProd } from "./stock-discovery";
 
 export function initCronJobs(): void {
   if (process.env.STOCK_SYNC_SOURCE) {
@@ -19,25 +15,11 @@ export function initCronJobs(): void {
     });
     console.log("[cron] DEV mode: scheduled prod sync (4 AM UTC)");
   } else {
-    // PROD MODE: weekly discovery (Sunday 1 AM) + daily refresh (Mon-Sat 2 AM)
-    cron.schedule("0 1 * * 0", async () => {
-      console.log("[cron] Starting weekly stock discovery");
-      try {
-        await discoverAndPopulateStocks();
-      } catch (err) {
-        console.error("[cron] Stock discovery failed:", err);
-      }
-    });
-
-    cron.schedule("0 2 * * 1-6", async () => {
-      console.log("[cron] Starting daily stock data refresh");
-      try {
-        await refreshStocksViaDiscovery();
-      } catch (err) {
-        console.error("[cron] Stock refresh failed:", err);
-      }
-    });
-    console.log("[cron] PROD mode: scheduled discovery (Sun 1 AM) + refresh (Mon-Sat 2 AM)");
+    // PROD MODE: stock discovery handled by external Python script (scripts/discover.py)
+    // Runs daily at 2 AM UTC via system crontab on the Hetzner host.
+    // Fetches data once, writes to prod DB, then copies to dev DB automatically.
+    // Manual fallback: admin "Discover Stocks" button still calls discoverAndPopulateStocks().
+    console.log("[cron] PROD mode: stock discovery handled by external Python script");
   }
 
   // Weekly ETF data refresh — Sunday 3 AM UTC

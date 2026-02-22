@@ -108,7 +108,11 @@ export async function snapshotAllStocks(): Promise<number> {
   return count;
 }
 
-// ── Weekly Discovery (prod only) ──
+// ── Weekly Discovery (manual admin fallback) ──
+// Primary discovery is now handled by the external Python script (scripts/discover.py)
+// which runs daily via system crontab. This function remains as a manual fallback,
+// callable via the admin "Discover Stocks" button.
+//
 // Uses a curated stock universe instead of FMP screener (which is restricted on current plan).
 // Optimized for 250 calls/day budget:
 //   Phase 1: Fetch quotes for all universe symbols (gives price, name, exchange, marketCap)
@@ -328,7 +332,9 @@ export async function discoverAndPopulateStocks(): Promise<{
   return { candidates: universe.length, populated, errors };
 }
 
-// ── Daily Refresh (reuses existing pattern, for prod) ──
+// ── Daily Refresh (manual admin fallback) ──
+// Primary refresh is now handled by the external Python script (scripts/discover.py).
+// This function remains as a manual fallback for admin use.
 // Budget: ~80 stocks × 2 calls (quote + target) = 160 calls, well within 250.
 // Enriches stocks with sector="Unknown" if budget allows.
 
