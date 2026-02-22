@@ -56,10 +56,10 @@ export default function EtfDetailPage({
 
   const metrics = [
     { label: t("cagr1y"), value: `${etf.cagr1y}%`, positive: etf.cagr1y > 0 },
-    { label: t("cagr3y"), value: `${etf.cagr3y}%`, positive: etf.cagr3y > 0 },
-    { label: t("cagr5y"), value: `${etf.cagr5y}%`, positive: etf.cagr5y > 0 },
+    { label: t("cagr3y"), value: etf.cagr3y != null ? `${etf.cagr3y}%` : "N/A", positive: (etf.cagr3y ?? 0) > 0 },
+    { label: t("cagr5y"), value: etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A", positive: (etf.cagr5y ?? 0) > 0 },
     { label: t("maxDrawdown"), value: `${etf.drawdown}%`, positive: false },
-    { label: t("expenseRatio"), value: `${etf.fee}%`, positive: true },
+    { label: t("expenseRatio"), value: etf.fee != null ? `${etf.fee}%` : "N/A", positive: true },
     { label: t("sharpe"), value: etf.sharpe.toFixed(2), positive: etf.sharpe > 0.7 },
   ];
 

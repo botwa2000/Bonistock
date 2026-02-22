@@ -64,7 +64,7 @@ export async function getEtfs(filters?: EtfFilters) {
   const etfs = await db.etf.findMany({
     where,
     include: { brokerAvailability: true },
-    orderBy: { cagr5y: "desc" },
+    orderBy: [{ cagr5y: { sort: "desc", nulls: "last" } }, { cagr1y: "desc" }],
   });
 
   if (filters?.broker) {

@@ -300,10 +300,10 @@ model Etf {
   symbol      String   @unique
   name        String
   cagr1y      Float
-  cagr3y      Float
-  cagr5y      Float
+  cagr3y      Float?
+  cagr5y      Float?
   drawdown    Float
-  fee         Float
+  fee         Float?
   sharpe      Float
   theme       String
   region      String

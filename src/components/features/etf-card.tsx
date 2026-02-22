@@ -31,7 +31,7 @@ export function EtfCard({ etf }: EtfCardProps) {
               {t("cagr5y")}
             </div>
             <div className="text-base font-semibold text-emerald-300">
-              {etf.cagr5y}%
+              {etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A"}
             </div>
           </div>
           <div>
@@ -47,7 +47,7 @@ export function EtfCard({ etf }: EtfCardProps) {
               {t("expenseRatio")}
             </div>
             <div className="text-base font-semibold text-text-primary">
-              {etf.fee}%
+              {etf.fee != null ? `${etf.fee}%` : "N/A"}
             </div>
           </div>
           <div>

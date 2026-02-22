@@ -36,10 +36,10 @@ interface DbEtf {
   symbol: string;
   name: string;
   cagr1y: number;
-  cagr3y: number;
-  cagr5y: number;
+  cagr3y: number | null;
+  cagr5y: number | null;
   drawdown: number;
-  fee: number;
+  fee: number | null;
   sharpe: number;
   theme: string;
   region: string;

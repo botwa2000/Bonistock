@@ -68,10 +68,18 @@ interface EtfData {
   symbol: string;
   name: string;
   cagr1y: number;
-  cagr3y: number;
-  cagr5y: number;
-  fee: number;
+  cagr3y: number | null;
+  cagr5y: number | null;
+  fee: number | null;
   theme: string;
+}
+
+function formatCagr(value: number | null): { text: string; color: string } {
+  if (value == null) return { text: "N/A", color: "text-text-tertiary" };
+  return {
+    text: `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`,
+    color: value >= 0 ? "text-emerald-400" : "text-rose-400",
+  };
 }
 
 function EtfPreviewSection() {
@@ -103,40 +111,39 @@ function EtfPreviewSection() {
         }
       />
       <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {etfs.map((etf) => (
-          <Card key={etf.symbol} variant="glass">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-semibold text-text-primary">{etf.symbol}</span>
-                <span className="ml-2 text-xs text-text-tertiary">{etf.name}</span>
+        {etfs.map((etf) => {
+          const y1 = formatCagr(etf.cagr1y);
+          const y3 = formatCagr(etf.cagr3y);
+          const y5 = formatCagr(etf.cagr5y);
+          return (
+            <Card key={etf.symbol} variant="glass">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-semibold text-text-primary">{etf.symbol}</span>
+                  <span className="ml-2 text-xs text-text-tertiary">{etf.name}</span>
+                </div>
+                <Badge variant="accent">{etf.theme}</Badge>
               </div>
-              <Badge variant="accent">{etf.theme}</Badge>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-              <div>
-                <div className="text-text-tertiary">1Y</div>
-                <div className={`font-semibold ${etf.cagr1y >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {etf.cagr1y >= 0 ? "+" : ""}{etf.cagr1y.toFixed(1)}%
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <div>
+                  <div className="text-text-tertiary">1Y return</div>
+                  <div className={`font-semibold ${y1.color}`}>{y1.text}</div>
+                </div>
+                <div>
+                  <div className="text-text-tertiary">3Y/yr</div>
+                  <div className={`font-semibold ${y3.color}`}>{y3.text}</div>
+                </div>
+                <div>
+                  <div className="text-text-tertiary">5Y/yr</div>
+                  <div className={`font-semibold ${y5.color}`}>{y5.text}</div>
                 </div>
               </div>
-              <div>
-                <div className="text-text-tertiary">3Y</div>
-                <div className={`font-semibold ${etf.cagr3y >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {etf.cagr3y >= 0 ? "+" : ""}{etf.cagr3y.toFixed(1)}%
-                </div>
+              <div className="mt-2 text-right text-xs text-text-tertiary">
+                Fee: {etf.fee != null ? `${etf.fee.toFixed(2)}%` : "N/A"}
               </div>
-              <div>
-                <div className="text-text-tertiary">5Y</div>
-                <div className={`font-semibold ${etf.cagr5y >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {etf.cagr5y >= 0 ? "+" : ""}{etf.cagr5y.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-            <div className="mt-2 text-right text-xs text-text-tertiary">
-              Fee: {etf.fee.toFixed(2)}%
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     </section>
   );
@@ -156,9 +163,9 @@ export default function LandingPage() {
         {/* Stock Preview (show the product immediately) */}
         <section>
           <SectionHeader
-            overline="Preview"
+            overline={t("stockPreviewOverline")}
             title={t("featuresTitle")}
-            subtitle="Top 5 upside stocks — sign up to see the full list."
+            subtitle={t("stockPreviewSubtitle")}
             action={
               <Link href="/login">
                 <Button variant="secondary" size="sm">

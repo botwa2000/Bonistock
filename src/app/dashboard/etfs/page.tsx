@@ -34,7 +34,7 @@ export default function EtfsPage() {
       if (filters.theme !== "all" && e.theme !== filters.theme) return false;
       if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any))
         return false;
-      if (e.fee > filters.maxFee) return false;
+      if (e.fee != null && e.fee > filters.maxFee) return false;
       if (e.sharpe < filters.minSharpe) return false;
       return true;
     });
@@ -52,8 +52,8 @@ export default function EtfsPage() {
     <div className="space-y-6">
       <SectionHeader
         overline="ETF Explorer"
-        title="Diversified anchors for your portfolio"
-        subtitle="Top ETFs by category with key metrics. Every auto-mix includes an ETF safety anchor."
+        title="Top 100 ETFs ranked by actual returns"
+        subtitle="Sorted by how much each ETF actually returned over 1, 3, and 5 years. Updated weekly from real market data."
       />
 
       <EtfFilterBar

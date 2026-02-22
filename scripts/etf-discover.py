@@ -175,8 +175,34 @@ CATEGORY_TO_THEME = {
 }
 
 
-def map_theme(category):
-    """Map a yfinance ETF category to a human-readable theme."""
+UCITS_THEME_MAP = {
+    "VWCE.DE": "Core Global Market",
+    "IWDA.AS": "Core Global Market",
+    "XDWD.DE": "Core Global Market",
+    "CSPX.L": "Core US Market",
+    "ISAC.DE": "Core Global Market",
+    "EIMI.L": "Emerging Markets",
+    "DBXD.DE": "Germany (DAX)",
+    "VUSA.L": "Core US Market",
+    "IUSQ.DE": "Core Global Market",
+    "EUNL.DE": "Core Global Market",
+    "IS3N.DE": "Emerging Markets",
+    "IUSN.DE": "Small Cap",
+    "ZPRV.DE": "Small Cap Value",
+    "ZPRX.DE": "Europe Small Cap Value",
+    "SXR8.DE": "Core US Market",
+    "MEUD.PA": "Europe",
+}
+
+
+def map_theme(category, symbol=None):
+    """Map a yfinance ETF category to a human-readable theme.
+
+    For European UCITS ETFs, yfinance often has no category field.
+    We use a symbol-based lookup with known, factual categorizations.
+    """
+    if symbol and symbol in UCITS_THEME_MAP:
+        return UCITS_THEME_MAP[symbol]
     if not category:
         return "Other"
     for key, theme in CATEGORY_TO_THEME.items():
@@ -277,22 +303,21 @@ def fetch_etf_data(symbol):
             sharpe = 0.0
 
         # -- Expense ratio (fee) --
-        fee = info.get("expenseRatio")
-        if fee is not None and fee > 0:
-            fee = fee * 100  # yfinance returns decimal (e.g. 0.0003 -> 0.03%)
+        # yfinance may return decimal (0.0003) or percentage (0.03) or None
+        # If we can't source the real fee, store None — shown as "N/A" on frontend
+        fee_raw = info.get("expenseRatio") or info.get("annualReportExpenseRatio")
+        if fee_raw is not None and fee_raw > 0:
+            # If value < 1, it's a decimal (e.g. 0.0003 = 0.03%)
+            fee = fee_raw * 100 if fee_raw < 1 else fee_raw
         else:
-            fee = info.get("annualReportExpenseRatio")
-            if fee is not None and fee > 0:
-                fee = fee * 100
-            else:
-                fee = 0.0
+            fee = None
 
         # -- Other fields --
         name = info.get("shortName") or info.get("longName") or symbol
         exchange = info.get("exchange") or ""
         currency = info.get("currency") or "USD"
         category = info.get("category") or ""
-        theme = map_theme(category)
+        theme = map_theme(category, symbol)
         region = derive_region(exchange)
         description = (info.get("longBusinessSummary") or "")[:500]
 
@@ -303,7 +328,7 @@ def fetch_etf_data(symbol):
             "cagr3y": round(to_float(cagr3y), 2) if cagr3y is not None else None,
             "cagr5y": round(to_float(cagr5y), 2) if cagr5y is not None else None,
             "drawdown": round(to_float(drawdown), 2),
-            "fee": round(to_float(fee), 4) if fee else 0.0,
+            "fee": round(to_float(fee), 4) if fee is not None else None,
             "sharpe": round(to_float(sharpe), 2),
             "theme": theme,
             "region": region,
@@ -330,7 +355,7 @@ def rank_etfs(etfs):
             return (0, e["cagr1y"])
         return (-1, 0)
 
-    # Filter: must have at least 1Y CAGR
+    # Must have at least 1Y CAGR — no fallback for missing data
     valid = [e for e in etfs if e["cagr1y"] is not None]
     invalid = len(etfs) - len(valid)
     if invalid:
