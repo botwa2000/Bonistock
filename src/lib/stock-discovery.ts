@@ -110,8 +110,12 @@ export async function snapshotAllStocks(): Promise<number> {
 
 // ── Weekly Discovery (prod only) ──
 // Uses a curated stock universe instead of FMP screener (which is restricted on current plan).
-// Flow: fetch price targets for universe → rank by upside → fetch quotes for top picks
-// → profile+grade only for new-to-DB stocks.
+// Optimized for 250 calls/day budget:
+//   Phase 1: Fetch quotes for all universe symbols (gives price, name, exchange, marketCap)
+//   Phase 2: Fetch price targets for quoted symbols (gives upside data)
+//   Phase 3: Rank by upside, upsert top 80 into DB using quote data directly
+//   Phase 4: Enrich stocks that have sector="Unknown" with profile data (incremental)
+// Skips expensive profile+grade calls for initial population — fills in over subsequent runs.
 
 export async function discoverAndPopulateStocks(): Promise<{
   candidates: number;
@@ -126,15 +130,56 @@ export async function discoverAndPopulateStocks(): Promise<{
 
   // 1. Check which symbols already exist in DB (no API call)
   const existingStocks = await db.stock.findMany({
-    select: { symbol: true, price: true },
+    select: { symbol: true, price: true, sector: true },
   });
-  const existingMap = new Map(existingStocks.map((s) => [s.symbol, s.price]));
+  const existingMap = new Map(existingStocks.map((s) => [s.symbol, s]));
 
-  // 2. Fetch price targets for as many candidates as budget allows
-  //    ~150 calls, stop at 40 remaining to save budget for quotes+profiles
+  // 2. Fetch quotes for NEW symbols not in DB (gets price, name, exchange, marketCap)
+  //    Existing stocks already have prices, so skip them to save calls.
+  const quoteMap = new Map<string, { price: number; name: string; exchange: string; marketCap: number; priceAvg200?: number }>();
+  const newSymbols = universe.filter((s) => !existingMap.has(s));
+  console.log(`[discovery] ${existingMap.size} existing, ${newSymbols.length} new symbols to quote`);
+
+  for (const sym of newSymbols) {
+    if (getRemainingRequests() < 60) {
+      console.log(`[discovery] Saving budget for price targets, quoted ${quoteMap.size} new symbols`);
+      break;
+    }
+    try {
+      const quote = await fetchStockQuote(sym);
+      if (quote && quote.price > 0) {
+        quoteMap.set(sym, {
+          price: quote.price,
+          name: quote.name ?? sym,
+          exchange: quote.exchange ?? "",
+          marketCap: quote.marketCap ?? 0,
+          priceAvg200: quote.priceAvg200,
+        });
+      }
+    } catch {
+      errors++;
+    }
+  }
+  console.log(`[discovery] Quoted ${quoteMap.size} new symbols`);
+
+  // 3. Build candidate list: existing (use DB price) + new (use quote price)
+  //    All candidates that we have a price for.
+  const allCandidates = new Map<string, { price: number; name: string; exchange: string; marketCap: number; priceAvg200?: number; isNew: boolean }>();
+
+  for (const [sym, existing] of existingMap) {
+    allCandidates.set(sym, {
+      price: existing.price, name: "", exchange: "", marketCap: 0,
+      isNew: false,
+    });
+  }
+  for (const [sym, quote] of quoteMap) {
+    allCandidates.set(sym, { ...quote, isNew: true });
+  }
+
+  // 4. Fetch price targets for all candidates with prices
   const targetMap = new Map<string, { targetConsensus: number; targetHigh: number; targetLow: number }>();
-  for (const sym of universe) {
-    if (getRemainingRequests() < 40) {
+  for (const sym of allCandidates.keys()) {
+    if (getRemainingRequests() < 15) {
       console.log("[discovery] Rate limit approaching, stopping target fetches");
       break;
     }
@@ -147,70 +192,44 @@ export async function discoverAndPopulateStocks(): Promise<{
   }
   console.log(`[discovery] Got price targets for ${targetMap.size} symbols`);
 
-  // 3. Rank by upside using existing DB prices or fetch individual quotes
-  //    For symbols in DB: use stored price (saves calls)
-  //    For new symbols: need a quote to calculate upside
-  interface Candidate {
+  // 5. Calculate upside and rank
+  interface Ranked {
     symbol: string;
     price: number;
     target: number;
     upside: number;
-    priceAvg200?: number;
-    exchange: string;
     name: string;
+    exchange: string;
     marketCap: number;
+    priceAvg200?: number;
     isNew: boolean;
   }
-  const candidates: Candidate[] = [];
+  const ranked: Ranked[] = [];
 
   for (const [sym, pt] of targetMap) {
-    const dbPrice = existingMap.get(sym);
-    if (dbPrice && dbPrice > 0) {
-      // Use DB price — no API call needed
-      const upside = ((pt.targetConsensus - dbPrice) / dbPrice) * 100;
-      candidates.push({
-        symbol: sym, price: dbPrice, target: pt.targetConsensus,
-        upside, exchange: "", name: "", marketCap: 0, isNew: false,
+    const cand = allCandidates.get(sym);
+    if (!cand || cand.price <= 0) continue;
+    const upside = ((pt.targetConsensus - cand.price) / cand.price) * 100;
+    if (upside > 0 && upside < 200) {
+      ranked.push({
+        symbol: sym, price: cand.price, target: pt.targetConsensus,
+        upside, name: cand.name, exchange: cand.exchange,
+        marketCap: cand.marketCap, priceAvg200: cand.priceAvg200,
+        isNew: cand.isNew,
       });
-    } else {
-      // New symbol: fetch quote (1 call)
-      if (getRemainingRequests() < 30) continue;
-      try {
-        const quote = await fetchStockQuote(sym);
-        if (quote && quote.price > 0) {
-          const upside = ((pt.targetConsensus - quote.price) / quote.price) * 100;
-          candidates.push({
-            symbol: sym, price: quote.price, target: pt.targetConsensus,
-            upside, priceAvg200: quote.priceAvg200,
-            exchange: quote.exchange ?? "", name: quote.name ?? sym,
-            marketCap: quote.marketCap ?? 0, isNew: true,
-          });
-        }
-      } catch {
-        errors++;
-      }
     }
   }
 
-  // 4. Rank by upside, pick top 80
-  const ranked = candidates
-    .filter((c) => c.upside > 0 && c.upside < 200)
-    .sort((a, b) => b.upside - a.upside)
-    .slice(0, 80);
+  ranked.sort((a, b) => b.upside - a.upside);
+  const top = ranked.slice(0, 80);
+  console.log(`[discovery] Ranked ${ranked.length} total, taking top ${top.length} by upside`);
 
-  console.log(`[discovery] Ranked ${ranked.length} stocks by upside`);
-
-  // 5. Populate stocks
+  // 6. Upsert stocks into DB
   let populated = 0;
-  for (const stock of ranked) {
-    if (getRemainingRequests() < 5) {
-      console.log("[discovery] Rate limit approaching, stopping");
-      break;
-    }
-
+  for (const stock of top) {
     try {
       if (!stock.isNew) {
-        // Existing stock: just update price/target/upside (already fetched target)
+        // Existing stock: update target + upside
         await db.stock.update({
           where: { symbol: stock.symbol },
           data: {
@@ -222,59 +241,42 @@ export async function discoverAndPopulateStocks(): Promise<{
         continue;
       }
 
-      // New stock: fetch profile (1 call) + analyst consensus (1 call)
-      const [profile, consensus] = await Promise.all([
-        fetchStockProfile(stock.symbol).catch(() => null),
-        fetchAnalystConsensus(stock.symbol).catch(() => null),
-      ]);
-
-      const buys = (consensus?.strongBuy ?? 0) + (consensus?.buy ?? 0);
-      const holds = consensus?.hold ?? 0;
-      const sells = consensus?.sell ?? 0;
-      const totalAnalysts = buys + holds + sells;
-      const buyPct = totalAnalysts > 0 ? Math.round((buys / totalAnalysts) * 100) : 0;
-
-      const exchange = profile?.exchange ?? stock.exchange;
-      const mktCap = profile?.marketCap ?? stock.marketCap;
+      // New stock: create using quote data (no profile/grade calls needed)
+      const exchange = stock.exchange;
+      const mktCap = stock.marketCap;
       const upside = Math.round(stock.upside);
-
-      const whyThisPick = totalAnalysts > 0
-        ? `${totalAnalysts} analysts cover this stock with ${buyPct}% buy consensus. Target of $${Math.round(stock.target)} implies ${upside}% upside.`
-        : `Price target of $${Math.round(stock.target)} implies ${upside}% upside from current levels.`;
 
       const stockData = {
         symbol: stock.symbol,
-        name: profile?.companyName ?? stock.name,
+        name: stock.name,
         price: stock.price,
         target: stock.target,
         upside,
-        buys,
-        holds,
-        sells,
-        analysts: totalAnalysts,
-        sector: profile?.sector ?? "Unknown",
+        buys: 0,
+        holds: 0,
+        sells: 0,
+        analysts: 0,
+        sector: "Unknown",
         risk: deriveRisk(mktCap),
         horizon: "12M",
         region: deriveRegion(exchange),
         exchange,
-        currency: profile?.currency ?? "USD",
+        currency: "USD",
         dividendYield: null as number | null,
         marketCap: deriveMarketCapLabel(mktCap),
-        description: profile?.description?.slice(0, 500) ?? "",
-        whyThisPick,
+        description: "",
+        whyThisPick: `Price target of $${Math.round(stock.target)} implies ${upside}% upside from current levels.`,
         belowSma200: stock.priceAvg200 ? stock.price < stock.priceAvg200 : false,
       };
 
       const brokers = deriveBrokers(exchange);
 
-      // Upsert stock
       const upserted = await db.stock.upsert({
         where: { symbol: stock.symbol },
         update: stockData,
         create: stockData,
       });
 
-      // Set broker availability
       await db.stockBroker.deleteMany({ where: { stockId: upserted.id } });
       for (const brokerId of brokers) {
         await db.stockBroker.create({
@@ -289,7 +291,37 @@ export async function discoverAndPopulateStocks(): Promise<{
     }
   }
 
-  // 6. Save daily snapshot
+  // 7. Enrich stocks that still have sector="Unknown" (incremental, use remaining budget)
+  const unknownSector = await db.stock.findMany({
+    where: { sector: "Unknown" },
+    select: { id: true, symbol: true },
+  });
+  let enriched = 0;
+  for (const stock of unknownSector) {
+    if (getRemainingRequests() < 5) break;
+    try {
+      const profile = await fetchStockProfile(stock.symbol);
+      if (profile) {
+        await db.stock.update({
+          where: { id: stock.id },
+          data: {
+            name: profile.companyName,
+            sector: profile.sector || "Unknown",
+            currency: profile.currency,
+            exchange: profile.exchange,
+            description: profile.description?.slice(0, 500) ?? "",
+            region: deriveRegion(profile.exchange),
+          },
+        });
+        enriched++;
+      }
+    } catch {
+      // skip, will retry next run
+    }
+  }
+  if (enriched > 0) console.log(`[discovery] Enriched ${enriched} stocks with profile data`);
+
+  // 8. Save daily snapshot
   await snapshotAllStocks();
 
   console.log(`[discovery] Complete: ${populated} stocks populated, ${errors} errors`);
@@ -297,25 +329,24 @@ export async function discoverAndPopulateStocks(): Promise<{
 }
 
 // ── Daily Refresh (reuses existing pattern, for prod) ──
-// Note: batch quotes now use individual calls since FMP multi-symbol is restricted.
+// Budget: ~80 stocks × 2 calls (quote + target) = 160 calls, well within 250.
+// Enriches stocks with sector="Unknown" if budget allows.
 
 export async function refreshStockData(): Promise<void> {
-  const stocks = await db.stock.findMany({ select: { id: true, symbol: true } });
+  const stocks = await db.stock.findMany({ select: { id: true, symbol: true, sector: true } });
   console.log(`[refresh] Refreshing ${stocks.length} stocks`);
 
-  // Fetch quotes individually (batch multi-symbol is restricted on current FMP plan)
-  const quotes = await fetchBatchQuotes(stocks.map((s) => s.symbol));
-  const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
-
   for (const stock of stocks) {
-    if (getRemainingRequests() < 10) {
+    if (getRemainingRequests() < 20) {
       console.log("[refresh] FMP rate limit approaching, stopping refresh");
       break;
     }
 
     try {
-      const quote = quoteMap.get(stock.symbol);
-      const target = await fetchPriceTarget(stock.symbol);
+      const [quote, target] = await Promise.all([
+        fetchStockQuote(stock.symbol).catch(() => null),
+        fetchPriceTarget(stock.symbol).catch(() => null),
+      ]);
 
       if (quote && target) {
         await db.stock.update({
@@ -332,6 +363,33 @@ export async function refreshStockData(): Promise<void> {
       console.error(`[refresh] Failed to refresh ${stock.symbol}:`, err);
     }
   }
+
+  // Enrich stocks with missing sector data using remaining budget
+  const unknownSector = stocks.filter((s) => s.sector === "Unknown");
+  let enriched = 0;
+  for (const stock of unknownSector) {
+    if (getRemainingRequests() < 5) break;
+    try {
+      const profile = await fetchStockProfile(stock.symbol);
+      if (profile) {
+        await db.stock.update({
+          where: { id: stock.id },
+          data: {
+            name: profile.companyName,
+            sector: profile.sector || "Unknown",
+            currency: profile.currency,
+            exchange: profile.exchange,
+            description: profile.description?.slice(0, 500) ?? "",
+            region: deriveRegion(profile.exchange),
+          },
+        });
+        enriched++;
+      }
+    } catch {
+      // skip, will retry next run
+    }
+  }
+  if (enriched > 0) console.log(`[refresh] Enriched ${enriched} stocks with profile data`);
 
   // Save daily snapshot after refresh
   await snapshotAllStocks();
