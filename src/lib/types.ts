@@ -106,6 +106,7 @@ export interface User {
 export interface FaqItem {
   question: string;
   answer: string;
+  category?: string;
 }
 
 export interface Alert {

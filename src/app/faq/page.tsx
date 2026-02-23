@@ -1,27 +1,42 @@
-"use client";
+import type { Metadata } from "next";
+import messages from "../../../messages/en.json";
+import FaqPageContent from "@/components/features/faq-page-content";
 
-import { useTranslations } from "next-intl";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
-import { Container } from "@/components/ui/container";
-import { FaqSection } from "@/components/features/faq-section";
+export const metadata: Metadata = {
+  title: "FAQ — Bonistock",
+  description:
+    "Find answers about stock scores, ETF rankings, Auto-Mix, pricing, Day Passes, and how Bonistock works.",
+};
 
-export default function FaqPage() {
-  const t = useTranslations("faq");
+function FaqJsonLd() {
+  const items = messages.faq.items;
 
-  const items = t.raw("items") as { question: string; answer: string }[];
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <Container className="pb-24 pt-16" size="md">
-        <h1 className="text-3xl font-bold text-text-primary">{t("title")}</h1>
-        <p className="mt-2 text-text-secondary">{t("subtitle")}</p>
-        <div className="mt-10">
-          <FaqSection items={items} />
-        </div>
-      </Container>
-      <Footer />
-    </div>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  );
+}
+
+export default function FaqPage() {
+  return (
+    <>
+      <FaqJsonLd />
+      <FaqPageContent />
+    </>
   );
 }
