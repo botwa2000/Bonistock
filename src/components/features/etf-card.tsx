@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 
 interface EtfCardProps {
   etf: EtfPick;
+  compact?: boolean;
 }
 
-export function EtfCard({ etf }: EtfCardProps) {
+export function EtfCard({ etf, compact = false }: EtfCardProps) {
   const t = useTranslations("etf");
 
   return (
@@ -25,7 +26,7 @@ export function EtfCard({ etf }: EtfCardProps) {
           </div>
           <Badge variant="info">ETF</Badge>
         </div>
-        <div className="grid grid-cols-4 gap-2 text-sm text-text-secondary">
+        <div className={`grid gap-2 text-sm text-text-secondary ${compact ? "grid-cols-2" : "grid-cols-4"}`}>
           <div>
             <div className="text-[11px] uppercase text-text-secondary">
               {t("cagr5y")}
@@ -34,14 +35,16 @@ export function EtfCard({ etf }: EtfCardProps) {
               {etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A"}
             </div>
           </div>
-          <div>
-            <div className="text-[11px] uppercase text-text-secondary">
-              {t("maxDrawdown")}
+          {!compact && (
+            <div>
+              <div className="text-[11px] uppercase text-text-secondary">
+                {t("maxDrawdown")}
+              </div>
+              <div className="text-base font-semibold text-rose-200">
+                {etf.drawdown}%
+              </div>
             </div>
-            <div className="text-base font-semibold text-rose-200">
-              {etf.drawdown}%
-            </div>
-          </div>
+          )}
           <div>
             <div className="text-[11px] uppercase text-text-secondary">
               {t("expenseRatio")}
@@ -50,16 +53,18 @@ export function EtfCard({ etf }: EtfCardProps) {
               {etf.fee != null ? `${etf.fee}%` : "N/A"}
             </div>
           </div>
-          <div>
-            <div className="text-[11px] uppercase text-text-secondary">
-              {t("sharpe")}
+          {!compact && (
+            <div>
+              <div className="text-[11px] uppercase text-text-secondary">
+                {t("sharpe")}
+              </div>
+              <div className="text-base font-semibold text-text-primary">
+                {etf.sharpe.toFixed(2)}
+              </div>
             </div>
-            <div className="text-base font-semibold text-text-primary">
-              {etf.sharpe.toFixed(2)}
-            </div>
-          </div>
+          )}
         </div>
-        {etf.brokerAvailability && etf.brokerAvailability.length > 0 && (
+        {!compact && etf.brokerAvailability && etf.brokerAvailability.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {etf.brokerAvailability.map((b) => (
               <span

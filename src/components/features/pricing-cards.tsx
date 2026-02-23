@@ -23,6 +23,7 @@ interface Product {
   stripePriceId: string;
   highlighted: boolean;
   sortOrder: number;
+  usualPrice?: number | null;
 }
 
 function formatPrice(cents: number, interval?: "MONTH" | "YEAR" | null): string {
@@ -32,6 +33,11 @@ function formatPrice(cents: number, interval?: "MONTH" | "YEAR" | null): string 
   return `$${dollars}`;
 }
 
+function perDayRate(cents: number, days: number): string {
+  const perDay = (cents / 100 / days).toFixed(2);
+  return `$${perDay}/day`;
+}
+
 export function PricingCards() {
   const t = useTranslations("pricing");
   const router = useRouter();
@@ -39,6 +45,7 @@ export function PricingCards() {
   const [annual, setAnnual] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [buying, setBuying] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/stripe/prices")
@@ -48,11 +55,11 @@ export function PricingCards() {
   }, []);
 
   const subscriptions = products.filter((p) => p.type === "SUBSCRIPTION");
+  const passProducts = products.filter((p) => p.type === "PASS");
   const monthlyProduct = subscriptions.find((p) => p.billingInterval === "MONTH");
   const annualProduct = subscriptions.find((p) => p.billingInterval === "YEAR");
   const dbProduct = annual ? annualProduct : monthlyProduct;
 
-  // Fallback when no products exist in DB yet
   const fallbackPlus = {
     id: "fallback",
     name: "Plus",
@@ -120,7 +127,41 @@ export function PricingCards() {
     }
   };
 
-  // Free tier card (always present, not from DB)
+  const handleBuyPass = async (product: Product) => {
+    if (!isLoggedIn) {
+      router.push("/login?redirect=/pricing");
+      return;
+    }
+
+    if (!product.stripePriceId) {
+      setError("Products are not configured yet. Please contact support.");
+      return;
+    }
+
+    setError(null);
+    setBuying(product.id);
+    try {
+      const res = await fetch("/api/stripe/pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId: product.stripePriceId,
+          passType: product.passType,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error ?? "Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBuying(null);
+    }
+  };
+
   const freeTier = {
     name: "Free",
     tier: "free" as const,
@@ -134,6 +175,22 @@ export function PricingCards() {
     ],
     highlighted: false,
   };
+
+  // Compute savings for passes
+  const passesWithPerDay = passProducts.map((p) => ({
+    product: p,
+    perDay: p.passDays ? p.priceAmount / p.passDays : p.priceAmount,
+  }));
+  const maxPerDay = passesWithPerDay.length > 0 ? Math.max(...passesWithPerDay.map((w) => w.perDay)) : 0;
+  const minPerDay = passesWithPerDay.length > 0 ? Math.min(...passesWithPerDay.map((w) => w.perDay)) : 0;
+
+  // Discount calculation helper
+  const getDiscountPercent = (product: Product) => {
+    if (!product.usualPrice || product.usualPrice <= product.priceAmount) return null;
+    return Math.round((1 - product.priceAmount / product.usualPrice) * 100);
+  };
+
+  const plusDiscount = getDiscountPercent(activeProduct as Product);
 
   return (
     <div className="space-y-6">
@@ -163,7 +220,7 @@ export function PricingCards() {
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 max-w-3xl mx-auto">
+      <div className="grid gap-4 md:grid-cols-3 max-w-5xl mx-auto">
         {/* Free tier card */}
         <Card variant="glass" className="relative flex flex-col gap-4">
           <div>
@@ -184,7 +241,7 @@ export function PricingCards() {
           </Button>
         </Card>
 
-        {/* Plus tier card (from DB or fallback) */}
+        {/* Plus tier card */}
         <Card
           variant={activeProduct.highlighted ? "accent" : "glass"}
           className={`relative flex flex-col gap-4 ${activeProduct.highlighted ? "ring-2 ring-emerald-300/50" : ""}`}
@@ -201,8 +258,20 @@ export function PricingCards() {
             <h3 className="text-lg font-semibold text-text-primary">{activeProduct.name}</h3>
             <p className="text-sm text-text-secondary">{activeProduct.description}</p>
           </div>
-          <div className="text-3xl font-semibold text-text-primary">
-            {formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-semibold text-text-primary">
+                {formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
+              </span>
+              {plusDiscount && (activeProduct as Product).usualPrice && (
+                <>
+                  <span className="text-lg text-text-tertiary line-through">
+                    {formatPrice((activeProduct as Product).usualPrice!, activeProduct.billingInterval)}
+                  </span>
+                  <Badge variant="accent">{t("discount", { percent: plusDiscount })}</Badge>
+                </>
+              )}
+            </div>
           </div>
           <p className="text-xs text-emerald-400/80">{t("guarantee")}</p>
           <ul className="flex-1 space-y-2 text-sm text-text-secondary">
@@ -221,6 +290,81 @@ export function PricingCards() {
           >
             {checkingOut ? "..." : "Start Plus"}
           </Button>
+        </Card>
+
+        {/* Day Passes card */}
+        <Card variant="glass" className="relative flex flex-col gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">{t("dayPassTitle")}</h3>
+            <p className="text-sm text-text-secondary">{t("dayPassSubtitle")}</p>
+          </div>
+
+          {passProducts.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-text-tertiary">Pass products coming soon</p>
+            </div>
+          ) : (
+            <div className="flex-1 space-y-3">
+              {passProducts.map((product) => {
+                const thisPerDay = product.passDays
+                  ? product.priceAmount / product.passDays
+                  : product.priceAmount;
+                let savingsBadge: string | null = null;
+                if (thisPerDay === minPerDay && passProducts.length > 1) {
+                  savingsBadge = "Best per-day rate";
+                } else if (thisPerDay < maxPerDay) {
+                  const pct = Math.round((1 - thisPerDay / maxPerDay) * 100);
+                  if (pct > 0) savingsBadge = `Save ${pct}%`;
+                }
+
+                const passDiscount = getDiscountPercent(product);
+
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-elevated p-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-text-primary">
+                          {formatPrice(product.priceAmount)}
+                        </span>
+                        {product.usualPrice && product.usualPrice > product.priceAmount && (
+                          <span className="text-xs text-text-tertiary line-through">
+                            {formatPrice(product.usualPrice)}
+                          </span>
+                        )}
+                        {passDiscount && (
+                          <Badge variant="accent" className="text-[10px]">{passDiscount}% off</Badge>
+                        )}
+                        {savingsBadge && !passDiscount && (
+                          <Badge variant="accent" className="text-[10px]">{savingsBadge}</Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-text-secondary">{product.name}</div>
+                      {product.passDays && (
+                        <div className="text-[10px] text-text-tertiary">
+                          {perDayRate(product.priceAmount, product.passDays)}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={buying === product.id}
+                      onClick={() => handleBuyPass(product)}
+                    >
+                      {buying === product.id ? "..." : "Buy"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="text-[10px] text-text-tertiary">
+            {t("dayPassNote")}
+          </p>
         </Card>
       </div>
 

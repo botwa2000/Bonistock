@@ -13,6 +13,7 @@ const updateProductSchema = z.object({
   highlighted: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   priceAmount: z.number().int().positive().optional(),
+  usualPrice: z.number().int().min(0).nullable().optional(),
   trialDays: z.number().int().min(0).nullable().optional(),
 });
 
@@ -76,6 +77,7 @@ export const PATCH = adminRoute(async (req: NextRequest) => {
       ...(data.highlighted !== undefined && { highlighted: data.highlighted }),
       ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
       ...(data.priceAmount !== undefined && { priceAmount: data.priceAmount }),
+      ...(data.usualPrice !== undefined && { usualPrice: data.usualPrice }),
       ...(data.trialDays !== undefined && { trialDays: data.trialDays }),
       ...(newStripePriceId !== existing.stripePriceId && { stripePriceId: newStripePriceId }),
     },

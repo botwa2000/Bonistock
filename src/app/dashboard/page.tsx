@@ -108,6 +108,8 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      <p className="text-xs text-text-tertiary">{t("eodDisclaimer")}</p>
+
       <StockFilterBar
         filters={filters}
         onChange={setFilters}
@@ -148,6 +150,25 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      <Card variant="accent" className="flex items-center gap-4">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-400/20 text-lg">
+          {"\u26A1"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-text-primary">
+            {t("mixCta")}
+          </div>
+          <div className="text-xs text-text-secondary">
+            {t("mixCtaSubtitle")}
+          </div>
+        </div>
+        <Link href="/dashboard/mix">
+          <Badge variant="accent" className="cursor-pointer whitespace-nowrap">
+            Auto-Mix {"\u2192"}
+          </Badge>
+        </Link>
+      </Card>
 
       {/* History promo banner */}
       <Card variant="glass" className="flex items-center gap-4">

@@ -13,10 +13,9 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { Hero } from "@/components/features/hero";
 import { HowItWorks } from "@/components/features/how-it-works";
 import { PricingCards } from "@/components/features/pricing-cards";
-import { DayPassSection } from "@/components/features/day-pass";
 import { FaqSection } from "@/components/features/faq-section";
 import { TickerCard } from "@/components/features/ticker-card";
-import { stockPicks } from "@/lib/mock-data";
+import type { StockPick } from "@/lib/types";
 
 function ProblemSection() {
   const t = useTranslations("landing");
@@ -149,10 +148,68 @@ function EtfPreviewSection() {
   );
 }
 
+function StockPreviewSection() {
+  const t = useTranslations("landing");
+  const [stocks, setStocks] = useState<StockPick[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stocks")
+      .then((res) => res.json())
+      .then((data: StockPick[]) => {
+        if (Array.isArray(data)) setStocks(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (stocks.length === 0) return null;
+
+  const unlocked = stocks.slice(0, 3);
+  const locked = stocks.slice(3, 6);
+  const remaining = Math.max(0, stocks.length - 6);
+
+  return (
+    <section>
+      <SectionHeader
+        overline={t("stockPreviewOverline")}
+        title={t("featuresTitle")}
+        subtitle={t("stockPreviewSubtitle")}
+        action={
+          <Link href="/login">
+            <Button variant="secondary" size="sm">
+              {t("heroCta")}
+            </Button>
+          </Link>
+        }
+      />
+      <div className="relative mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {unlocked.map((pick) => (
+          <TickerCard key={pick.symbol} pick={pick} />
+        ))}
+        {locked.map((pick) => (
+          <TickerCard key={pick.symbol} pick={pick} locked />
+        ))}
+        {remaining > 0 && (
+          <Card variant="glass" className="flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <Badge variant="accent">+{remaining} more</Badge>
+              <p className="mt-2 text-sm text-text-secondary">
+                Sign up to see the full Upside List
+              </p>
+              <Link href="/login">
+                <Button size="sm" className="mt-3">
+                  {t("heroCta")}
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const t = useTranslations("landing");
-
-  const remainingStocks = stockPicks.length - 5;
 
   return (
     <div className="min-h-screen">
@@ -160,39 +217,8 @@ export default function LandingPage() {
       <Hero />
 
       <Container className="space-y-20 pb-24">
-        {/* Stock Preview (show the product immediately) */}
-        <section>
-          <SectionHeader
-            overline={t("stockPreviewOverline")}
-            title={t("featuresTitle")}
-            subtitle={t("stockPreviewSubtitle")}
-            action={
-              <Link href="/login">
-                <Button variant="secondary" size="sm">
-                  {t("heroCta")}
-                </Button>
-              </Link>
-            }
-          />
-          <div className="relative mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {stockPicks.slice(0, 5).map((pick) => (
-              <TickerCard key={pick.symbol} pick={pick} />
-            ))}
-            <Card variant="glass" className="flex items-center justify-center min-h-[200px]">
-              <div className="text-center">
-                <Badge variant="accent">+{remainingStocks} more</Badge>
-                <p className="mt-2 text-sm text-text-secondary">
-                  Sign up to see the full Upside List
-                </p>
-                <Link href="/login">
-                  <Button size="sm" className="mt-3">
-                    {t("heroCta")}
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          </div>
-        </section>
+        {/* Stock Preview (live from API) */}
+        <StockPreviewSection />
 
         {/* Why Bonistock? */}
         <section>
@@ -231,16 +257,18 @@ export default function LandingPage() {
           <div className="mt-8">
             <PricingCards />
           </div>
-          <div className="mt-8">
-            <DayPassSection />
-          </div>
         </section>
 
         {/* FAQ */}
         <section>
           <SectionHeader title={t("faqTitle")} centered />
           <div className="mt-8">
-            <FaqSection />
+            <FaqSection limit={6} />
+            <div className="mt-4 text-center">
+              <Link href="/faq" className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+                {t("seeAllFaqs")} &rarr;
+              </Link>
+            </div>
           </div>
         </section>
 

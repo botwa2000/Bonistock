@@ -19,6 +19,9 @@ export function Navbar() {
             <Link href="/pricing" className="transition-colors hover:text-text-primary">
               {t("nav.pricing")}
             </Link>
+            <Link href="/faq" className="transition-colors hover:text-text-primary">
+              {t("nav.faq")}
+            </Link>
             <Link href="/about" className="transition-colors hover:text-text-primary">
               {t("nav.about")}
             </Link>

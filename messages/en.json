@@ -24,13 +24,15 @@
     "and": "and",
     "pass": "Pass",
     "buyPass": "Get a Pass",
-    "hours": "hours"
+    "hours": "hours",
+    "close": "Close"
   },
   "nav": {
     "stocks": "Stocks",
     "etfs": "ETFs",
     "mix": "Auto-Mix",
     "pricing": "Pricing",
+    "faq": "FAQ",
     "about": "About",
     "dashboard": "Dashboard",
     "watchlist": "Watchlist",
@@ -65,7 +67,7 @@
     "step4Text": "Enter a dollar amount. Auto-Mix picks the top-scoring stocks, balances across sectors, and tells you exactly how many shares to buy.",
     "stockPreviewOverline": "Stock picks",
     "featuresTitle": "Today's top-ranked stocks by analyst consensus",
-    "stockPreviewSubtitle": "Each stock is scored by how much upside analysts see and how many agree. These are the top 5 right now — sign up to see all 200+.",
+    "stockPreviewSubtitle": "Each stock is scored by how much upside analysts see and how many agree. These are the top picks right now — sign up to see all 200+.",
     "etfTitle": "Top ETFs by actual 1/3/5 year returns",
     "etfSubtitle": "Each ETF is ranked by how much it actually returned per year. CAGR = compound annual growth rate. N/A means the ETF is too new for that time period. Updated weekly.",
     "proofTitle": "What's behind the numbers",
@@ -76,6 +78,7 @@
     "pricingTitle": "Pricing",
     "pricingSubtitle": "Free tier shows the top 5 stocks and basic ETF data. Plus unlocks the full list, detail pages, and Auto-Mix.",
     "faqTitle": "Frequently asked questions",
+    "seeAllFaqs": "See all FAQs",
     "ctaTitle": "See the full stock list and ETF rankings",
     "ctaSubtitle": "Create a free account. Browse today's top analyst picks and best-performing ETFs.",
     "ctaCta": "Create Free Account"
@@ -101,7 +104,10 @@
     "statsUpside": "Avg Upside",
     "statsAnalysts": "Avg Analysts",
     "statsStocks": "Stocks Scored",
-    "statsEtfs": "ETFs Tracked"
+    "statsEtfs": "ETFs Tracked",
+    "mixCta": "Want us to build a portfolio for you?",
+    "mixCtaSubtitle": "Auto-Mix picks top-scoring stocks and tells you exactly how many shares to buy. Try it now.",
+    "eodDisclaimer": "Prices shown are end-of-day (EOD) from the last trading session. Not real-time market data."
   },
   "stock": {
     "whyThisPick": "Why this pick",
@@ -116,6 +122,12 @@
     "risk": "Risk level",
     "horizon": "Time horizon",
     "sector": "Sector",
+    "exchange": "Exchange",
+    "dividendYield": "Dividend yield",
+    "marketCap": "Market cap",
+    "moreInfo": "More info",
+    "viewDetails": "View full details",
+    "description": "Description",
     "trendWarning": "Below 200-day moving average — analyst targets may be optimistic",
     "addToWatchlist": "Add to Watchlist",
     "addToMix": "Add to Mix",
@@ -151,7 +163,11 @@
     "balanced": "Balanced",
     "high": "High",
     "growth": "Growth",
-    "income": "Income"
+    "income": "Income",
+    "stockMix": "Stock Mix",
+    "etfMix": "ETF Mix",
+    "etfAmount": "ETF Investment Amount",
+    "etfSubtitle": "Enter your budget to get a diversified ETF allocation ranked by Sharpe ratio"
   },
   "brokers": {
     "title": "Compare Brokers",
@@ -289,11 +305,13 @@
     "popular": "Most Popular",
     "features": "Compare all features",
     "guarantee": "14-day satisfaction guarantee — not happy? Full refund, no questions asked.",
-    "dayPassTitle": "Just need a quick look?",
-    "dayPassSubtitle": "Get full Plus-level access without a subscription. Each pass gives you separate 24-hour activations to use whenever you want.",
+    "dayPassTitle": "Day Passes",
+    "dayPassSubtitle": "Full Plus-level access without a subscription. Each pass gives you separate 24-hour activations.",
     "dayPassAccess": "Full Plus access per activation (24 hours each)",
     "dayPassNote": "Passes unlock the full upside list, unlimited auto-mix, detail pages, and all filters. Watchlists and alerts require Plus.",
-    "passesPerMonth": "Max 3 individual passes per month"
+    "passesPerMonth": "Max 3 individual passes per month",
+    "usualPrice": "Usual price",
+    "discount": "{percent}% off"
   },
   "footer": {
     "product": "Product",
@@ -319,12 +337,94 @@
   },
   "about": {
     "title": "About Bonistock",
-    "mission": "Our Mission",
-    "missionText": "To democratize analyst-grade investment research for everyday investors. We believe everyone deserves access to the same data Wall Street uses — presented simply, scored transparently, and actionable in seconds.",
-    "howWeWork": "How We Work",
-    "howWeWorkText": "We aggregate analyst ratings and price targets from commercial data providers, compute a composite upside × conviction score, and present the results in a beginner-friendly interface. Our Auto-Mix engine converts any dollar amount into a diversified, risk-weighted portfolio you can execute with one click.",
-    "transparency": "Transparency First",
-    "transparencyText": "Every score, every rating, every recommendation is shown with its source data. We flag thin analyst coverage, warn about downtrend risks, and always anchor portfolios with diversified ETFs. We'd rather lose a click than your trust."
+    "mission": "What Bonistock Does",
+    "missionText": "Bonistock scores 200+ stocks nightly based on analyst consensus — aggregating price targets, buy/hold/sell ratings, and conviction strength from commercial data providers. For ETFs, we rank the top 100 by actual 1-year, 3-year, and 5-year compound annual growth rates. The result is a simple, data-driven view of what professional analysts think and how funds actually perform.",
+    "howWeWork": "How Data is Sourced",
+    "howWeWorkText": "Stock data comes from commercial financial data providers (analyst ratings, price targets, fundamentals). ETF performance data is sourced from Yahoo Finance and fund providers. Our scoring engine runs nightly, computing a composite upside × conviction score for stocks and ranking ETFs by real returns. All prices are end-of-day — not real-time.",
+    "transparency": "Transparency & Disclaimers",
+    "transparencyText": "Bonistock is an informational tool, not a financial advisor. We do not provide personalized investment advice. Every score and rating is shown with its source data. We flag thin analyst coverage, warn about downtrend risks, and always disclose data limitations. Past performance does not guarantee future results. Always do your own research.",
+    "team": "Who We Are",
+    "teamText": "Bonistock is operated by the Bonistock team, part of the Bonifatus Group, based in Bad Homburg, Germany.",
+    "contact": "Contact",
+    "contactText": "Questions or feedback? Reach us at contact@bonistock.com."
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know about Bonistock, our data, and how it works.",
+    "items": [
+      {
+        "question": "What is Bonistock?",
+        "answer": "Bonistock is a stock and ETF research tool that ranks investments using real data. Stocks are scored nightly by analyst consensus (price targets and buy/sell ratings), and ETFs are ranked by actual 1-year, 3-year, and 5-year returns. It's designed for beginner and intermediate investors who want a clear, data-driven starting point."
+      },
+      {
+        "question": "How does the stock scoring work?",
+        "answer": "Our composite score combines two factors: upside potential (the gap between the current price and the average analyst price target) and conviction strength (the ratio of buy vs sell ratings, weighted by how many analysts cover the stock). Stocks with high upside and strong buy consensus rank highest."
+      },
+      {
+        "question": "What is 'upside'?",
+        "answer": "Upside is the percentage difference between a stock's current price and its average analyst price target. For example, if a stock trades at $100 and analysts' average target is $120, the upside is 20%. It represents how much analysts collectively think the stock could gain."
+      },
+      {
+        "question": "What is 'conviction'?",
+        "answer": "Conviction measures how much analysts agree. It's calculated as (buy ratings minus sell ratings) divided by total ratings. A stock with 40 buys and 1 sell has much higher conviction than one with 15 buys and 10 sells, even if both have similar upside."
+      },
+      {
+        "question": "Where does the data come from?",
+        "answer": "Stock analyst ratings and price targets come from commercial financial data providers with display licenses. ETF performance data is sourced from Yahoo Finance and fund providers. All data is delayed (end-of-day). Our scoring engine refreshes nightly."
+      },
+      {
+        "question": "How often is the data updated?",
+        "answer": "Stock scores are refreshed every night. ETF rankings are updated weekly. Prices shown are always end-of-day (EOD) from the last trading session — they are not real-time."
+      },
+      {
+        "question": "What is Auto-Mix?",
+        "answer": "Auto-Mix is a portfolio builder. Enter a dollar amount and your risk preference, and it picks the top-scoring stocks, allocates your budget across them by weight, and tells you exactly how many shares to buy. It's a starting point — not a trade execution engine."
+      },
+      {
+        "question": "What are ETFs and why are they ranked differently?",
+        "answer": "ETFs (Exchange-Traded Funds) are baskets of stocks or bonds you can buy as a single investment. Unlike individual stocks, ETFs are ranked by actual historical returns (CAGR) rather than analyst targets, because ETF performance data is more reliable and directly measurable."
+      },
+      {
+        "question": "Is this financial advice?",
+        "answer": "No. Bonistock is an informational tool that aggregates publicly available analyst data. We do not provide personalized investment advice. Always do your own research and consult a licensed financial advisor before making investment decisions."
+      },
+      {
+        "question": "What's the difference between Free, Plus, and Day Passes?",
+        "answer": "Free shows the top 5 stocks and basic ETF data. Plus ($6.99/mo or $49.99/yr) unlocks the full 200+ stock list, unlimited Auto-Mix, stock detail pages, watchlists, alerts, and advanced filters. Day Passes give you full Plus access for 24 hours per activation — great if you only need occasional access."
+      },
+      {
+        "question": "What is a Day Pass?",
+        "answer": "A Day Pass gives you 24 hours of full Plus-level access per activation. The 1-Day Pass has 1 activation, the 3-Day Pass has 3 separate activations, and the 12-Day Pass has 12. You activate them when you want — they don't start automatically."
+      },
+      {
+        "question": "Can I cancel my subscription anytime?",
+        "answer": "Yes. Cancel anytime from your account settings. You keep access until the end of your billing period. No cancellation fees, no questions asked. We also offer a 14-day satisfaction guarantee."
+      },
+      {
+        "question": "What brokers do you support?",
+        "answer": "We show region-appropriate brokers. US users see Robinhood, Fidelity, Charles Schwab, IBKR, and Webull. German users see Trade Republic, Scalable Capital, ING, IBKR, Trading 212, and comdirect. Select your region in Settings."
+      },
+      {
+        "question": "What regions and markets are covered?",
+        "answer": "We cover US stocks (NYSE, NASDAQ), European stocks (XETRA, Euronext, London, Copenhagen), and emerging market ADRs. For ETFs, we include US-listed ETFs and UCITS-compliant European ETFs popular with Sparplan investors."
+      },
+      {
+        "question": "What does 'Below SMA 200' mean?",
+        "answer": "SMA 200 is the 200-day simple moving average — a widely used trend indicator. When a stock trades below it, it signals a potential downtrend. We flag these stocks because analyst price targets may be overly optimistic in a downtrend."
+      },
+      {
+        "question": "How does Bonistock make money?",
+        "answer": "Three ways: (1) Plus subscriptions and Day Pass purchases, (2) affiliate commissions when users open brokerage accounts through our comparison tool, and (3) clearly-labeled sponsored ETF slots. We never sell user data."
+      },
+      {
+        "question": "Is my data safe?",
+        "answer": "Yes. We use industry-standard encryption, support two-factor authentication, and comply with GDPR. You can export or delete all your data at any time from your profile settings."
+      },
+      {
+        "question": "Who operates Bonistock?",
+        "answer": "Bonistock is operated by the Bonistock team, part of the Bonifatus Group, based in Bad Homburg, Germany."
+      }
+    ]
   },
   "filters": {
     "title": "Filters",
@@ -414,6 +514,7 @@
     "productDescription": "Description",
     "productType": "Type",
     "price": "Price",
+    "usualPrice": "Usual Price ($)",
     "currency": "Currency",
     "billingInterval": "Billing Interval",
     "passType": "Pass Type",

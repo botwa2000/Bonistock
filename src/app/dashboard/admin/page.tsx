@@ -46,6 +46,7 @@ interface Product {
   features: string[] | null;
   type: "SUBSCRIPTION" | "PASS";
   priceAmount: number;
+  usualPrice: number | null;
   currency: string;
   billingInterval: "MONTH" | "YEAR" | null;
   passType: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY" | null;
@@ -107,9 +108,10 @@ export default function AdminPage() {
     name: string;
     description: string;
     priceAmount: string;
+    usualPrice: string;
     trialDays: string;
     highlighted: boolean;
-  }>({ name: "", description: "", priceAmount: "", trialDays: "", highlighted: false });
+  }>({ name: "", description: "", priceAmount: "", usualPrice: "", trialDays: "", highlighted: false });
   const [saving, setSaving] = useState(false);
 
   // Users state
@@ -132,6 +134,7 @@ export default function AdminPage() {
   const [formPassDays, setFormPassDays] = useState("");
   const [formTrialDays, setFormTrialDays] = useState("");
   const [formFeatures, setFormFeatures] = useState("");
+  const [formUsualPrice, setFormUsualPrice] = useState("");
   const [formHighlighted, setFormHighlighted] = useState(false);
 
   useEffect(() => {
@@ -225,6 +228,7 @@ export default function AdminPage() {
       name: product.name,
       description: product.description,
       priceAmount: (product.priceAmount / 100).toFixed(2),
+      usualPrice: product.usualPrice != null ? (product.usualPrice / 100).toFixed(2) : "",
       trialDays: product.trialDays != null ? String(product.trialDays) : "",
       highlighted: product.highlighted,
     });
@@ -246,6 +250,15 @@ export default function AdminPage() {
 
     if (priceInCents !== product.priceAmount) {
       body.priceAmount = priceInCents;
+    }
+
+    if (editFields.usualPrice) {
+      const usualInCents = Math.round(parseFloat(editFields.usualPrice) * 100);
+      if (!isNaN(usualInCents) && usualInCents > 0) {
+        body.usualPrice = usualInCents;
+      }
+    } else {
+      body.usualPrice = null;
     }
 
     if (product.type === "SUBSCRIPTION") {
@@ -273,6 +286,7 @@ export default function AdminPage() {
     setFormDescription("");
     setFormType("SUBSCRIPTION");
     setFormPriceAmount("");
+    setFormUsualPrice("");
     setFormCurrency("usd");
     setFormBillingInterval("MONTH");
     setFormPassType("ONE_DAY");
@@ -301,6 +315,7 @@ export default function AdminPage() {
       priceAmount: priceInCents,
       currency: formCurrency,
       highlighted: formHighlighted,
+      ...(formUsualPrice && { usualPrice: Math.round(parseFloat(formUsualPrice) * 100) }),
     };
 
     if (formType === "SUBSCRIPTION") {
@@ -692,7 +707,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-4">
                 <div>
                   <label className="block text-xs text-text-secondary mb-1">{t("price")} ($)</label>
                   <input
@@ -703,6 +718,18 @@ export default function AdminPage() {
                     value={formPriceAmount}
                     onChange={(e) => setFormPriceAmount(e.target.value)}
                     placeholder="6.99"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Usual Price ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={formUsualPrice}
+                    onChange={(e) => setFormUsualPrice(e.target.value)}
+                    placeholder="9.99"
                   />
                 </div>
                 <div>
@@ -823,6 +850,7 @@ export default function AdminPage() {
                     <th className="pb-2">{t("productName")}</th>
                     <th className="pb-2">{t("productType")}</th>
                     <th className="pb-2">{t("price")}</th>
+                    <th className="pb-2">Usual</th>
                     <th className="pb-2">{t("status")}</th>
                     <th className="pb-2">{t("actions")}</th>
                   </tr>
@@ -873,6 +901,21 @@ export default function AdminPage() {
                           />
                         ) : (
                           formatCents(product.priceAmount)
+                        )}
+                      </td>
+                      <td className="py-2 text-text-secondary">
+                        {editingProduct === product.id ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                            value={editFields.usualPrice}
+                            onChange={(e) => setEditFields((f) => ({ ...f, usualPrice: e.target.value }))}
+                            placeholder="0.00"
+                          />
+                        ) : (
+                          product.usualPrice ? formatCents(product.usualPrice) : "\u2014"
                         )}
                       </td>
                       <td className="py-2">

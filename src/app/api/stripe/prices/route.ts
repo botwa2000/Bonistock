@@ -15,6 +15,7 @@ export async function GET() {
       features: true,
       type: true,
       priceAmount: true,
+      usualPrice: true,
       currency: true,
       billingInterval: true,
       passType: true,

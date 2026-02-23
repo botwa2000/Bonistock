@@ -11,6 +11,7 @@ import { EtfFilterBar, defaultEtfFilters } from "@/components/features/filter-ba
 export default function EtfsPage() {
   const t = useTranslations("nav");
   const tf = useTranslations("filters");
+  const td = useTranslations("dashboard");
 
   const [etfs, setEtfs] = useState<EtfPick[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,8 @@ export default function EtfsPage() {
         title="Top 100 ETFs ranked by actual returns"
         subtitle="Sorted by how much each ETF actually returned over 1, 3, and 5 years. Updated weekly from real market data."
       />
+
+      <p className="text-xs text-text-tertiary">{td("eodDisclaimer")}</p>
 
       <EtfFilterBar
         filters={filters}

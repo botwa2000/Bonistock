@@ -12,11 +12,9 @@ export default function AboutPage() {
   const sections = [
     { title: t("mission"), text: t("missionText"), icon: "\uD83C\uDFAF" },
     { title: t("howWeWork"), text: t("howWeWorkText"), icon: "\u2699\uFE0F" },
-    {
-      title: t("transparency"),
-      text: t("transparencyText"),
-      icon: "\uD83D\uDD0D",
-    },
+    { title: t("transparency"), text: t("transparencyText"), icon: "\uD83D\uDD0D" },
+    { title: t("team"), text: t("teamText"), icon: "\uD83D\uDC65" },
+    { title: t("contact"), text: t("contactText"), icon: "\u2709\uFE0F" },
   ];
 
   return (

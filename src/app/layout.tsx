@@ -5,6 +5,8 @@ import { getLocale, getMessages } from "next-intl/server";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { CookieConsentBanner } from "@/components/features/cookie-consent";
+import { Analytics } from "@/components/features/analytics";
+import { InstallPrompt } from "@/components/features/install-prompt";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -26,7 +28,11 @@ export const metadata: Metadata = {
     "200+ stocks scored nightly by analyst consensus. 100+ ETFs ranked by actual 1/3/5-year returns. Free to start.",
   icons: {
     icon: "/favicon.ico",
-    apple: "/logo-icon.png",
+    apple: "/icons/icon-192.png",
+  },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
   },
 };
 
@@ -40,6 +46,10 @@ export default async function RootLayout({
 
   return (
     <html lang={locale}>
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#10b981" />
+      </head>
       <body
         className={`${spaceGrotesk.variable} ${jetBrainsMono.variable} antialiased`}
       >
@@ -48,6 +58,8 @@ export default async function RootLayout({
             <ThemeProvider>
               {children}
               <CookieConsentBanner />
+              <InstallPrompt />
+              <Analytics />
             </ThemeProvider>
           </AuthProvider>
         </NextIntlClientProvider>

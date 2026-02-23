@@ -15,6 +15,7 @@ export default function StockDetailPage({
 }) {
   const { symbol } = use(params);
   const t = useTranslations("stock");
+  const td = useTranslations("dashboard");
   const [pick, setPick] = useState<StockPick | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -97,6 +98,8 @@ export default function StockDetailPage({
           </div>
         </div>
       </div>
+
+      <p className="text-xs text-text-tertiary">{td("eodDisclaimer")}</p>
 
       {pick.belowSma200 && (
         <Card variant="outline" className="border-amber-400/30 bg-amber-400/5">

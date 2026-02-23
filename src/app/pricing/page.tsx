@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Container } from "@/components/ui/container";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PricingCards } from "@/components/features/pricing-cards";
-import { DayPassSection } from "@/components/features/day-pass";
 import { FaqSection } from "@/components/features/faq-section";
 import { PaymentToast } from "@/components/features/payment-toast";
 
@@ -26,12 +26,15 @@ export default function PricingPage() {
         />
         <PricingCards />
 
-        <DayPassSection />
-
         <section>
           <SectionHeader title={tLanding("faqTitle")} centered />
           <div className="mt-8">
-            <FaqSection />
+            <FaqSection limit={6} />
+            <div className="mt-4 text-center">
+              <Link href="/faq" className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+                {tLanding("seeAllFaqs")} &rarr;
+              </Link>
+            </div>
           </div>
         </section>
       </Container>

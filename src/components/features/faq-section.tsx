@@ -1,14 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { faqItems } from "@/lib/mock-data";
+import { faqItems as defaultItems } from "@/lib/mock-data";
+import type { FaqItem } from "@/lib/types";
 
-export function FaqSection() {
+interface FaqSectionProps {
+  items?: FaqItem[];
+  limit?: number;
+}
+
+export function FaqSection({ items, limit }: FaqSectionProps) {
   const [open, setOpen] = useState<number | null>(null);
+  const faqList = items ?? defaultItems;
+  const displayed = limit ? faqList.slice(0, limit) : faqList;
 
   return (
     <div className="mx-auto max-w-3xl space-y-2">
-      {faqItems.map((item, idx) => (
+      {displayed.map((item, idx) => (
         <div
           key={idx}
           className="rounded-xl border border-border-subtle bg-surface backdrop-blur"

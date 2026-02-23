@@ -3,18 +3,20 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import type { StockPick, RiskLevel, MixAllocation } from "@/lib/types";
+import type { StockPick, StockFilters, RiskLevel, MixAllocation } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { TickerCard } from "@/components/features/ticker-card";
+import { StockFilterBar, defaultStockFilters } from "@/components/features/filter-bar";
 
 export function AutoMix() {
   const t = useTranslations("mix");
   const [stocks, setStocks] = useState<StockPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState(500);
-  const [riskFilter, setRiskFilter] = useState<RiskLevel | "any">("any");
+  const [filters, setFilters] = useState<StockFilters>(defaultStockFilters);
 
   useEffect(() => {
     fetch("/api/stocks")
@@ -23,18 +25,41 @@ export function AutoMix() {
       .catch(() => setLoading(false));
   }, []);
 
-  const result = useMemo(() => {
-    const candidates =
-      riskFilter === "any"
-        ? stocks
-        : stocks.filter((p) => p.risk === riskFilter);
+  const sectors = useMemo(
+    () => [...new Set(stocks.map((p) => p.sector))].sort(),
+    [stocks]
+  );
 
-    const ranked = [...candidates].sort((a, b) => b.upside - a.upside);
-    const top = ranked.slice(0, 4);
-    const weightSum = top.reduce((sum, _, idx) => sum + (4 - idx), 0);
+  const filtered = useMemo(() => {
+    return stocks.filter((p) => {
+      if (filters.region !== "all" && p.region !== filters.region) return false;
+      if (filters.sector !== "all" && p.sector !== filters.sector) return false;
+      if (filters.risk !== "any" && p.risk !== filters.risk) return false;
+      if (filters.horizon !== "any" && p.horizon !== filters.horizon) return false;
+      if (filters.broker !== "any" && !p.brokerAvailability.includes(filters.broker as any)) return false;
+      if (filters.marketCap !== "any" && p.marketCap !== filters.marketCap) return false;
+      if (p.upside < filters.minUpside) return false;
+      if (p.analysts < filters.minAnalysts) return false;
+      if (p.price > filters.maxPrice) return false;
+      if (filters.dividendOnly && p.dividendYield <= 0) return false;
+      return true;
+    });
+  }, [stocks, filters]);
+
+  const result = useMemo(() => {
+    const ranked = [...filtered].sort((a, b) => b.upside - a.upside);
+
+    // Pick based on diversification: budget / avg price determines count
+    const avgPrice = ranked.length > 0 ? ranked.reduce((s, p) => s + p.price, 0) / ranked.length : 100;
+    const maxPicks = Math.min(Math.max(Math.floor(amount / avgPrice), 2), Math.min(ranked.length, 8));
+    const top = ranked.slice(0, Math.max(maxPicks, Math.min(4, ranked.length)));
+
+    if (top.length === 0) return { allocations: [], cash: amount, totalInvested: 0 };
+
+    const weightSum = top.reduce((sum, _, idx) => sum + (top.length - idx), 0);
 
     const allocations: MixAllocation[] = top.map((p, idx) => {
-      const weight = (4 - idx) / weightSum;
+      const weight = (top.length - idx) / weightSum;
       const dollars = Math.round(amount * weight * 100) / 100;
       const shares = Math.floor((dollars / p.price) * 100) / 100;
       const spend = Math.round(shares * p.price * 100) / 100;
@@ -54,10 +79,7 @@ export function AutoMix() {
     const spent = allocations.reduce((s, a) => s + a.spend, 0);
     const cash = Math.round((amount - spent) * 100) / 100;
     return { allocations, cash, totalInvested: spent };
-  }, [stocks, amount, riskFilter]);
-
-  const riskVariant = (risk: RiskLevel) =>
-    risk === "low" ? "success" : risk === "high" ? "danger" : "warning";
+  }, [filtered, amount]);
 
   if (loading) {
     return (
@@ -69,69 +91,47 @@ export function AutoMix() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-4">
-        <Card variant="glass" padding="sm" className="flex items-center gap-3">
-          <Input
-            label={t("amount")}
-            id="mix-amount"
-            type="number"
-            value={amount}
-            min={50}
-            max={10000}
-            step={50}
-            onChange={(e) => setAmount(Number(e.target.value) || 0)}
-          />
-        </Card>
-        <Card variant="glass" padding="sm" className="flex items-center gap-3">
-          <Select
-            label={t("riskPreference")}
-            id="mix-risk"
-            value={riskFilter}
-            onChange={(v) => setRiskFilter(v as RiskLevel | "any")}
-            options={[
-              { value: "any", label: t("anyRisk") },
-              { value: "low", label: t("low") },
-              { value: "balanced", label: t("balanced") },
-              { value: "high", label: t("high") },
-            ]}
-          />
-        </Card>
-      </div>
+      <Card variant="glass" padding="sm" className="flex items-center gap-3">
+        <Input
+          label={t("amount")}
+          id="mix-amount"
+          type="number"
+          value={amount}
+          min={50}
+          max={10000}
+          step={50}
+          onChange={(e) => setAmount(Number(e.target.value) || 0)}
+        />
+      </Card>
 
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-        {result.allocations.map((alloc) => (
-          <Card key={alloc.symbol} variant="dark">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-text-primary">{alloc.symbol}</span>
-              <Badge>{Math.round(alloc.weight * 100)}%</Badge>
-            </div>
-            <div className="mt-2 text-xs text-text-secondary">
-              ${alloc.price.toFixed(2)} &middot;{" "}
-              <Badge variant={riskVariant(alloc.risk)} className="text-[10px]">
-                {alloc.risk}
-              </Badge>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-text-primary">
-              <div>
-                <div className="text-[11px] uppercase text-text-secondary">
-                  {t("dollars")}
-                </div>
-                <div className="text-base font-semibold">
-                  ${alloc.dollars.toFixed(2)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] uppercase text-text-secondary">
-                  {t("shares")}
-                </div>
-                <div className="text-base font-semibold">
-                  {alloc.shares.toFixed(2)}
+      <StockFilterBar
+        filters={filters}
+        onChange={setFilters}
+        resultCount={filtered.length}
+        sectors={sectors}
+      />
+
+      {result.allocations.length === 0 ? (
+        <Card variant="glass" className="py-8 text-center">
+          <p className="text-text-secondary">No stocks match your filters. Try broadening your criteria.</p>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          {result.allocations.map((alloc) => {
+            const stock = stocks.find((s) => s.symbol === alloc.symbol);
+            return (
+              <div key={alloc.symbol} className="relative">
+                {stock && <TickerCard pick={stock} compact />}
+                <div className="mt-1 flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated/80 px-3 py-1.5 text-xs">
+                  <Badge>{Math.round(alloc.weight * 100)}%</Badge>
+                  <span className="text-text-secondary">${alloc.dollars.toFixed(2)}</span>
+                  <span className="font-semibold text-text-primary">{alloc.shares.toFixed(2)} sh</span>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       <Card
         variant="glass"

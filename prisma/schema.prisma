@@ -405,6 +405,7 @@ model Product {
   features        Json?            // string[] for subscription feature bullets
   type            ProductType      // SUBSCRIPTION or PASS
   priceAmount     Int              // cents: 699 = $6.99
+  usualPrice      Int?             // "usual" price in cents for discount display
   currency        String           @default("usd")
   billingInterval BillingInterval? // MONTH or YEAR (null for passes)
   passType        PassType?        // ONE_DAY, THREE_DAY, TWELVE_DAY (null for subs)
