@@ -34,52 +34,52 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
   if (locked) {
     return (
       <div className="relative">
-        <Card variant="glass" className="flex flex-col gap-3 select-none">
+        <Card variant="glass" className="flex flex-col gap-2 sm:gap-3 select-none">
           <div className="blur-[6px] pointer-events-none opacity-40">
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Badge className="text-xs">{getRegionFlag(pick.region)}</Badge>
-                  <Badge className="text-xs">{pick.exchange}</Badge>
-                  <Badge>{getSectorIcon(pick.sector)} {pick.sector}</Badge>
-                  <Badge>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                  <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getRegionFlag(pick.region)}</Badge>
+                  <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge>
+                  <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getSectorIcon(pick.sector)} {pick.sector}</Badge>
+                  <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                     {pick.analysts} {t("analysts")}
                   </Badge>
                 </div>
-                <h3 className="mt-2 text-lg font-semibold text-text-primary">
+                <h3 className="mt-1.5 sm:mt-2 text-sm sm:text-lg font-semibold text-text-primary truncate">
                   {pick.symbol} &middot; {pick.name}
                 </h3>
                 {!compact && (
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-xs sm:text-sm text-text-secondary">
                     $••• &middot; target $••• &middot; {pick.horizon}
                   </p>
                 )}
               </div>
-              <div className="text-right">
-                <div className="text-xs uppercase text-text-secondary">
+              <div className="text-right flex-shrink-0">
+                <div className="text-[10px] sm:text-xs uppercase text-text-secondary">
                   {t("upside")}
                 </div>
-                <div className="text-2xl font-semibold text-emerald-300">
+                <div className="text-xl sm:text-2xl font-semibold text-emerald-300">
                   +••%
                 </div>
               </div>
             </div>
 
             {!compact && (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-300" />
+              <div className="flex items-center justify-between gap-1.5 sm:gap-3 rounded-xl border border-border-subtle bg-surface-elevated px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs text-text-secondary">
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-300" />
                   •• {t("buy")}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-amber-300" />
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-amber-300" />
                   •• {t("hold")}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-rose-300" />
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-rose-300" />
                   •• {t("sell")}
                 </div>
-                <Badge variant={riskVariant}>
+                <Badge variant={riskVariant} className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                   {pick.risk} risk
                 </Badge>
               </div>
@@ -108,14 +108,14 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
   return (
     <>
       <Link href={`/dashboard/stock/${pick.symbol}`} onClick={() => hapticImpact("light")}>
-        <Card variant="glass" hover className="flex flex-col gap-3">
+        <Card variant="glass" hover className="flex flex-col gap-2 sm:gap-3">
           <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 overflow-hidden max-h-12">
-                <Badge className="text-xs">{getRegionFlag(pick.region)}</Badge>
-                <Badge className="text-xs">{pick.exchange}</Badge>
-                <Badge>{getSectorIcon(pick.sector)} {pick.sector}</Badge>
-                <Badge>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2 overflow-hidden max-h-12">
+                <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getRegionFlag(pick.region)}</Badge>
+                <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge>
+                <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getSectorIcon(pick.sector)} {pick.sector}</Badge>
+                <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                   {pick.analysts} {t("analysts")}
                 </Badge>
                 <button
@@ -124,35 +124,35 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                     e.stopPropagation();
                     setShowInfo(true);
                   }}
-                  className="flex h-5 w-5 items-center justify-center rounded-full border border-border-subtle bg-surface-elevated text-xs text-text-secondary hover:text-text-primary hover:border-emerald-400/50 transition-colors"
+                  className="flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full border border-border-subtle bg-surface-elevated text-[10px] sm:text-xs text-text-secondary hover:text-text-primary hover:border-emerald-400/50 transition-colors"
                   title={t("moreInfo")}
                 >
                   i
                 </button>
               </div>
-              <h3 className="mt-2 text-lg font-semibold text-text-primary truncate">
+              <h3 className="mt-1.5 sm:mt-2 text-sm sm:text-lg font-semibold text-text-primary truncate">
                 {pick.symbol} &middot; {pick.name}
               </h3>
               {!compact && (
-                <p className="text-sm text-text-secondary">
+                <p className="text-xs sm:text-sm text-text-secondary truncate">
                   ${pick.price.toFixed(2)} &middot; target $
                   {pick.target.toFixed(0)} &middot; {pick.horizon}
                 </p>
               )}
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-xs uppercase text-text-secondary">
+              <div className="text-[10px] sm:text-xs uppercase text-text-secondary">
                 {t("upside")}
               </div>
-              <div className="text-2xl font-semibold text-emerald-300">
+              <div className="text-xl sm:text-2xl font-semibold text-emerald-300">
                 +{pick.upside}%
               </div>
               {!compact && (
                 <>
-                  <div className="mt-1 text-xs text-text-secondary">
+                  <div className="mt-1 text-[10px] sm:text-xs text-text-secondary">
                     {t("conviction")}
                   </div>
-                  <div className="text-sm font-semibold text-text-primary">
+                  <div className="text-xs sm:text-sm font-semibold text-text-primary">
                     {(conviction * 100).toFixed(0)}%
                   </div>
                 </>
@@ -161,20 +161,20 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
           </div>
 
           {!compact && (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-300" />
+            <div className="flex items-center justify-between gap-1.5 sm:gap-3 rounded-xl border border-border-subtle bg-surface-elevated px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs text-text-secondary">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-300" />
                 {pick.buys} {t("buy")}
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-amber-300" />
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-amber-300" />
                 {pick.holds} {t("hold")}
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-rose-300" />
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-rose-300" />
                 {pick.sells} {t("sell")}
               </div>
-              <Badge variant={riskVariant}>
+              <Badge variant={riskVariant} className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                 {pick.risk} risk
               </Badge>
             </div>

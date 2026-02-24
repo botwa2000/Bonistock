@@ -195,30 +195,32 @@ export function PricingCards() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-center gap-3 text-sm text-text-secondary">
-        <button
-          className={`transition-colors ${!annual ? "text-text-primary font-semibold" : ""}`}
-          onClick={() => setAnnual(false)}
-        >
-          {t("monthly")}
-        </button>
-        <button
-          onClick={() => setAnnual(!annual)}
-          className={`relative h-6 w-11 rounded-full transition-colors ${annual ? "bg-emerald-400" : "bg-surface"}`}
-        >
-          <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${annual ? "left-[22px]" : "left-0.5"}`}
-          />
-        </button>
-        <button
-          className={`transition-colors ${annual ? "text-text-primary font-semibold" : ""}`}
-          onClick={() => setAnnual(true)}
-        >
-          {t("annual")}
-          <Badge variant="accent" className="ml-2">
-            {t("annualSave")}
-          </Badge>
-        </button>
+      <div className="sticky top-0 z-10 -mx-3 px-3 py-3 bg-background/80 backdrop-blur-lg md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:backdrop-blur-none">
+        <div className="flex items-center justify-center gap-3 text-sm text-text-secondary">
+          <button
+            className={`transition-colors ${!annual ? "text-text-primary font-semibold" : ""}`}
+            onClick={() => setAnnual(false)}
+          >
+            {t("monthly")}
+          </button>
+          <button
+            onClick={() => setAnnual(!annual)}
+            className={`relative h-6 w-11 rounded-full transition-colors ${annual ? "bg-emerald-400" : "bg-surface"}`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${annual ? "left-[22px]" : "left-0.5"}`}
+            />
+          </button>
+          <button
+            className={`transition-colors ${annual ? "text-text-primary font-semibold" : ""}`}
+            onClick={() => setAnnual(true)}
+          >
+            {t("annual")}
+            <Badge variant="accent" className="ml-2">
+              {t("annualSave")}
+            </Badge>
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 max-w-5xl mx-auto">

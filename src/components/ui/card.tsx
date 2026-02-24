@@ -22,9 +22,9 @@ const variantClasses: Record<CardVariant, string> = {
 
 const paddingClasses: Record<string, string> = {
   none: "",
-  sm: "p-3",
-  md: "p-4",
-  lg: "p-5",
+  sm: "p-2 sm:p-3",
+  md: "p-3 sm:p-4",
+  lg: "p-4 sm:p-5",
 };
 
 export function Card({
