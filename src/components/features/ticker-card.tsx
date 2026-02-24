@@ -34,7 +34,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
   if (locked) {
     return (
       <div className="relative">
-        <Card variant="glass" className="flex flex-col gap-2 sm:gap-3 select-none">
+        <Card variant="glass" className="flex flex-col gap-2 sm:gap-3 select-none overflow-hidden">
           <div className="blur-[6px] pointer-events-none opacity-40">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -108,7 +108,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
   return (
     <>
       <Link href={`/dashboard/stock/${pick.symbol}`} onClick={() => hapticImpact("light")}>
-        <Card variant="glass" hover className="flex flex-col gap-2 sm:gap-3">
+        <Card variant="glass" hover className="flex flex-col gap-2 sm:gap-3 overflow-hidden">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1 sm:gap-2 overflow-hidden max-h-12">

@@ -75,7 +75,11 @@ export default function StockDetailPage({
             {pick.belowSma200 && <Badge variant="warning">Below SMA 200</Badge>}
           </div>
           <p className="mt-1 text-lg text-text-secondary">{pick.name}</p>
-          <p className="mt-1 text-sm text-text-tertiary">{pick.sector}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-tertiary">
+            <span>{pick.sector}</span>
+            {pick.isin && <Badge variant="default">ISIN: {pick.isin}</Badge>}
+            {pick.wkn && <Badge variant="default">WKN: {pick.wkn}</Badge>}
+          </div>
         </div>
         <div className="flex items-center gap-6 text-right">
           <div>

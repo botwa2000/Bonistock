@@ -6,8 +6,7 @@ import { mapEtfToFrontend } from "@/lib/api-mappers";
 const filtersSchema = z.object({
   region: z.string().optional(),
   theme: z.string().optional(),
-  maxFee: z.coerce.number().optional(),
-  minSharpe: z.coerce.number().optional(),
+  minCagr: z.coerce.number().optional(),
   broker: z.string().optional(),
 }).strict();
 

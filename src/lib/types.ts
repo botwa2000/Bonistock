@@ -40,6 +40,8 @@ export interface StockPick {
   description: string;
   whyThisPick: string;
   belowSma200: boolean;
+  isin?: string;
+  wkn?: string;
 }
 
 export interface EtfPick {
@@ -57,6 +59,8 @@ export interface EtfPick {
   currency: string;
   brokerAvailability: BrokerId[];
   description: string;
+  isin?: string;
+  wkn?: string;
 }
 
 export interface Broker {
@@ -68,6 +72,7 @@ export interface Broker {
   minDeposit: string;
   features: string[];
   cta: string;
+  url: string;
   regions: UserRegion[];
   sparplan?: boolean;
   sparplanMin?: string;
@@ -144,7 +149,6 @@ export interface StockFilters {
 export interface EtfFilters {
   region: Region | "all";
   theme: string;
-  maxFee: number;
-  minSharpe: number;
+  minCagr: number;
   broker: BrokerId | "any";
 }

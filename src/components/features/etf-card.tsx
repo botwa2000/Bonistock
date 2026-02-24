@@ -73,7 +73,7 @@ export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) 
 
   return (
     <Link href={`/dashboard/etf/${etf.symbol}`}>
-      <Card variant="glass" hover className="flex flex-col gap-3 border-l-2 border-l-blue-400/40">
+      <Card variant="glass" hover className="flex flex-col gap-3 border-l-2 border-l-blue-400/40 overflow-hidden">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs uppercase text-text-secondary">{etf.theme}</div>

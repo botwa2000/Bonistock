@@ -51,6 +51,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "48 analysts cover NVIDIA with near-unanimous buy consensus (87.5%). The average 12-month target of $960 implies 18% upside from current levels. AI infrastructure spending continues to accelerate, and NVIDIA holds >80% market share in data center GPUs.",
     belowSma200: false,
+    isin: "US67066G1040",
+    wkn: "918422",
   },
   {
     symbol: "MSFT",
@@ -75,6 +77,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Zero sell ratings from 38 analysts signal exceptional conviction. Azure cloud growth re-accelerated with AI workloads. The Copilot suite is driving incremental revenue across Office 365. Low-risk, steady compounder.",
     belowSma200: false,
+    isin: "US5949181045",
+    wkn: "870747",
   },
   {
     symbol: "AVGO",
@@ -100,6 +104,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "VMware acquisition creates a combined hardware+software platform. Custom AI accelerator business (XPU) growing rapidly with hyperscaler customers. Strong free cash flow funds a growing dividend.",
     belowSma200: false,
+    isin: "US11135F1012",
+    wkn: "A2JG9Z",
   },
   {
     symbol: "LULU",
@@ -124,6 +130,7 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Highest upside in the list at 22%. International expansion (especially China) is an untapped growth lever. Brand loyalty drives repeat purchase rates above 90%. Recent inventory normalization positions the company for margin recovery.",
     belowSma200: false,
+    isin: "US5500211090",
   },
   {
     symbol: "SHOP",
@@ -149,6 +156,7 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Post-logistics divestiture, Shopify is now a lean, high-margin SaaS platform. Merchant solutions revenue growing 25%+ YoY. Checkout extensibility and Shop Pay adoption are deepening the moat. Higher risk due to valuation multiple.",
     belowSma200: false,
+    isin: "CA82509L1076",
   },
   {
     symbol: "MCD",
@@ -173,6 +181,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Zero sell ratings from 35 analysts. McDonald's is a defensive play with a franchise-heavy model generating consistent cash flow. Digital ordering now represents 40%+ of sales in top markets. Modest upside but very high conviction.",
     belowSma200: false,
+    isin: "US5801351017",
+    wkn: "856958",
   },
   {
     symbol: "AMZN",
@@ -198,6 +208,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Most-covered stock in our universe with 55 analysts and zero sells. AWS margin expansion, advertising revenue growth, and retail efficiency gains create a triple tailwind. Broad diversification across revenue streams reduces single-segment risk.",
     belowSma200: false,
+    isin: "US0231351067",
+    wkn: "906866",
   },
   {
     symbol: "CRWD",
@@ -222,6 +234,7 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "21% upside with strong conviction (82% buy). The Falcon platform's module adoption is expanding ARR per customer. Cybersecurity spending is recession-resistant. Post-outage recovery is ahead of expectations.",
     belowSma200: false,
+    isin: "US22788C1053",
   },
   {
     symbol: "LLY",
@@ -246,6 +259,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "GLP-1 drug Mounjaro/Zepbound is a generational revenue opportunity with $50B+ peak sales potential. Pipeline depth in Alzheimer's and oncology provides additional catalysts. Supply constraints are easing.",
     belowSma200: false,
+    isin: "US5324571083",
+    wkn: "858560",
   },
   {
     symbol: "INTC",
@@ -270,6 +285,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "High upside (28%) but low conviction — only 20% buy ratings with significant sell pressure. Foundry turnaround is a multi-year bet with uncertain execution. Included as an example of a high-upside, low-conviction pick where our scoring applies a heavy discount.",
     belowSma200: true,
+    isin: "US4581401001",
+    wkn: "855681",
   },
   // European stocks
   {
@@ -295,6 +312,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "ASML is the sole supplier of EUV lithography — every leading-edge chip on earth requires their machines. 87% buy ratings. AI-driven demand for advanced nodes is accelerating orders. Not available on Robinhood.",
     belowSma200: false,
+    isin: "NL0010273215",
+    wkn: "A1J4U4",
   },
   {
     symbol: "NOVO-B",
@@ -319,6 +338,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "GLP-1 market leader with Ozempic/Wegovy generating $30B+ in annual revenue. Obesity treatment is a multi-decade secular trend. European listing means not all US brokers carry it — IBKR and Trading 212 do, Robinhood does not.",
     belowSma200: false,
+    isin: "DK0062498333",
+    wkn: "A3EU6F",
   },
   {
     symbol: "SAP",
@@ -343,6 +364,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Cloud transition driving recurring revenue growth of 25%+ YoY. Dominant market position in enterprise ERP with high switching costs. Low risk defensive pick with steady dividend. Listed in Frankfurt — available via IBKR, T212, eToro.",
     belowSma200: false,
+    isin: "DE0007164600",
+    wkn: "716460",
   },
   // German blue-chips
   {
@@ -368,6 +391,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Siemens is Europe's largest industrial technology company. Digital Industries and Smart Infrastructure divisions benefit from factory automation and building efficiency megatrends. Strong dividend and defensive positioning.",
     belowSma200: false,
+    isin: "DE0007236101",
+    wkn: "723610",
   },
   {
     symbol: "ALV",
@@ -392,6 +417,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Zero sell ratings from 22 analysts. Allianz combines insurance premium income with asset management (PIMCO). High dividend yield of 4.1% makes it a top income pick for German investors. Low risk, steady compounder.",
     belowSma200: false,
+    isin: "DE0008404005",
+    wkn: "840400",
   },
   {
     symbol: "DTE",
@@ -416,6 +443,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "T-Mobile US drives the growth story — US mobile market share gains and free cash flow generation. European operations provide stable cash flows. Attractive dividend yield and Sparplan-friendly share price for German retail investors.",
     belowSma200: false,
+    isin: "DE0005557508",
+    wkn: "555750",
   },
   {
     symbol: "IFX",
@@ -440,6 +469,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "EV adoption and industrial automation drive demand for Infineon's power semiconductors. 24% upside with 76% buy consensus. Cyclical exposure adds risk, but secular EV/automation tailwinds support long-term thesis.",
     belowSma200: false,
+    isin: "DE0006231004",
+    wkn: "623100",
   },
   {
     symbol: "MUV2",
@@ -464,6 +495,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Munich Re is the global reinsurance leader with pricing power in a hardening market. Consistent dividend growth and share buybacks. Low-risk defensive play with steady 10% upside and 3.2% yield.",
     belowSma200: false,
+    isin: "DE0008430026",
+    wkn: "843002",
   },
   {
     symbol: "RHM",
@@ -488,6 +521,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "European defense spending surge driven by NATO 2% GDP targets and the Zeitenwende. Zero sell ratings. Order backlog growing rapidly. High upside but smaller analyst coverage. ESG-sensitive investors may avoid defense stocks.",
     belowSma200: false,
+    isin: "DE0007030009",
+    wkn: "703000",
   },
   // Emerging market stocks
   {
@@ -513,6 +548,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Zero sell ratings. TSMC manufactures the most advanced chips on earth — Apple, NVIDIA, AMD all depend on them. AI chip demand is filling capacity for years ahead. ADR trades on NYSE so available on all brokers.",
     belowSma200: false,
+    isin: "US8740391003",
+    wkn: "909800",
   },
   {
     symbol: "BABA",
@@ -537,6 +574,8 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Highest raw upside at 32%, but conviction is mixed — 67% buy with notable sell pressure. China regulatory risk is the key overhang. Cloud + AI narrative is improving. Not on Robinhood. High risk, high potential reward.",
     belowSma200: false,
+    isin: "US01609W1027",
+    wkn: "A117ME",
   },
   {
     symbol: "MELI",
@@ -561,6 +600,7 @@ export const stockPicks: StockPick[] = [
     whyThisPick:
       "Zero sell ratings from 21 analysts. Dominant e-commerce + fintech position in LatAm with Mercado Pago. E-commerce penetration in the region still below 15%, leaving long runway. High absolute price limits fractional-only brokers.",
     belowSma200: false,
+    isin: "US58733R1023",
   },
 ];
 
@@ -583,6 +623,7 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: allBrokers,
     description:
       "Tracks the entire US equity market — large, mid, small, and micro cap. The default anchor for any portfolio.",
+    isin: "US9229087690",
   },
   {
     symbol: "QQQM",
@@ -600,6 +641,7 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: allBrokers,
     description:
       "Concentrated exposure to the 100 largest non-financial NASDAQ stocks. Heavy tech/growth tilt.",
+    isin: "US46138J1016",
   },
   {
     symbol: "SCHD",
@@ -617,6 +659,7 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: usAndIbkr,
     description:
       "Focuses on high-quality dividend-paying US stocks. Lower volatility, consistent income stream.",
+    isin: "US8085247976",
   },
   {
     symbol: "VXUS",
@@ -634,6 +677,7 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: allBrokers,
     description:
       "Broad international equity exposure outside the US. Diversifies geographic risk.",
+    isin: "US9219438580",
   },
   {
     symbol: "BND",
@@ -651,6 +695,7 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: usAndIbkr,
     description:
       "US investment-grade bond exposure. Provides ballast during equity drawdowns.",
+    isin: "US9219378356",
   },
   {
     symbol: "VGT",
@@ -668,6 +713,7 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: allBrokers,
     description:
       "Pure technology sector exposure. Higher growth potential with higher concentration risk.",
+    isin: "US9229087526",
   },
   {
     symbol: "VWCE",
@@ -685,6 +731,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: euBrokers,
     description:
       "UCITS-compliant all-world equity ETF popular with European investors. Accumulating version reinvests dividends. Not available on Robinhood.",
+    isin: "IE00BK5BQT80",
+    wkn: "A2PKXG",
   },
   {
     symbol: "EIMI",
@@ -702,6 +750,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: ["ibkr", "t212"],
     description:
       "Broad emerging market exposure across large, mid, and small caps. UCITS-compliant. Only available on IBKR and Trading 212.",
+    isin: "IE00BKM4GZ66",
+    wkn: "A111X9",
   },
   {
     symbol: "CSPX",
@@ -719,6 +769,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: euBrokers,
     description:
       "UCITS-compliant S&P 500 tracker, accumulating. The European-friendly alternative to VOO/SPY. Listed in London, not available on Robinhood.",
+    isin: "IE00B5BMR087",
+    wkn: "A0YEDG",
   },
   // German UCITS ETFs
   {
@@ -737,6 +789,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: deAndT212,
     description:
       "The most popular UCITS ETF for German Sparplan investors. Tracks MSCI World (developed markets). Accumulating — no dividend tax drag in Germany.",
+    isin: "IE00B4L5Y983",
+    wkn: "A0RPWH",
   },
   {
     symbol: "XDWD",
@@ -754,6 +808,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: deAndT212,
     description:
       "DWS/Xtrackers alternative to iShares MSCI World. Slightly lower TER. Popular with Scalable Capital and Trade Republic Sparplan users.",
+    isin: "IE00BJ0KDQ92",
+    wkn: "A1XB5U",
   },
   {
     symbol: "ISAC",
@@ -771,6 +827,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: deAndT212,
     description:
       "All-Country World Index including emerging markets. Single-ETF global portfolio solution. UCITS-compliant, XETRA-listed.",
+    isin: "IE00B6R52259",
+    wkn: "A1JMDF",
   },
   {
     symbol: "DBXD",
@@ -788,6 +846,8 @@ export const etfPicks: EtfPick[] = [
     brokerAvailability: deBrokers,
     description:
       "Tracks the DAX 40 — Germany's blue-chip index. Low cost at 0.09% TER. Home-bias play for German investors. Concentrated in 40 stocks.",
+    isin: "LU0274211480",
+    wkn: "DBX1DA",
   },
 ];
 
@@ -808,6 +868,7 @@ export const brokers: Broker[] = [
       "Low margin rates",
     ],
     cta: "Open IBKR Account",
+    url: "https://www.interactivebrokers.com",
     regions: ["us", "de"],
   },
   {
@@ -824,6 +885,7 @@ export const brokers: Broker[] = [
       "EU/UK friendly",
     ],
     cta: "Open Trading 212",
+    url: "https://www.trading212.com",
     regions: ["us", "de"],
     sparplan: true,
     sparplanMin: "€1",
@@ -842,6 +904,7 @@ export const brokers: Broker[] = [
       "US stocks only",
     ],
     cta: "Open Robinhood",
+    url: "https://robinhood.com",
     regions: ["us"],
   },
   {
@@ -858,6 +921,7 @@ export const brokers: Broker[] = [
       "Global access",
     ],
     cta: "Open eToro Account",
+    url: "https://www.etoro.com",
     regions: ["us", "de"],
   },
   // US brokers
@@ -875,6 +939,7 @@ export const brokers: Broker[] = [
       "No account minimums",
     ],
     cta: "Open Fidelity Account",
+    url: "https://www.fidelity.com",
     regions: ["us"],
   },
   {
@@ -891,6 +956,7 @@ export const brokers: Broker[] = [
       "24/7 customer service",
     ],
     cta: "Open Schwab Account",
+    url: "https://www.schwab.com",
     regions: ["us"],
   },
   {
@@ -907,6 +973,7 @@ export const brokers: Broker[] = [
       "Paper trading",
     ],
     cta: "Open Webull Account",
+    url: "https://www.webull.com",
     regions: ["us"],
   },
   // German brokers
@@ -924,6 +991,7 @@ export const brokers: Broker[] = [
       "German BaFin regulated",
     ],
     cta: "Open Trade Republic",
+    url: "https://traderepublic.com",
     regions: ["de"],
     sparplan: true,
     sparplanMin: "€1",
@@ -942,6 +1010,7 @@ export const brokers: Broker[] = [
       "German BaFin regulated",
     ],
     cta: "Open Scalable Capital",
+    url: "https://www.scalable.capital",
     regions: ["de"],
     sparplan: true,
     sparplanMin: "€1",
@@ -960,6 +1029,7 @@ export const brokers: Broker[] = [
       "Wide ETF selection",
     ],
     cta: "Open ING Depot",
+    url: "https://www.ing.de/wertpapiere/direkt-depot/",
     regions: ["de"],
     sparplan: true,
     sparplanMin: "€1",
@@ -978,6 +1048,7 @@ export const brokers: Broker[] = [
       "comdirect community",
     ],
     cta: "Open comdirect Depot",
+    url: "https://www.comdirect.de/depot/",
     regions: ["de"],
     sparplan: true,
     sparplanMin: "€25",

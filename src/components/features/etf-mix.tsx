@@ -45,8 +45,10 @@ export function EtfMix() {
       if (filters.theme !== "all" && e.theme !== filters.theme) return false;
       if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any))
         return false;
-      if (e.fee != null && e.fee > filters.maxFee) return false;
-      if (e.sharpe < filters.minSharpe) return false;
+      if (filters.minCagr > 0) {
+        const cagr = e.cagr5y ?? e.cagr1y ?? 0;
+        if (cagr < filters.minCagr) return false;
+      }
       return true;
     });
 
@@ -106,8 +108,10 @@ export function EtfMix() {
           if (filters.region !== "all" && e.region !== filters.region) return false;
           if (filters.theme !== "all" && e.theme !== filters.theme) return false;
           if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any)) return false;
-          if (e.fee != null && e.fee > filters.maxFee) return false;
-          if (e.sharpe < filters.minSharpe) return false;
+          if (filters.minCagr > 0) {
+            const cagr = e.cagr5y ?? e.cagr1y ?? 0;
+            if (cagr < filters.minCagr) return false;
+          }
           return true;
         }).length}
         themes={themes}

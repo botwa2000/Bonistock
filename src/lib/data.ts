@@ -16,8 +16,7 @@ export interface StockFilters {
 export interface EtfFilters {
   region?: string;
   theme?: string;
-  maxFee?: number;
-  minSharpe?: number;
+  minCagr?: number;
   broker?: string;
 }
 
@@ -58,8 +57,7 @@ export async function getEtfs(filters?: EtfFilters) {
   const where: Record<string, unknown> = {};
   if (filters?.region && filters.region !== "all") where.region = filters.region;
   if (filters?.theme && filters.theme !== "all") where.theme = filters.theme;
-  if (filters?.maxFee) where.fee = { lte: filters.maxFee };
-  if (filters?.minSharpe) where.sharpe = { gte: filters.minSharpe };
+  if (filters?.minCagr) where.cagr5y = { gte: filters.minCagr };
 
   const etfs = await db.etf.findMany({
     where,

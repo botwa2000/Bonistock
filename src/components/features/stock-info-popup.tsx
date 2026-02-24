@@ -76,6 +76,22 @@ export function StockInfoPopup({ pick, onClose }: StockInfoPopupProps) {
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
+              <div className="text-xs uppercase text-text-secondary">Ticker</div>
+              <div className="text-sm font-semibold text-text-primary">{pick.symbol}</div>
+            </div>
+            {pick.isin && (
+              <div>
+                <div className="text-xs uppercase text-text-secondary">ISIN</div>
+                <div className="text-sm font-semibold text-text-primary">{pick.isin}</div>
+              </div>
+            )}
+            {pick.wkn && (
+              <div>
+                <div className="text-xs uppercase text-text-secondary">WKN</div>
+                <div className="text-sm font-semibold text-text-primary">{pick.wkn}</div>
+              </div>
+            )}
+            <div>
               <div className="text-xs uppercase text-text-secondary">{t("dividendYield")}</div>
               <div className="text-sm font-semibold text-text-primary">
                 {pick.dividendYield > 0 ? `${pick.dividendYield.toFixed(2)}%` : "N/A"}

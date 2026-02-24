@@ -17,6 +17,7 @@ interface StockFilterBarProps {
   onChange: (filters: StockFilters) => void;
   resultCount: number;
   sectors: string[];
+  maxUpside?: number;
 }
 
 const defaultStockFilters: StockFilters = {
@@ -25,7 +26,7 @@ const defaultStockFilters: StockFilters = {
   risk: "any",
   horizon: "any",
   minUpside: 0,
-  minAnalysts: 3,
+  minAnalysts: 0,
   maxPrice: 10000,
   broker: "any",
   marketCap: "any",
@@ -39,6 +40,7 @@ export function StockFilterBar({
   onChange,
   resultCount,
   sectors,
+  maxUpside = 35,
 }: StockFilterBarProps) {
   const t = useTranslations("filters");
   const { user } = useAuth();
@@ -183,26 +185,10 @@ export function StockFilterBar({
                 id="filter-upside"
                 type="range"
                 min={0}
-                max={40}
+                max={maxUpside}
                 step={1}
                 value={filters.minUpside}
                 onChange={(e) => set("minUpside", Number(e.target.value))}
-                className="mt-1 w-full accent-emerald-400"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-text-secondary" htmlFor="filter-analysts">
-                {t("minAnalysts")} ({filters.minAnalysts})
-              </label>
-              <input
-                id="filter-analysts"
-                type="range"
-                min={3}
-                max={50}
-                step={1}
-                value={filters.minAnalysts}
-                onChange={(e) => set("minAnalysts", Number(e.target.value))}
                 className="mt-1 w-full accent-emerald-400"
               />
             </div>
@@ -252,13 +238,13 @@ interface EtfFilterBarProps {
   onChange: (filters: EtfFilters) => void;
   resultCount: number;
   themes: string[];
+  maxCagr?: number;
 }
 
 const defaultEtfFilters: EtfFilters = {
   region: "all",
   theme: "all",
-  maxFee: 1,
-  minSharpe: 0,
+  minCagr: 0,
   broker: "any",
 };
 
@@ -269,6 +255,7 @@ export function EtfFilterBar({
   onChange,
   resultCount,
   themes,
+  maxCagr = 20,
 }: EtfFilterBarProps) {
   const t = useTranslations("filters");
   const { user } = useAuth();
@@ -365,33 +352,17 @@ export function EtfFilterBar({
             />
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-text-secondary" htmlFor="etf-filter-fee">
-                {t("maxFee")} ({filters.maxFee}%)
+              <label className="text-xs text-text-secondary" htmlFor="etf-filter-cagr">
+                {t("minCagr")} ({filters.minCagr}%)
               </label>
               <input
-                id="etf-filter-fee"
+                id="etf-filter-cagr"
                 type="range"
                 min={0}
-                max={1}
-                step={0.01}
-                value={filters.maxFee}
-                onChange={(e) => set("maxFee", Number(e.target.value))}
-                className="mt-1 w-full accent-emerald-400"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-text-secondary" htmlFor="etf-filter-sharpe">
-                {t("minSharpe")} ({filters.minSharpe.toFixed(1)})
-              </label>
-              <input
-                id="etf-filter-sharpe"
-                type="range"
-                min={0}
-                max={1.5}
-                step={0.1}
-                value={filters.minSharpe}
-                onChange={(e) => set("minSharpe", Number(e.target.value))}
+                max={maxCagr}
+                step={1}
+                value={filters.minCagr}
+                onChange={(e) => set("minCagr", Number(e.target.value))}
                 className="mt-1 w-full accent-emerald-400"
               />
             </div>

@@ -60,7 +60,6 @@ export default function DashboardPage() {
       if (filters.marketCap !== "any" && p.marketCap !== filters.marketCap)
         return false;
       if (p.upside < filters.minUpside) return false;
-      if (p.analysts < filters.minAnalysts) return false;
       if (p.price > filters.maxPrice) return false;
       if (filters.dividendOnly && p.dividendYield <= 0) return false;
       return true;
@@ -71,6 +70,8 @@ export default function DashboardPage() {
     stocks.length > 0 ? stocks.reduce((sum, p) => sum + p.upside, 0) / stocks.length : 0;
   const avgAnalysts =
     stocks.length > 0 ? stocks.reduce((sum, p) => sum + p.analysts, 0) / stocks.length : 0;
+  const maxUpside =
+    stocks.length > 0 ? Math.max(...stocks.map((p) => p.upside)) : 35;
 
   if (loading) {
     return (
@@ -115,6 +116,7 @@ export default function DashboardPage() {
         onChange={setFilters}
         resultCount={filtered.length}
         sectors={sectors}
+        maxUpside={maxUpside}
       />
 
       <SectionHeader

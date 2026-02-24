@@ -176,14 +176,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar — hidden on mobile, slide-in when open */}
       <aside
-        className={`fixed top-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border-subtle bg-surface-elevated transition-transform duration-200 lg:sticky lg:translate-x-0 lg:flex-shrink-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border-subtle bg-[#111111] lg:bg-surface-elevated transition-transform duration-200 lg:sticky lg:translate-x-0 lg:flex-shrink-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -200,7 +200,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {sidebarContent}
       </aside>
 
-      <main className="flex-1 overflow-y-auto pt-12 lg:pt-0">
+      <main className="flex-1 min-w-0 overflow-y-auto pt-12 lg:pt-0">
         <div className="p-4 md:p-6 lg:p-8">{children}</div>
       </main>
     </div>

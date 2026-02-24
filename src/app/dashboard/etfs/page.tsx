@@ -36,14 +36,21 @@ export default function EtfsPage() {
     [etfs]
   );
 
+  const maxCagr = useMemo(
+    () => etfs.length > 0 ? Math.max(...etfs.map((e) => e.cagr5y ?? e.cagr1y ?? 0)) : 20,
+    [etfs]
+  );
+
   const filtered = useMemo(() => {
     return etfs.filter((e) => {
       if (filters.region !== "all" && e.region !== filters.region) return false;
       if (filters.theme !== "all" && e.theme !== filters.theme) return false;
       if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any))
         return false;
-      if (e.fee != null && e.fee > filters.maxFee) return false;
-      if (e.sharpe < filters.minSharpe) return false;
+      if (filters.minCagr > 0) {
+        const cagr = e.cagr5y ?? e.cagr1y ?? 0;
+        if (cagr < filters.minCagr) return false;
+      }
       return true;
     });
   }, [etfs, filters]);
@@ -79,6 +86,7 @@ export default function EtfsPage() {
         onChange={setFilters}
         resultCount={filtered.length}
         themes={themes}
+        maxCagr={Math.ceil(maxCagr)}
       />
 
       {filtered.length === 0 ? (

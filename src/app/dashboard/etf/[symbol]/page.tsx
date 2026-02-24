@@ -79,7 +79,11 @@ export default function EtfDetailPage({
             <Badge variant="info">ETF</Badge>
           </div>
           <p className="mt-1 text-lg text-text-secondary">{etf.name}</p>
-          <Badge className="mt-2">{etf.theme}</Badge>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge>{etf.theme}</Badge>
+            {etf.isin && <Badge variant="default">ISIN: {etf.isin}</Badge>}
+            {etf.wkn && <Badge variant="default">WKN: {etf.wkn}</Badge>}
+          </div>
         </div>
       </div>
 

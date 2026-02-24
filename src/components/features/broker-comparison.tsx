@@ -60,9 +60,11 @@ export function BrokerComparison() {
                 </li>
               ))}
             </ul>
-            <Button variant="secondary" size="sm" className="mt-auto">
-              {broker.cta}
-            </Button>
+            <a href={broker.url} target="_blank" rel="noopener noreferrer" className="mt-auto">
+              <Button variant="secondary" size="sm" fullWidth>
+                {broker.cta}
+              </Button>
+            </a>
           </Card>
         ))}
       </div>

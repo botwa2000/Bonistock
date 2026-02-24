@@ -39,7 +39,6 @@ export function AutoMix() {
       if (filters.broker !== "any" && !p.brokerAvailability.includes(filters.broker as any)) return false;
       if (filters.marketCap !== "any" && p.marketCap !== filters.marketCap) return false;
       if (p.upside < filters.minUpside) return false;
-      if (p.analysts < filters.minAnalysts) return false;
       if (p.price > filters.maxPrice) return false;
       if (filters.dividendOnly && p.dividendYield <= 0) return false;
       return true;
