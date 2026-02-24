@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 const CONSENT_KEY = "bonistock_cookie_consent";
+const CONSENT_COOKIE = "bonistock_cc";
 const CONSENT_VERSION = "1";
 
 interface CookieConsent {
@@ -14,12 +15,19 @@ interface CookieConsent {
   timestamp: string;
 }
 
+function hasConsentCookie(): boolean {
+  return document.cookie.split(";").some((c) => c.trim().startsWith(`${CONSENT_COOKIE}=`));
+}
+
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
+    // Check both localStorage and cookie — if either exists, don't show banner
+    if (hasConsentCookie()) return;
+
     const stored = localStorage.getItem(CONSENT_KEY);
     if (!stored) {
       setVisible(true);
@@ -37,6 +45,8 @@ export function CookieConsentBanner() {
 
   const save = (consent: CookieConsent) => {
     localStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
+    // Set a regular cookie as backup for browsers that clear localStorage
+    document.cookie = `${CONSENT_COOKIE}=1; max-age=31536000; path=/; SameSite=Lax`;
     setVisible(false);
 
     // If user is logged in, persist to DB

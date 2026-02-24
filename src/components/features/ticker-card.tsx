@@ -110,7 +110,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
         <Card variant="glass" hover className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 overflow-hidden max-h-12">
                 <Badge className="text-xs">{getRegionFlag(pick.region)}</Badge>
                 <Badge className="text-xs">{pick.exchange}</Badge>
                 <Badge>{getSectorIcon(pick.sector)} {pick.sector}</Badge>
@@ -129,7 +129,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                   i
                 </button>
               </div>
-              <h3 className="mt-2 text-lg font-semibold text-text-primary">
+              <h3 className="mt-2 text-lg font-semibold text-text-primary truncate">
                 {pick.symbol} &middot; {pick.name}
               </h3>
               {!compact && (
@@ -139,7 +139,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                 </p>
               )}
             </div>
-            <div className="text-right">
+            <div className="text-right flex-shrink-0">
               <div className="text-xs uppercase text-text-secondary">
                 {t("upside")}
               </div>
@@ -176,19 +176,6 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
               <Badge variant={riskVariant}>
                 {pick.risk} risk
               </Badge>
-            </div>
-          )}
-
-          {!compact && pick.brokerAvailability && pick.brokerAvailability.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {pick.brokerAvailability.map((b) => (
-                <span
-                  key={b}
-                  className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-tertiary"
-                >
-                  {b === "ibkr" ? "IBKR" : b === "t212" ? "T212" : b === "robinhood" ? "RH" : "eToro"}
-                </span>
-              ))}
             </div>
           )}
 

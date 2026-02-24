@@ -95,6 +95,22 @@ export function StockInfoPopup({ pick, onClose }: StockInfoPopupProps) {
             </div>
           </div>
 
+          {pick.brokerAvailability && pick.brokerAvailability.length > 0 && (
+            <div>
+              <h3 className="text-xs uppercase text-text-secondary">{t("brokerAvailability")}</h3>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {pick.brokerAvailability.map((b) => (
+                  <span
+                    key={b}
+                    className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-tertiary"
+                  >
+                    {b === "ibkr" ? "IBKR" : b === "t212" ? "T212" : b === "robinhood" ? "RH" : b === "etoro" ? "eToro" : b === "fidelity" ? "Fidelity" : b === "schwab" ? "Schwab" : b === "webull" ? "Webull" : b === "traderepublic" ? "Trade Republic" : b === "scalable" ? "Scalable" : b === "ing" ? "ING" : b === "comdirect" ? "comdirect" : b}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Link href={`/dashboard/stock/${pick.symbol}`} className="flex-1">
               <Button fullWidth>{t("viewDetails")}</Button>

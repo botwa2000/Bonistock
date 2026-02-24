@@ -168,7 +168,13 @@ function LoginContent() {
                   type="button"
                   variant="secondary"
                   fullWidth
-                  onClick={loginWithGoogle}
+                  onClick={async () => {
+                    try {
+                      await loginWithGoogle();
+                    } catch {
+                      setError("Sign-in failed. Please check your connection and try again.");
+                    }
+                  }}
                 >
                   <GoogleIcon /> <span className="ml-2">Continue with Google</span>
                 </Button>
@@ -176,7 +182,13 @@ function LoginContent() {
                   type="button"
                   variant="secondary"
                   fullWidth
-                  onClick={loginWithFacebook}
+                  onClick={async () => {
+                    try {
+                      await loginWithFacebook();
+                    } catch {
+                      setError("Sign-in failed. Please check your connection and try again.");
+                    }
+                  }}
                 >
                   <FacebookIcon /> <span className="ml-2">Continue with Facebook</span>
                 </Button>
@@ -242,6 +254,10 @@ function LoginContent() {
             &larr; Back to home
           </Link>
         </div>
+
+        <p className="text-center text-xs text-text-tertiary leading-relaxed">
+          {t("privacyNote")}
+        </p>
       </div>
     </div>
   );

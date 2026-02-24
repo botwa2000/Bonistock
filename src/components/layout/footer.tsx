@@ -13,8 +13,8 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <Logo size="sm" />
-            <p className="mt-3 text-xs text-text-tertiary">
-              {t("footer.disclaimer")}
+            <p className="mt-3 text-xs text-text-tertiary leading-relaxed">
+              {t("footer.disclaimerFull")}
             </p>
           </div>
 

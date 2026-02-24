@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
+import { notifyAdmins } from "@/lib/admin-notify";
 
 const PASS_ACTIVATIONS: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; count: number }> = {
   ONE_DAY: { type: "ONE_DAY", count: 1 },
@@ -86,6 +87,10 @@ export async function POST(req: NextRequest) {
         }
         log.info("stripe/webhook", `Subscription activated for user ${userId}, status=${dbStatus}`);
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS" });
+        notifyAdmins(
+          "New Plus subscription",
+          `<h2>New Plus Subscription</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Amount:</strong> ${session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "N/A"}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+        );
       } else if (session.mode === "payment") {
         const passTypeKey = session.metadata?.passType;
         if (!passTypeKey) break;
@@ -115,6 +120,11 @@ export async function POST(req: NextRequest) {
         }
         log.info("stripe/webhook", `Pass purchased for user ${userId}: ${passConfig.type} (${passConfig.count} activations)`);
         await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count });
+        const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
+        notifyAdmins(
+          `Day Pass purchased: ${passNames[passConfig.type]}`,
+          `<h2>Day Pass Purchased</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+        );
       }
       break;
     }
@@ -210,6 +220,10 @@ export async function POST(req: NextRequest) {
         });
         await sendEmail(sub.user.email, scSubject, scHtml);
         await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel" });
+        notifyAdmins(
+          "Subscription canceled",
+          `<h2>Subscription Canceled</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+        );
       }
       break;
     }

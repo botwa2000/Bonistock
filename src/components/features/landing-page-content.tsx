@@ -99,8 +99,9 @@ function InvestmentPreviewSection() {
   if (stocks.length === 0 && etfs.length === 0) return null;
 
   const unlockedStocks = stocks.slice(0, 2);
+  const lockedStocks = stocks.slice(2, 4);
   const unlockedEtfs = etfs.slice(0, 2);
-  const lockedStock = stocks[2];
+  const lockedEtfs = etfs.slice(2, 4);
 
   return (
     <section>
@@ -116,67 +117,119 @@ function InvestmentPreviewSection() {
           </Link>
         }
       />
-      <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {/* 2 unlocked stock cards */}
-        {unlockedStocks.map((pick) => (
-          <TickerCard key={pick.symbol} pick={pick} />
-        ))}
 
-        {/* 2 unlocked ETF cards */}
-        {unlockedEtfs.map((etf) => {
-          const y1 = formatCagr(etf.cagr1y);
-          const y3 = formatCagr(etf.cagr3y);
-          const y5 = formatCagr(etf.cagr5y);
-          return (
-            <Card key={etf.symbol} variant="glass">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-semibold text-text-primary">{etf.symbol}</span>
-                  <span className="ml-2 text-xs text-text-tertiary">{etf.name}</span>
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        {/* Stocks column */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary">{t("stockSectionTitle")}</h3>
+            <p className="mt-0.5 text-xs text-text-secondary">{t("stockSectionSubtitle")}</p>
+          </div>
+          {unlockedStocks.map((pick) => (
+            <TickerCard key={pick.symbol} pick={pick} compact />
+          ))}
+          {lockedStocks.map((pick) => (
+            <TickerCard key={pick.symbol} pick={pick} locked />
+          ))}
+        </div>
+
+        {/* ETFs column */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary">{t("etfSectionTitle")}</h3>
+            <p className="mt-0.5 text-xs text-text-secondary">{t("etfSectionSubtitle")}</p>
+          </div>
+          {unlockedEtfs.map((etf) => {
+            const y1 = formatCagr(etf.cagr1y);
+            const y3 = formatCagr(etf.cagr3y);
+            const y5 = formatCagr(etf.cagr5y);
+            return (
+              <Card key={etf.symbol} variant="glass" className="border-l-2 border-l-blue-400/40">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-semibold text-text-primary">{etf.symbol}</span>
+                    <span className="ml-2 text-xs text-text-tertiary">{etf.name}</span>
+                  </div>
+                  <Badge variant="accent">{etf.theme}</Badge>
                 </div>
-                <Badge variant="accent">{etf.theme}</Badge>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div>
+                    <div className="text-text-tertiary">1Y return</div>
+                    <div className={`font-semibold ${y1.color}`}>{y1.text}</div>
+                  </div>
+                  <div>
+                    <div className="text-text-tertiary">3Y/yr</div>
+                    <div className={`font-semibold ${y3.color}`}>{y3.text}</div>
+                  </div>
+                  <div>
+                    <div className="text-text-tertiary">5Y/yr</div>
+                    <div className={`font-semibold ${y5.color}`}>{y5.text}</div>
+                  </div>
+                </div>
+                <div className="mt-2 text-right text-xs text-text-tertiary">
+                  Fee: {etf.fee != null ? `${etf.fee.toFixed(2)}%` : "N/A"}
+                </div>
+              </Card>
+            );
+          })}
+          {lockedEtfs.map((etf) => (
+            <Card key={etf.symbol} variant="glass" className="relative select-none border-l-2 border-l-blue-400/40">
+              <div className="blur-[6px] pointer-events-none opacity-40">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-semibold text-text-primary">{etf.symbol}</span>
+                    <span className="ml-2 text-xs text-text-tertiary">{etf.name}</span>
+                  </div>
+                  <Badge variant="accent">{etf.theme}</Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div>
+                    <div className="text-text-tertiary">1Y return</div>
+                    <div className="font-semibold text-emerald-400">+••%</div>
+                  </div>
+                  <div>
+                    <div className="text-text-tertiary">3Y/yr</div>
+                    <div className="font-semibold text-emerald-400">+••%</div>
+                  </div>
+                  <div>
+                    <div className="text-text-tertiary">5Y/yr</div>
+                    <div className="font-semibold text-emerald-400">+••%</div>
+                  </div>
+                </div>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                <div>
-                  <div className="text-text-tertiary">1Y return</div>
-                  <div className={`font-semibold ${y1.color}`}>{y1.text}</div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-elevated/80 backdrop-blur-sm border border-border">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  </svg>
                 </div>
-                <div>
-                  <div className="text-text-tertiary">3Y/yr</div>
-                  <div className={`font-semibold ${y3.color}`}>{y3.text}</div>
-                </div>
-                <div>
-                  <div className="text-text-tertiary">5Y/yr</div>
-                  <div className={`font-semibold ${y5.color}`}>{y5.text}</div>
-                </div>
-              </div>
-              <div className="mt-2 text-right text-xs text-text-tertiary">
-                Fee: {etf.fee != null ? `${etf.fee.toFixed(2)}%` : "N/A"}
+                <Link
+                  href="/pricing"
+                  className="rounded-lg bg-emerald-400/90 px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-emerald-300 transition-colors"
+                >
+                  Unlock with Pass or Plus
+                </Link>
               </div>
             </Card>
-          );
-        })}
-
-        {/* 1 locked stock card */}
-        {lockedStock && (
-          <TickerCard pick={lockedStock} locked />
-        )}
-
-        {/* CTA card */}
-        <Card variant="glass" className="flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <Badge variant="accent">{t("moreInvestments")}</Badge>
-            <p className="mt-2 text-sm text-text-secondary">
-              Sign up to see the full Upside List
-            </p>
-            <Link href="/login">
-              <Button size="sm" className="mt-3">
-                {t("heroCta")}
-              </Button>
-            </Link>
-          </div>
-        </Card>
+          ))}
+        </div>
       </div>
+
+      {/* CTA below both columns */}
+      <Card variant="glass" className="mt-6 flex items-center justify-center min-h-[120px]">
+        <div className="text-center">
+          <Badge variant="accent">{t("moreInvestments")}</Badge>
+          <p className="mt-2 text-sm text-text-secondary">
+            Sign up to see the full Upside List
+          </p>
+          <Link href="/login">
+            <Button size="sm" className="mt-3">
+              {t("heroCta")}
+            </Button>
+          </Link>
+        </div>
+      </Card>
     </section>
   );
 }

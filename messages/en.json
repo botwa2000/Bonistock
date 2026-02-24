@@ -84,7 +84,11 @@
     "ctaCta": "Create Free Account",
     "previewTitle": "Live picks from today's data",
     "previewSubtitle": "Stocks ranked by analyst consensus. ETFs ranked by actual returns.",
-    "moreInvestments": "200+ stocks & 100+ ETFs"
+    "moreInvestments": "200+ stocks & 100+ ETFs",
+    "stockSectionTitle": "Stocks: ranked by analyst consensus",
+    "stockSectionSubtitle": "Scored nightly by how much upside analysts see and how many agree.",
+    "etfSectionTitle": "ETFs: ranked by actual returns",
+    "etfSectionSubtitle": "Sorted by real 1-year, 3-year, and 5-year compound annual growth rates."
   },
   "login": {
     "title": "Welcome back",
@@ -95,7 +99,8 @@
     "error": "Invalid credentials. Try admin / admin for the demo.",
     "forgotPassword": "Forgot password?",
     "noAccount": "Don't have an account?",
-    "demoHint": "Demo: use admin / admin"
+    "demoHint": "Demo: use admin / admin",
+    "privacyNote": "We only use your data to provide and improve Bonistock. We never sell personal information. Read our Privacy Policy and Terms of Service for details."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -132,6 +137,7 @@
     "viewDetails": "View full details",
     "description": "Description",
     "trendWarning": "Below 200-day moving average — analyst targets may be optimistic",
+    "brokerAvailability": "Available on",
     "addToWatchlist": "Add to Watchlist",
     "addToMix": "Add to Mix",
     "backToList": "Back to list"
@@ -324,6 +330,7 @@
     "cookies": "Cookie Policy",
     "terms": "Terms of Service",
     "disclaimer": "For informational purposes only. Not financial advice. Always do your own research.",
+    "disclaimerFull": "Bonistock is for informational purposes only and does not constitute financial advice. All prices shown are end-of-day (EOD) from the last trading session — not real-time market data. Data is sourced from licensed commercial financial data providers; we do not scrape websites. Stock rankings are generated independently by our scoring algorithm based on analyst consensus — no stock recommendation is paid or sponsored. Past performance does not guarantee future results. Always do your own research and consult a licensed financial advisor before making investment decisions.",
     "copyright": "Bonistock. All rights reserved."
   },
   "privacy": {

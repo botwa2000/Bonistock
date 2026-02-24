@@ -2,16 +2,23 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useAuth } from "@/lib/auth-context";
 import type { EtfPick, EtfFilters } from "@/lib/types";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { EtfCard } from "@/components/features/etf-card";
 import { EtfFilterBar, defaultEtfFilters } from "@/components/features/filter-bar";
+
+const FREE_ETF_LIMIT = 5;
 
 export default function EtfsPage() {
   const t = useTranslations("nav");
   const tf = useTranslations("filters");
   const td = useTranslations("dashboard");
+  const tt = useTranslations("tiers");
+  const { user } = useAuth();
+  const tier = user?.tier ?? "free";
 
   const [etfs, setEtfs] = useState<EtfPick[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +48,11 @@ export default function EtfsPage() {
     });
   }, [etfs, filters]);
 
+  const freeSymbols = useMemo(
+    () => new Set(etfs.slice(0, FREE_ETF_LIMIT).map((e) => e.symbol)),
+    [etfs]
+  );
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -55,6 +67,9 @@ export default function EtfsPage() {
         overline="ETF Explorer"
         title="Top 100 ETFs ranked by actual returns"
         subtitle="Sorted by how much each ETF actually returned over 1, 3, and 5 years. Updated weekly from real market data."
+        action={
+          <Badge variant="accent">{tt(tier as "free" | "pass" | "plus")}</Badge>
+        }
       />
 
       <p className="text-xs text-text-tertiary">{td("eodDisclaimer")}</p>
@@ -73,7 +88,11 @@ export default function EtfsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((etf) => (
-            <EtfCard key={etf.symbol} etf={etf} />
+            <EtfCard
+              key={etf.symbol}
+              etf={etf}
+              locked={tier === "free" && !freeSymbols.has(etf.symbol)}
+            />
           ))}
         </div>
       )}

@@ -5,6 +5,7 @@ import { hashPassword, validatePasswordStrength } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import { renderTemplate } from "@/lib/email-renderer";
+import { notifyAdmins } from "@/lib/admin-notify";
 import { randomBytes } from "crypto";
 
 const registerSchema = z.object({
@@ -78,6 +79,11 @@ export async function POST(req: NextRequest) {
   const { subject, html } = await renderTemplate("verification", { userName: name, verifyUrl });
   await sendEmail(email, subject, html);
   await logAudit(user.id, "REGISTER", { email });
+
+  notifyAdmins(
+    `New signup: ${name} (${email})`,
+    `<h2>New User Registration</h2><p><strong>Name:</strong> ${name}</p><p><strong>Email:</strong> ${email}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+  );
 
   return NextResponse.json({ message: "Registration successful. Check your email to verify." }, { status: 201 });
 }

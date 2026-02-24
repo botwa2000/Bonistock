@@ -51,13 +51,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, loading, router]);
 
-  // Redirect admin users from /dashboard to /dashboard/admin
-  useEffect(() => {
-    if (!loading && isLoggedIn && user?.role === "ADMIN" && pathname === "/dashboard") {
-      router.replace("/dashboard/admin");
-    }
-  }, [loading, isLoggedIn, user, pathname, router]);
-
   // Close mobile menu on navigation
   useEffect(() => {
     setMobileOpen(false);
