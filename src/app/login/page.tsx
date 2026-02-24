@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
 import { GoogleIcon, FacebookIcon } from "@/components/ui/icons";
+import { hapticNotification } from "@/lib/native";
 
 export default function LoginPage() {
   return (
@@ -41,6 +42,7 @@ function LoginContent() {
     try {
       const result = await login(email, password);
       if (result.ok) {
+        hapticNotification("success");
         // Check if user is admin to redirect appropriately
         try {
           const userRes = await fetch("/api/user/settings");
@@ -56,6 +58,7 @@ function LoginContent() {
       } else if (result.error === "2FA_REQUIRED") {
         setShow2FA(true);
       } else {
+        hapticNotification("error");
         setError(result.error ?? t("error"));
       }
     } finally {

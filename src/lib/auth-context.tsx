@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
+import { isNative, registerPushNotifications } from "@/lib/native";
 
 interface UserData {
   id: string;
@@ -56,6 +57,19 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+
+        // Register push token on native platforms
+        if (isNative) {
+          registerPushNotifications().then((token) => {
+            if (token) {
+              fetch("/api/user/push-token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token, platform: "ios" }),
+              }).catch(() => {});
+            }
+          });
+        }
       }
     } finally {
       setLoading(false);
@@ -100,6 +114,19 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Clean up push token on native before signing out
+    if (isNative) {
+      try {
+        const token = await registerPushNotifications();
+        if (token) {
+          await fetch("/api/user/push-token", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+        }
+      } catch {}
+    }
     await signOut({ redirect: false });
     setUser(null);
     window.location.href = "/";

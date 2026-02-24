@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import { openInAppBrowser } from "@/lib/native";
 
 interface Product {
   id: string;
@@ -116,7 +117,7 @@ export function PricingCards() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        openInAppBrowser(data.url);
       } else {
         setError(data.error ?? "Something went wrong. Please try again.");
       }
@@ -151,7 +152,7 @@ export function PricingCards() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        openInAppBrowser(data.url);
       } else {
         setError(data.error ?? "Something went wrong. Please try again.");
       }

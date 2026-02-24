@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { db } from "./db";
 import { syncFromProd } from "./stock-discovery";
+import { sendPushToUser } from "./push";
 
 export function initCronJobs(): void {
   if (process.env.STOCK_SYNC_SOURCE) {
@@ -42,7 +43,17 @@ export function initCronJobs(): void {
     }
   });
 
-  console.log("[cron] Scheduled: ETF refresh (Sun 3 AM), demo snapshots (4 AM)");
+  // Alert evaluation — every 30 min during market hours (Mon–Fri 8:00–20:00 UTC)
+  cron.schedule("*/30 8-20 * * 1-5", async () => {
+    console.log("[cron] Evaluating price alerts");
+    try {
+      await evaluateAlerts();
+    } catch (err) {
+      console.error("[cron] Alert evaluation failed:", err);
+    }
+  });
+
+  console.log("[cron] Scheduled: ETF refresh (Sun 3 AM), demo snapshots (4 AM), alerts (every 30min Mon-Fri 8-20 UTC)");
 }
 
 async function refreshEtfData(): Promise<void> {
@@ -95,5 +106,47 @@ async function updateDemoPortfolioSnapshots(): Promise<void> {
         holdings: portfolio.holdings as object,
       },
     });
+  }
+}
+
+async function evaluateAlerts(): Promise<void> {
+  const alerts = await db.alert.findMany({
+    where: { triggered: false },
+    include: { user: { select: { id: true } } },
+  });
+
+  if (alerts.length === 0) return;
+
+  // Gather unique symbols to look up
+  const symbols = [...new Set(alerts.map((a) => a.symbol))];
+  const stocks = await db.stock.findMany({
+    where: { symbol: { in: symbols } },
+    select: { symbol: true, price: true },
+  });
+  const priceMap = new Map(stocks.map((s) => [s.symbol, s.price]));
+
+  for (const alert of alerts) {
+    const currentPrice = priceMap.get(alert.symbol);
+    if (currentPrice == null) continue;
+
+    const condition = alert.condition as { operator?: string; value?: number };
+    if (!condition.operator || condition.value == null) continue;
+
+    let shouldTrigger = false;
+    if (condition.operator === "gte" && currentPrice >= condition.value) shouldTrigger = true;
+    if (condition.operator === "lte" && currentPrice <= condition.value) shouldTrigger = true;
+
+    if (shouldTrigger) {
+      await db.alert.update({
+        where: { id: alert.id },
+        data: { triggered: true, triggeredAt: new Date() },
+      });
+
+      await sendPushToUser(alert.user.id, {
+        title: `${alert.symbol} Alert`,
+        body: alert.message ?? `${alert.symbol} hit $${currentPrice.toFixed(2)}`,
+        data: { symbol: alert.symbol, alertId: alert.id },
+      });
+    }
   }
 }

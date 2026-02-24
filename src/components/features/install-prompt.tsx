@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { isNative } from "@/lib/native";
 
 const DISMISS_KEY = "bonistock_install_dismissed";
 
@@ -17,6 +18,8 @@ export function InstallPrompt() {
 
   const shouldShow = useCallback(() => {
     if (typeof window === "undefined") return false;
+    // Don't show inside native Capacitor app
+    if (isNative) return false;
     // Don't show if already in standalone mode
     if (window.matchMedia("(display-mode: standalone)").matches) return false;
     // Don't show if dismissed

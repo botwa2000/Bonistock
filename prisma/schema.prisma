@@ -51,6 +51,7 @@ model User {
   savedMixes      SavedMix[]
   portfolios      UserPortfolio[]
   auditLogs       AuditLog[]
+  pushTokens      PushToken[]
 
   @@map("users")
 }
@@ -394,6 +395,19 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("ios")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
 }
 
 // ──── Product catalog ────

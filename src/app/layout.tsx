@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { CookieConsentBanner } from "@/components/features/cookie-consent";
 import { Analytics } from "@/components/features/analytics";
 import { InstallPrompt } from "@/components/features/install-prompt";
+import { NativeInit } from "@/components/features/native-init";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -59,6 +60,7 @@ export default async function RootLayout({
               {children}
               <CookieConsentBanner />
               <InstallPrompt />
+              <NativeInit />
               <Analytics />
             </ThemeProvider>
           </AuthProvider>

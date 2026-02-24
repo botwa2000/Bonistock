@@ -54,3 +54,9 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Capacitor / iOS
+ios/App/Pods/
+ios/App/DerivedData/
+ios/**/xcuserdata/
+ios/**/*.xcworkspace/xcuserdata/

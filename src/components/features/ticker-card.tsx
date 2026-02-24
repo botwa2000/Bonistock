@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getRegionFlag, getSectorIcon } from "@/lib/stock-icons";
 import { StockInfoPopup } from "@/components/features/stock-info-popup";
+import { hapticImpact } from "@/lib/native";
 
 interface TickerCardProps {
   pick: StockPick;
@@ -106,7 +107,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
 
   return (
     <>
-      <Link href={`/dashboard/stock/${pick.symbol}`}>
+      <Link href={`/dashboard/stock/${pick.symbol}`} onClick={() => hapticImpact("light")}>
         <Card variant="glass" hover className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <div>

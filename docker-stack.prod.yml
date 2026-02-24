@@ -21,11 +21,16 @@ services:
       - bonistock_prod_FMP_API_KEY
       - bonistock_prod_FINNHUB_API_KEY
       - bonistock_prod_ENCRYPTION_KEY
+      - bonistock_prod_APNS_KEY_ID
+      - bonistock_prod_APNS_TEAM_ID
+      - bonistock_prod_APNS_KEY_P8
+      - bonistock_prod_APNS_BUNDLE_ID
     environment:
       - NODE_ENV=production
       - PORT=3000
       - NEXTAUTH_URL=https://bonistock.com
       - NEXT_PUBLIC_APP_URL=https://bonistock.com
+      - NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S
     deploy:
       replicas: 1
       restart_policy:
@@ -72,4 +77,12 @@ secrets:
   bonistock_prod_FINNHUB_API_KEY:
     external: true
   bonistock_prod_ENCRYPTION_KEY:
+    external: true
+  bonistock_prod_APNS_KEY_ID:
+    external: true
+  bonistock_prod_APNS_TEAM_ID:
+    external: true
+  bonistock_prod_APNS_KEY_P8:
+    external: true
+  bonistock_prod_APNS_BUNDLE_ID:
     external: true

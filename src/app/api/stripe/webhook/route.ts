@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
 import { notifyAdmins } from "@/lib/admin-notify";
+import { sendPushToUser } from "@/lib/push";
 
 const PASS_ACTIVATIONS: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; count: number }> = {
   ONE_DAY: { type: "ONE_DAY", count: 1 },
@@ -91,6 +92,10 @@ export async function POST(req: NextRequest) {
           "New Plus subscription",
           `<h2>New Plus Subscription</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Amount:</strong> ${session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "N/A"}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
+        sendPushToUser(userId, {
+          title: "Welcome to Plus!",
+          body: "Your Bonistock Plus subscription is now active. Enjoy full access!",
+        }).catch(() => {});
       } else if (session.mode === "payment") {
         const passTypeKey = session.metadata?.passType;
         if (!passTypeKey) break;
@@ -125,6 +130,10 @@ export async function POST(req: NextRequest) {
           `Day Pass purchased: ${passNames[passConfig.type]}`,
           `<h2>Day Pass Purchased</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
+        sendPushToUser(userId, {
+          title: "Pass Activated!",
+          body: `Your ${passNames[passConfig.type]} is ready. Enjoy full access!`,
+        }).catch(() => {});
       }
       break;
     }
