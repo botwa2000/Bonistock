@@ -123,6 +123,11 @@ export default function AdminPage() {
   const [usersSearch, setUsersSearch] = useState("");
   const [usersSearchInput, setUsersSearchInput] = useState("");
 
+  // Edit user state
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUserFields, setEditUserFields] = useState<{ tier: string; role: string }>({ tier: "FREE", role: "USER" });
+  const [savingUser, setSavingUser] = useState(false);
+
   // Create form state
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -484,6 +489,29 @@ export default function AdminPage() {
     fetchUsers(1, usersSearchInput);
   };
 
+  const startEditingUser = (u: AdminUser) => {
+    setEditingUserId(u.id);
+    setEditUserFields({ tier: u.tier, role: u.role });
+  };
+
+  const handleSaveUser = async (userId: string) => {
+    setSavingUser(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editUserFields),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+        setEditingUserId(null);
+      }
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
   if (loading || user?.role !== "ADMIN") {
     return (
       <div className="flex items-center justify-center py-20">
@@ -602,6 +630,7 @@ export default function AdminPage() {
                       <th className="pb-2">{t("tier")}</th>
                       <th className="pb-2">{t("region")}</th>
                       <th className="pb-2">{t("joined")}</th>
+                      <th className="pb-2">{t("actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -610,18 +639,72 @@ export default function AdminPage() {
                         <td className="py-2 text-text-primary">{u.name ?? "\u2014"}</td>
                         <td className="py-2 text-text-secondary">{u.email}</td>
                         <td className="py-2">
-                          <Badge variant={u.role === "ADMIN" ? "warning" : "default"}>
-                            {u.role}
-                          </Badge>
+                          {editingUserId === u.id ? (
+                            <select
+                              className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                              value={editUserFields.role}
+                              onChange={(e) => setEditUserFields((f) => ({ ...f, role: e.target.value }))}
+                            >
+                              <option value="USER">USER</option>
+                              <option value="ADMIN">ADMIN</option>
+                            </select>
+                          ) : (
+                            <Badge variant={u.role === "ADMIN" ? "warning" : "default"}>
+                              {u.role}
+                            </Badge>
+                          )}
                         </td>
                         <td className="py-2">
-                          <Badge variant={u.tier === "PLUS" ? "accent" : u.tier === "PASS" ? "info" : "default"}>
-                            {u.tier}
-                          </Badge>
+                          {editingUserId === u.id ? (
+                            <select
+                              className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                              value={editUserFields.tier}
+                              onChange={(e) => setEditUserFields((f) => ({ ...f, tier: e.target.value }))}
+                            >
+                              <option value="FREE">FREE</option>
+                              <option value="PLUS">PLUS</option>
+                              <option value="PASS">PASS</option>
+                            </select>
+                          ) : (
+                            <Badge variant={u.tier === "PLUS" ? "accent" : u.tier === "PASS" ? "info" : "default"}>
+                              {u.tier}
+                            </Badge>
+                          )}
                         </td>
                         <td className="py-2 text-text-secondary">{u.region}</td>
                         <td className="py-2 text-text-tertiary whitespace-nowrap">
                           {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-2">
+                          <div className="flex gap-1">
+                            {editingUserId === u.id ? (
+                              <>
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  disabled={savingUser}
+                                  onClick={() => handleSaveUser(u.id)}
+                                >
+                                  {savingUser ? t("saving") : t("saveUser")}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => setEditingUserId(null)}
+                                >
+                                  {t("cancel")}
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => startEditingUser(u)}
+                              >
+                                {t("editUser")}
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

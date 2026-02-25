@@ -613,6 +613,8 @@
     "previous": "Zur\u00fcck",
     "nextPage": "Weiter",
     "pageOf": "Seite {page} von {total}",
+    "editUser": "Bearbeiten",
+    "saveUser": "Speichern",
     "editProduct": "Bearbeiten",
     "saveProduct": "Speichern",
     "saving": "Wird gespeichert...",

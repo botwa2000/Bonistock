@@ -613,6 +613,8 @@
     "previous": "Previous",
     "nextPage": "Next",
     "pageOf": "Page {page} of {total}",
+    "editUser": "Edit",
+    "saveUser": "Save",
     "editProduct": "Edit",
     "saveProduct": "Save",
     "saving": "Saving...",

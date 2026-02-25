@@ -16,7 +16,8 @@ export type AuditAction =
   | "ACCOUNT_DELETE"
   | "SETTINGS_CHANGE"
   | "EMAIL_CHANGE"
-  | "REGISTER";
+  | "REGISTER"
+  | "ADMIN_USER_EDIT";
 
 export async function logAudit(
   userId: string | null,
