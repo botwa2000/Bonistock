@@ -29,7 +29,11 @@ workflows:
         script: npm ci
 
       - name: Generate iOS project
-        script: npx cap add ios
+        script: |
+          cp ios/exportOptions.plist /tmp/exportOptions.plist
+          rm -rf ios
+          npx cap add ios
+          cp /tmp/exportOptions.plist ios/exportOptions.plist
 
       - name: Capacitor sync
         script: npx cap sync ios
