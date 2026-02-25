@@ -42,6 +42,11 @@ workflows:
           echo "=== Sync complete, workspace check ==="
           ls ios/App/App.xcworkspace
 
+      - name: Set export compliance flag
+        script: |
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
+          echo "=== ITSAppUsesNonExemptEncryption set to NO ==="
+
       - name: Set up code signing
         script: xcode-project use-profiles
 
