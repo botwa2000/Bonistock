@@ -103,8 +103,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
+        const email = parsed.data.email.toLowerCase();
         const user = await db.user.findUnique({
-          where: { email: parsed.data.email, deletedAt: null },
+          where: { email, deletedAt: null },
         });
         if (!user || !user.passwordHash) return null;
 

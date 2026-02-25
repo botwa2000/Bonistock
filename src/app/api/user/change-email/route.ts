@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  const { newEmail } = parsed.data;
+  const newEmail = parsed.data.newEmail.toLowerCase();
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },

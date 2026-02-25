@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, cookieConsent } = parsed.data;
+  const { password, name, cookieConsent } = parsed.data;
+  const email = parsed.data.email.toLowerCase();
 
   const strength = validatePasswordStrength(password);
   if (!strength.valid) {
