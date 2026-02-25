@@ -24,6 +24,7 @@ const DEVICES = {
 };
 
 const LOCALES = ["en", "de"];
+const COLOR_SCHEMES = ["dark", "light"];
 
 const SCREENS = [
   { name: "01-dashboard-stocks", path: "/dashboard" },
@@ -89,11 +90,23 @@ async function login(page) {
   }
 }
 
-async function captureScreen(page, screen, locale, deviceKey, outDir) {
-  const filePath = path.join(outDir, locale, deviceKey, `${screen.name}.png`);
+async function captureScreen(page, screen, locale, deviceKey, colorScheme, outDir) {
+  const filePath = path.join(outDir, locale, deviceKey, colorScheme, `${screen.name}.png`);
 
   await page.goto(`${BASE_URL}${screen.path}`, { waitUntil: "networkidle", timeout: 30000 });
-  await sleep(3000);
+  await sleep(2000);
+
+  // Ensure correct theme is applied
+  const themeValue = colorScheme === "light" ? "LIGHT" : "DARK";
+  await page.evaluate((t) => {
+    localStorage.setItem("bonistock-theme", t);
+    if (t === "LIGHT") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, themeValue);
+  await sleep(1000);
 
   // Dismiss cookie banner if it appears
   await dismissCookies(page);
@@ -120,49 +133,53 @@ async function run() {
     console.log(`\n📱 ${device.name} (${device.width}x${device.height} @${device.scaleFactor}x)`);
 
     for (const locale of LOCALES) {
-      console.log(`\n  🌐 Locale: ${locale.toUpperCase()}`);
+      for (const colorScheme of COLOR_SCHEMES) {
+        console.log(`\n  🌐 ${locale.toUpperCase()} / ${colorScheme}`);
 
-      const context = await browser.newContext({
-        viewport: { width: device.width, height: device.height },
-        deviceScaleFactor: device.scaleFactor,
-        userAgent:
-          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        locale: locale === "de" ? "de-DE" : "en-US",
-        colorScheme: "dark",
-      });
+        const context = await browser.newContext({
+          viewport: { width: device.width, height: device.height },
+          deviceScaleFactor: device.scaleFactor,
+          userAgent:
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          locale: locale === "de" ? "de-DE" : "en-US",
+          colorScheme,
+        });
 
-      // Set locale cookie and dismiss cookies preference
-      await context.addCookies([
-        { name: "NEXT_LOCALE", value: locale, domain: "dev.bonistock.com", path: "/" },
-        { name: "cookie_consent", value: "necessary", domain: "dev.bonistock.com", path: "/" },
-      ]);
+        // Set locale, cookie consent, and theme cookies
+        await context.addCookies([
+          { name: "NEXT_LOCALE", value: locale, domain: "dev.bonistock.com", path: "/" },
+          { name: "cookie_consent", value: "necessary", domain: "dev.bonistock.com", path: "/" },
+          { name: "theme", value: colorScheme, domain: "dev.bonistock.com", path: "/" },
+        ]);
 
-      const page = await context.newPage();
+        const page = await context.newPage();
 
-      // Login via form
-      const loggedIn = await login(page);
+        // Login via form
+        const loggedIn = await login(page);
 
-      if (!loggedIn) {
-        console.error("    ✗ Login failed, skipping this locale");
-        await context.close();
-        continue;
-      }
-
-      // Set locale cookie again (may have been overwritten)
-      await context.addCookies([
-        { name: "NEXT_LOCALE", value: locale, domain: "dev.bonistock.com", path: "/" },
-      ]);
-
-      for (const screen of SCREENS) {
-        try {
-          await captureScreen(page, screen, locale, deviceKey, outDir);
-        } catch (err) {
-          console.error(`    ✗ ${screen.name}: ${err.message}`);
+        if (!loggedIn) {
+          console.error("    ✗ Login failed, skipping");
+          await context.close();
+          continue;
         }
-      }
 
-      await page.close();
-      await context.close();
+        // Set locale and theme cookies again (may have been overwritten)
+        await context.addCookies([
+          { name: "NEXT_LOCALE", value: locale, domain: "dev.bonistock.com", path: "/" },
+          { name: "theme", value: colorScheme, domain: "dev.bonistock.com", path: "/" },
+        ]);
+
+        for (const screen of SCREENS) {
+          try {
+            await captureScreen(page, screen, locale, deviceKey, colorScheme, outDir);
+          } catch (err) {
+            console.error(`    ✗ ${screen.name}: ${err.message}`);
+          }
+        }
+
+        await page.close();
+        await context.close();
+      }
     }
   }
 

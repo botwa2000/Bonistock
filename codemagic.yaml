@@ -42,6 +42,13 @@ workflows:
           echo "=== Sync complete, workspace check ==="
           ls ios/App/App.xcworkspace
 
+      - name: Set version and build number
+        script: |
+          APP_VERSION=$(node -p "require('./package.json').version")
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
+          echo "=== Version: $APP_VERSION Build: $BUILD_NUMBER ==="
+
       - name: Set export compliance flag
         script: |
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
