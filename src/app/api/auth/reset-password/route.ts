@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const passwordHash = await hashPassword(password);
   const user = await db.user.update({
     where: { email: record.identifier },
-    data: { passwordHash, failedLoginAttempts: 0, lockedUntil: null },
+    data: { passwordHash, failedLoginAttempts: 0, lockedUntil: null, emailVerified: new Date() },
   });
 
   await db.verificationToken.delete({ where: { token } });
