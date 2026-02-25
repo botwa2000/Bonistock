@@ -55,6 +55,9 @@ next-env.d.ts
 # Sentry Config File
 .env.sentry-build-plugin
 
+# Screenshots (generated)
+/screenshots/
+
 # Capacitor / iOS
 ios/App/Pods/
 ios/App/DerivedData/

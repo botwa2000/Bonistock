@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { log } from "@/lib/logger";
 
 function getTransport() {
   const host = "smtp-relay.brevo.com";
@@ -23,6 +24,15 @@ export async function sendEmail(
   const from = process.env.EMAIL_FROM;
   if (!from) throw new Error("Missing required env var: EMAIL_FROM");
 
-  const transport = getTransport();
-  await transport.sendMail({ from, to, subject, html });
+  log.debug("email", `Sending email to=${to} subject="${subject}" from=${from}`);
+  const start = Date.now();
+
+  try {
+    const transport = getTransport();
+    const info = await transport.sendMail({ from, to, subject, html });
+    log.info("email", `Sent to=${to} messageId=${info.messageId} response="${info.response}" (${Date.now() - start}ms)`);
+  } catch (err) {
+    log.error("email", `Failed to send to=${to} subject="${subject}"`, err);
+    throw err;
+  }
 }
