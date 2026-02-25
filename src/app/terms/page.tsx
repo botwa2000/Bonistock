@@ -167,7 +167,7 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-text-primary">12. Contact</h2>
             <p className="mt-2">
               For questions about these terms, contact{" "}
-              <a href="mailto:legal@bonistock.com" className="text-white underline">legal@bonistock.com</a>.
+              <a href="mailto:legal@bonistock.com" className="text-text-primary underline">legal@bonistock.com</a>.
             </p>
           </section>
         </div>

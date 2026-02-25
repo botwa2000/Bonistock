@@ -32,12 +32,12 @@ export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) 
             <div className={`mt-3 grid gap-2 text-sm text-text-secondary ${compact ? "grid-cols-2" : "grid-cols-4"}`}>
               <div>
                 <div className="text-[11px] uppercase text-text-secondary">{t("cagr5y")}</div>
-                <div className="text-base font-semibold text-emerald-300">+••%</div>
+                <div className="text-base font-semibold text-accent-fg">+••%</div>
               </div>
               {!compact && (
                 <div>
                   <div className="text-[11px] uppercase text-text-secondary">{t("maxDrawdown")}</div>
-                  <div className="text-base font-semibold text-rose-200">-••%</div>
+                  <div className="text-base font-semibold text-danger-fg">-••%</div>
                 </div>
               )}
               <div>
@@ -88,7 +88,7 @@ export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) 
             <div className="text-[11px] uppercase text-text-secondary">
               {t("cagr5y")}
             </div>
-            <div className="text-base font-semibold text-emerald-300">
+            <div className="text-base font-semibold text-accent-fg">
               {etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A"}
             </div>
           </div>
@@ -97,7 +97,7 @@ export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) 
               <div className="text-[11px] uppercase text-text-secondary">
                 {t("maxDrawdown")}
               </div>
-              <div className="text-base font-semibold text-rose-200">
+              <div className="text-base font-semibold text-danger-fg">
                 {etf.drawdown}%
               </div>
             </div>

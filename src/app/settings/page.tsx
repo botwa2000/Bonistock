@@ -61,6 +61,10 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [field]: value }),
       });
+      if (field === "language") {
+        document.cookie = `NEXT_LOCALE=${value.toLowerCase()}; path=/; max-age=31536000; SameSite=Lax`;
+        router.refresh();
+      }
       await refreshUser();
     } finally {
       setSaving(false);
@@ -112,17 +116,10 @@ export default function SettingsPage() {
                 onChange={(v) => updateSetting("language", v)}
                 options={[
                   { value: "EN", label: "English" },
-                  { value: "DE", label: "Deutsch (coming soon)" },
-                  { value: "ES", label: "Espanol (coming soon)" },
-                  { value: "FR", label: "Francais (coming soon)" },
+                  { value: "DE", label: "Deutsch" },
                 ]}
               />
             </div>
-            {user.language !== "EN" && (
-              <Badge variant="warning" className="mt-3">
-                Translation coming soon
-              </Badge>
-            )}
           </Card>
 
           {/* Theme */}

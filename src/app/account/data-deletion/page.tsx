@@ -24,7 +24,7 @@ export default function DataDeletionPage() {
               at any time by following these steps:
             </p>
             <ol className="mt-3 list-decimal pl-5 space-y-2">
-              <li>Log in to your Bonistock account at <a href="https://bonistock.com" className="text-white underline">bonistock.com</a></li>
+              <li>Log in to your Bonistock account at <a href="https://bonistock.com" className="text-text-primary underline">bonistock.com</a></li>
               <li>Go to <strong>Settings</strong> (click your profile icon, then &quot;Settings&quot;)</li>
               <li>Scroll down to the <strong>Danger Zone</strong> section</li>
               <li>Click <strong>&quot;Delete Account&quot;</strong></li>
@@ -85,7 +85,7 @@ export default function DataDeletionPage() {
             </h2>
             <p className="mt-2">
               If you cannot access your account, you can request data deletion by
-              emailing <a href="mailto:privacy@bonistock.com" className="text-white underline">privacy@bonistock.com</a> from
+              emailing <a href="mailto:privacy@bonistock.com" className="text-text-primary underline">privacy@bonistock.com</a> from
               the email address associated with your account. We will process your
               request within 30 days as required by GDPR.
             </p>

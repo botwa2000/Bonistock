@@ -81,7 +81,7 @@ function ResetPasswordContent() {
         <Card variant="glass" padding="lg">
           {success ? (
             <div className="text-center">
-              <p className="text-sm text-emerald-300">Password reset successfully!</p>
+              <p className="text-sm text-success-fg">Password reset successfully!</p>
               <Link href="/login">
                 <Button className="mt-4">Sign in</Button>
               </Link>
@@ -106,7 +106,7 @@ function ResetPasswordContent() {
               />
 
               {error && (
-                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                   {error}
                 </div>
               )}

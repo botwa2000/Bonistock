@@ -116,13 +116,13 @@ function LoginContent() {
         </div>
 
         {verified && (
-          <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center text-xs text-emerald-200">
+          <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center text-xs text-success-fg">
             Email verified successfully. You can now log in.
           </div>
         )}
 
         {authError && (
-          <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-center text-xs text-rose-200">
+          <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-center text-xs text-danger-fg">
             {authError === "OAuthAccountNotLinked"
               ? "This email is already registered with a different sign-in method."
               : "Sign-in failed. Please try again or use a different method."}
@@ -147,7 +147,7 @@ function LoginContent() {
               />
 
               {error && (
-                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                   {error}
                 </div>
               )}
@@ -224,7 +224,7 @@ function LoginContent() {
                 />
 
                 {error && (
-                  <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                  <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                     {error}
                   </div>
                 )}

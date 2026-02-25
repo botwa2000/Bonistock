@@ -59,7 +59,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                 <div className="text-[10px] sm:text-xs uppercase text-text-secondary">
                   {t("upside")}
                 </div>
-                <div className="text-xl sm:text-2xl font-semibold text-emerald-300">
+                <div className="text-xl sm:text-2xl font-semibold text-accent-fg">
                   +••%
                 </div>
               </div>
@@ -144,7 +144,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
               <div className="text-[10px] sm:text-xs uppercase text-text-secondary">
                 {t("upside")}
               </div>
-              <div className="text-xl sm:text-2xl font-semibold text-emerald-300">
+              <div className="text-xl sm:text-2xl font-semibold text-accent-fg">
                 +{pick.upside}%
               </div>
               {!compact && (
@@ -181,7 +181,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
           )}
 
           {pick.belowSma200 && (
-            <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+            <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-warning-fg">
               {t("trendWarning")}
             </div>
           )}

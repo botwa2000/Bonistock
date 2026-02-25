@@ -156,7 +156,7 @@ export function SubscriptionSection() {
           {/* Cancel confirmation (inline) */}
           {showCancelConfirm && (
             <div className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 space-y-2">
-              <p className="text-sm font-medium text-amber-200">
+              <p className="text-sm font-medium text-warning-fg">
                 {t("cancelConfirmTitle")}
               </p>
               <p className="text-xs text-text-secondary">

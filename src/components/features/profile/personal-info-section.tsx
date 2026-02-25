@@ -70,13 +70,13 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
       <h2 className="text-lg font-semibold text-text-primary">{t("personalInfo")}</h2>
 
       {emailChanged && (
-        <div className="mt-3 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+        <div className="mt-3 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-success-fg">
           {t("emailChanged")}
         </div>
       )}
 
       {nameSuccess && (
-        <div className="mt-3 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+        <div className="mt-3 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-success-fg">
           {t("nameUpdated")}
         </div>
       )}
@@ -128,7 +128,7 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
           {showEmailChange && (
             <div className="mt-3 space-y-3">
               {emailSent ? (
-                <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-success-fg">
                   {t("emailVerificationSent")}
                 </div>
               ) : (
@@ -141,7 +141,7 @@ export function PersonalInfoSection({ emailChanged }: { emailChanged: boolean })
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
                   {emailError && (
-                    <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                    <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                       {emailError}
                     </div>
                   )}

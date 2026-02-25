@@ -55,7 +55,7 @@ function ProofSection() {
     <div className="grid gap-4 md:grid-cols-4">
       {stats.map((s) => (
         <Card key={s.label} variant="glass" className="text-center">
-          <div className="text-3xl font-bold text-emerald-300">{s.value}</div>
+          <div className="text-3xl font-bold text-accent-fg">{s.value}</div>
           <div className="mt-1 text-sm text-text-secondary">{s.label}</div>
         </Card>
       ))}
@@ -288,7 +288,7 @@ export default function LandingPageContent() {
           <div className="mt-8">
             <FaqSection limit={6} />
             <div className="mt-4 text-center">
-              <Link href="/faq" className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+              <Link href="/faq" className="text-sm text-link-fg hover:text-accent-fg transition-colors">
                 {t("seeAllFaqs")} &rarr;
               </Link>
             </div>

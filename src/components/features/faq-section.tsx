@@ -77,7 +77,7 @@ export function FaqSection({ items, limit }: FaqSectionProps) {
                   }}
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                     activeCategory === key
-                      ? "bg-emerald-400/20 text-emerald-300 border border-emerald-400/30"
+                      ? "bg-emerald-400/20 text-accent-fg border border-emerald-400/30"
                       : "bg-surface border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border"
                   }`}
                 >

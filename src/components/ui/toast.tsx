@@ -12,8 +12,8 @@ interface ToastProps {
 }
 
 const variantStyles: Record<ToastVariant, string> = {
-  success: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
-  error: "border-rose-400/30 bg-rose-400/10 text-rose-300",
+  success: "border-emerald-400/30 bg-emerald-400/10 text-success-fg",
+  error: "border-rose-400/30 bg-rose-400/10 text-danger-fg",
   info: "border-sky-400/30 bg-sky-400/10 text-sky-300",
 };
 

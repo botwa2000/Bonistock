@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
           {sent ? (
             <div className="text-center">
               <p className="text-sm text-text-secondary">
-                If an account exists for <strong className="text-white">{email}</strong>,
+                If an account exists for <strong className="text-text-primary">{email}</strong>,
                 you&apos;ll receive a password reset link shortly.
               </p>
               <Link href="/login">
@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
               />
 
               {error && (
-                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                   {error}
                 </div>
               )}

@@ -31,7 +31,7 @@ export default function PricingPageContent() {
           <div className="mt-8">
             <FaqSection limit={6} />
             <div className="mt-4 text-center">
-              <Link href="/faq" className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+              <Link href="/faq" className="text-sm text-link-fg hover:text-accent-fg transition-colors">
                 {tLanding("seeAllFaqs")} &rarr;
               </Link>
             </div>

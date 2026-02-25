@@ -529,7 +529,7 @@ export default function AdminPage() {
           </div>
         ) : statsError && !stats ? (
           <Card variant="glass" className="text-center py-4">
-            <p className="text-sm text-rose-300">{t("statsError")}</p>
+            <p className="text-sm text-danger-fg">{t("statsError")}</p>
             <Button variant="secondary" size="sm" className="mt-2" onClick={fetchStats}>
               {t("retry")}
             </Button>
@@ -985,7 +985,7 @@ export default function AdminPage() {
                       <div className="text-sm font-medium text-text-primary">{tmpl.name}</div>
                       <div className="text-xs text-text-tertiary">Subject: {tmpl.subject}</div>
                       {testResult?.template === tmpl.slug && (
-                        <div className={`mt-1 text-xs ${testResult.ok ? "text-emerald-400" : "text-rose-300"}`}>
+                        <div className={`mt-1 text-xs ${testResult.ok ? "text-success-fg" : "text-danger-fg"}`}>
                           {testResult.message}
                         </div>
                       )}
@@ -1121,7 +1121,7 @@ export default function AdminPage() {
 
         {/* Email Preview Modal */}
         {previewHtml && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-bg backdrop-blur-sm">
             <div className="relative mx-4 max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface-elevated">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <h4 className="text-sm font-semibold text-text-primary">{previewName}</h4>

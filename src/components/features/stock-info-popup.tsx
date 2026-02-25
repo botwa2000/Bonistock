@@ -31,7 +31,7 @@ export function StockInfoPopup({ pick, onClose }: StockInfoPopupProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-bg backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
@@ -107,7 +107,7 @@ export function StockInfoPopup({ pick, onClose }: StockInfoPopupProps) {
             </div>
             <div>
               <div className="text-xs uppercase text-text-secondary">{t("conviction")}</div>
-              <div className="text-sm font-semibold text-emerald-300">{conviction.toFixed(0)}%</div>
+              <div className="text-sm font-semibold text-accent-fg">{conviction.toFixed(0)}%</div>
             </div>
           </div>
 

@@ -46,7 +46,7 @@ export default function EtfDetailPage({
         ETF not found.{" "}
         <Link
           href="/dashboard/etfs"
-          className="ml-2 text-emerald-300 hover:underline"
+          className="ml-2 text-accent-fg hover:underline"
         >
           {t("backToList")}
         </Link>
@@ -97,7 +97,7 @@ export default function EtfDetailPage({
           <Card key={m.label} variant="glass">
             <div className="text-xs uppercase text-text-secondary">{m.label}</div>
             <div
-              className={`mt-1 text-2xl font-semibold ${m.positive ? "text-emerald-300" : "text-rose-200"}`}
+              className={`mt-1 text-2xl font-semibold ${m.positive ? "text-accent-fg" : "text-danger-fg"}`}
             >
               {m.value}
             </div>

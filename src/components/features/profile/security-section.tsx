@@ -157,7 +157,7 @@ export function SecuritySection() {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-text-primary">{t("changePassword")}</h3>
             {passwordSuccess && (
-              <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+              <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-success-fg">
                 {t("passwordUpdated")}
               </div>
             )}
@@ -186,7 +186,7 @@ export function SecuritySection() {
               autoComplete="new-password"
             />
             {passwordError && (
-              <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                 {passwordError}
               </div>
             )}
@@ -231,7 +231,7 @@ export function SecuritySection() {
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">{t("manualEntry")}</p>
-                <code className="block rounded bg-surface px-2 py-1 text-xs text-emerald-300 break-all">
+                <code className="block rounded bg-surface px-2 py-1 text-xs text-accent-fg break-all">
                   {secret}
                 </code>
               </div>
@@ -245,7 +245,7 @@ export function SecuritySection() {
                 maxLength={6}
               />
               {twoFAError && (
-                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                   {twoFAError}
                 </div>
               )}
@@ -278,7 +278,7 @@ export function SecuritySection() {
                 maxLength={6}
               />
               {disableError && (
-                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-danger-fg">
                   {disableError}
                 </div>
               )}

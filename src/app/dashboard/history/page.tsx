@@ -191,7 +191,7 @@ export default function HistoryPage() {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-lg font-semibold text-emerald-300">
+                      <div className="text-lg font-semibold text-accent-fg">
                         +{pick.upside}%
                       </div>
                       {pick.appearances >= 3 && (

@@ -58,6 +58,14 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         const data = await res.json();
         setUser(data);
 
+        // Sync locale cookie with user's saved language preference
+        if (data.language) {
+          const locale = data.language.toLowerCase();
+          if (["en", "de"].includes(locale)) {
+            document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+          }
+        }
+
         // Register push token on native platforms
         if (isNative) {
           registerPushNotifications().then((token) => {

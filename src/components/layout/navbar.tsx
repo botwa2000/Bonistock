@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 export function Navbar() {
   const t = useTranslations();
@@ -26,6 +27,7 @@ export function Navbar() {
               {t("nav.about")}
             </Link>
           </div>
+          <LanguageSwitcher />
           {isLoggedIn ? (
             <Link href="/dashboard">
               <Button size="sm">{t("nav.dashboard")}</Button>

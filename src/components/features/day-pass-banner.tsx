@@ -47,7 +47,7 @@ export function DayPassBanner() {
             </Button>
           )}
           {!active && passActivationsRemaining <= 0 && (
-            <span className="text-sm text-rose-300">{t("passExpired")}</span>
+            <span className="text-sm text-danger-fg">{t("passExpired")}</span>
           )}
         </div>
         <Link href="/pricing">

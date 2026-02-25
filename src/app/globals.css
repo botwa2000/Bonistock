@@ -22,6 +22,12 @@
   --body-bg: radial-gradient(circle at 25% 20%, #102641 0, rgba(16, 38, 65, 0) 35%),
     radial-gradient(circle at 80% 10%, #183349 0, rgba(24, 51, 73, 0) 30%),
     linear-gradient(140deg, #0b111c 0%, #0d1221 60%, #0a0f1b 100%);
+  --accent-fg: #6ee7b7;
+  --success-fg: #6ee7b7;
+  --warning-fg: #fde68a;
+  --danger-fg: #fca5a5;
+  --link-fg: #34d399;
+  --overlay-bg: rgba(0, 0, 0, 0.60);
 }
 
 .light {
@@ -42,6 +48,12 @@
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
   --body-bg: #f8fafc;
+  --accent-fg: #059669;
+  --success-fg: #059669;
+  --warning-fg: #92400e;
+  --danger-fg: #dc2626;
+  --link-fg: #059669;
+  --overlay-bg: rgba(0, 0, 0, 0.40);
 }
 
 @theme inline {
@@ -59,6 +71,12 @@
   --color-border-subtle: var(--border-subtle);
   --color-input-bg: var(--input-bg);
   --color-input-border: var(--input-border);
+  --color-accent-fg: var(--accent-fg);
+  --color-success-fg: var(--success-fg);
+  --color-warning-fg: var(--warning-fg);
+  --color-danger-fg: var(--danger-fg);
+  --color-link-fg: var(--link-fg);
+  --color-overlay-bg: var(--overlay-bg);
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-jetbrains-mono);
 }
@@ -86,4 +104,10 @@ a {
 ::selection {
   background: rgba(56, 232, 165, 0.25);
   color: #e9fbf3;
+}
+
+.light ::selection,
+.light::selection {
+  background: rgba(5, 150, 105, 0.20);
+  color: #064e3b;
 }

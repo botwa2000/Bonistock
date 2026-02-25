@@ -372,7 +372,7 @@ export function PricingCards() {
       </div>
 
       {error && (
-        <p className="text-center text-sm text-rose-300">{error}</p>
+        <p className="text-center text-sm text-danger-fg">{error}</p>
       )}
       <p className="text-center text-xs text-text-tertiary">{t("guarantee")}</p>
     </div>

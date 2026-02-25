@@ -53,7 +53,7 @@ export default function AboutPageContent() {
                         href={site.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+                        className="text-sm font-semibold text-link-fg hover:text-accent-fg transition-colors"
                       >
                         {site.name} &rarr;
                       </a>

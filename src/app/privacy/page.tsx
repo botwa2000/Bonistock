@@ -150,7 +150,7 @@ export default function PrivacyPage() {
             <p className="mt-3">
               You can exercise your data access, export, and deletion rights directly
               from your <strong>Settings</strong> page. For other requests, contact
-              us at <a href="mailto:privacy@bonistock.com" className="text-white underline">privacy@bonistock.com</a>.
+              us at <a href="mailto:privacy@bonistock.com" className="text-text-primary underline">privacy@bonistock.com</a>.
             </p>
           </section>
 
@@ -185,7 +185,7 @@ export default function PrivacyPage() {
             <p className="mt-2">
               To disconnect Facebook from your Bonistock account, visit your Settings
               page. To request deletion of all data associated with your Facebook login,
-              visit our <a href="/account/data-deletion" className="text-white underline">Data Deletion</a> page
+              visit our <a href="/account/data-deletion" className="text-text-primary underline">Data Deletion</a> page
               or delete your account from Settings.
             </p>
           </section>
@@ -217,7 +217,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-text-primary">13. Contact</h2>
             <p className="mt-2">
               For privacy-related inquiries:<br />
-              Email: <a href="mailto:privacy@bonistock.com" className="text-white underline">privacy@bonistock.com</a><br />
+              Email: <a href="mailto:privacy@bonistock.com" className="text-text-primary underline">privacy@bonistock.com</a><br />
               Data Protection Officer: privacy@bonistock.com
             </p>
             <p className="mt-2">

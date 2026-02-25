@@ -152,7 +152,7 @@ export function DayPassSection() {
       </div>
 
       {error && (
-        <p className="mt-4 text-center text-sm text-rose-300">{error}</p>
+        <p className="mt-4 text-center text-sm text-danger-fg">{error}</p>
       )}
       <p className="mt-4 text-center text-xs text-text-tertiary">
         {t("dayPassNote")}

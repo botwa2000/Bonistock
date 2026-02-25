@@ -45,7 +45,7 @@ export default function StockDetailPage({
     return (
       <div className="flex h-64 items-center justify-center text-text-secondary">
         Stock not found.{" "}
-        <Link href="/dashboard" className="ml-2 text-emerald-300 hover:underline">
+        <Link href="/dashboard" className="ml-2 text-accent-fg hover:underline">
           {t("backToList")}
         </Link>
       </div>
@@ -90,13 +90,13 @@ export default function StockDetailPage({
           </div>
           <div>
             <div className="text-xs uppercase text-text-secondary">{t("priceTarget")}</div>
-            <div className="text-2xl font-semibold text-emerald-300">
+            <div className="text-2xl font-semibold text-accent-fg">
               ${pick.target.toFixed(0)}
             </div>
           </div>
           <div>
             <div className="text-xs uppercase text-text-secondary">{t("upside")}</div>
-            <div className="text-2xl font-semibold text-emerald-300">
+            <div className="text-2xl font-semibold text-accent-fg">
               +{pick.upside}%
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function StockDetailPage({
 
       {pick.belowSma200 && (
         <Card variant="outline" className="border-amber-400/30 bg-amber-400/5">
-          <p className="text-sm text-amber-200">{t("trendWarning")}</p>
+          <p className="text-sm text-warning-fg">{t("trendWarning")}</p>
         </Card>
       )}
 
@@ -181,7 +181,7 @@ export default function StockDetailPage({
               </div>
               <div className="mt-2 flex justify-between text-text-secondary">
                 <span>{t("conviction")}</span>
-                <span className="font-semibold text-emerald-300">
+                <span className="font-semibold text-accent-fg">
                   {conviction.toFixed(0)}%
                 </span>
               </div>
