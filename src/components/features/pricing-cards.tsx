@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
-import { openInAppBrowser } from "@/lib/native";
+import { openInAppBrowser, isIOS } from "@/lib/native";
+import { getOfferings, purchasePackage, type RCPackage } from "@/lib/revenuecat";
 
 interface Product {
   id: string;
@@ -25,6 +26,8 @@ interface Product {
   highlighted: boolean;
   sortOrder: number;
   usualPrice?: number | null;
+  appleProductId?: string | null;
+  iosPriceAmount?: number | null;
 }
 
 function formatPrice(cents: number, interval?: "MONTH" | "YEAR" | null): string {
@@ -42,18 +45,46 @@ function perDayRate(cents: number, days: number): string {
 export function PricingCards() {
   const t = useTranslations("pricing");
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, refreshUser } = useAuth();
   const [annual, setAnnual] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
+  const [rcPackages, setRcPackages] = useState<RCPackage[]>([]);
 
   useEffect(() => {
     fetch("/api/stripe/prices")
       .then((res) => res.json())
       .then((data: Product[]) => setProducts(data))
       .catch(() => {});
+
+    // Fetch Apple prices on iOS
+    if (isIOS) {
+      getOfferings().then(setRcPackages).catch(() => {});
+    }
   }, []);
+
+  // Helper: find RevenueCat package matching a product's appleProductId
+  const findRcPackage = (product: Product): RCPackage | undefined =>
+    product.appleProductId
+      ? rcPackages.find((pkg) => pkg.productId === product.appleProductId)
+      : undefined;
+
+  // Helper: get display price — use Apple-localized price on iOS if available
+  const getDisplayPrice = (product: Product): number => {
+    if (isIOS) {
+      const pkg = findRcPackage(product);
+      if (pkg) return Math.round(pkg.price * 100); // convert to cents
+    }
+    return product.priceAmount;
+  };
+
+  // Helper: get formatted price string from Apple on iOS
+  const getApplePriceString = (product: Product): string | null => {
+    if (!isIOS) return null;
+    const pkg = findRcPackage(product);
+    return pkg?.priceString ?? null;
+  };
 
   const subscriptions = products.filter((p) => p.type === "SUBSCRIPTION");
   const passProducts = products.filter((p) => p.type === "PASS");
@@ -100,13 +131,36 @@ export function PricingCards() {
       return;
     }
 
+    setError(null);
+    setCheckingOut(true);
+
+    // iOS: use RevenueCat / Apple IAP
+    if (isIOS && activeProduct) {
+      const pkg = findRcPackage(activeProduct as Product);
+      if (pkg) {
+        try {
+          const success = await purchasePackage(pkg.identifier);
+          if (success) {
+            await refreshUser();
+          } else {
+            setError("Purchase was canceled or failed. Please try again.");
+          }
+        } catch {
+          setError("Purchase failed. Please try again.");
+        } finally {
+          setCheckingOut(false);
+        }
+        return;
+      }
+    }
+
+    // Web: use Stripe checkout
     if (!activeProduct?.stripePriceId) {
       setError("Products are not configured yet. Please contact support.");
+      setCheckingOut(false);
       return;
     }
 
-    setError(null);
-    setCheckingOut(true);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -134,13 +188,36 @@ export function PricingCards() {
       return;
     }
 
+    setError(null);
+    setBuying(product.id);
+
+    // iOS: use RevenueCat / Apple IAP
+    if (isIOS) {
+      const pkg = findRcPackage(product);
+      if (pkg) {
+        try {
+          const success = await purchasePackage(pkg.identifier);
+          if (success) {
+            await refreshUser();
+          } else {
+            setError("Purchase was canceled or failed. Please try again.");
+          }
+        } catch {
+          setError("Purchase failed. Please try again.");
+        } finally {
+          setBuying(null);
+        }
+        return;
+      }
+    }
+
+    // Web: use Stripe checkout
     if (!product.stripePriceId) {
       setError("Products are not configured yet. Please contact support.");
+      setBuying(null);
       return;
     }
 
-    setError(null);
-    setBuying(product.id);
     try {
       const res = await fetch("/api/stripe/pass", {
         method: "POST",
@@ -264,9 +341,11 @@ export function PricingCards() {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-semibold text-text-primary">
-                {formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
+                {getApplePriceString(activeProduct as Product)
+                  ? `${getApplePriceString(activeProduct as Product)}${activeProduct.billingInterval === "MONTH" ? "/mo" : activeProduct.billingInterval === "YEAR" ? "/yr" : ""}`
+                  : formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
               </span>
-              {plusDiscount && (activeProduct as Product).usualPrice && (
+              {!isIOS && plusDiscount && (activeProduct as Product).usualPrice && (
                 <>
                   <span className="text-lg text-text-tertiary line-through">
                     {formatPrice((activeProduct as Product).usualPrice!, activeProduct.billingInterval)}
@@ -309,9 +388,11 @@ export function PricingCards() {
           ) : (
             <div className="flex-1 space-y-3">
               {passProducts.map((product) => {
+                const displayPrice = getDisplayPrice(product);
+                const applePriceStr = getApplePriceString(product);
                 const thisPerDay = product.passDays
-                  ? product.priceAmount / product.passDays
-                  : product.priceAmount;
+                  ? displayPrice / product.passDays
+                  : displayPrice;
                 let savingsBadge: string | null = null;
                 if (thisPerDay === minPerDay && passProducts.length > 1) {
                   savingsBadge = "Best per-day rate";
@@ -320,7 +401,7 @@ export function PricingCards() {
                   if (pct > 0) savingsBadge = `Save ${pct}%`;
                 }
 
-                const passDiscount = getDiscountPercent(product);
+                const passDiscount = isIOS ? null : getDiscountPercent(product);
 
                 return (
                   <div
@@ -330,9 +411,9 @@ export function PricingCards() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold text-text-primary">
-                          {formatPrice(product.priceAmount)}
+                          {applePriceStr ?? formatPrice(product.priceAmount)}
                         </span>
-                        {product.usualPrice && product.usualPrice > product.priceAmount && (
+                        {!isIOS && product.usualPrice && product.usualPrice > product.priceAmount && (
                           <span className="text-xs text-text-tertiary line-through">
                             {formatPrice(product.usualPrice)}
                           </span>
@@ -347,7 +428,7 @@ export function PricingCards() {
                       <div className="text-xs text-text-secondary">{product.name}</div>
                       {product.passDays && (
                         <div className="text-[10px] text-text-tertiary">
-                          {perDayRate(product.priceAmount, product.passDays)}
+                          {perDayRate(displayPrice, product.passDays)}
                         </div>
                       )}
                     </div>

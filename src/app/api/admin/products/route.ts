@@ -19,6 +19,8 @@ const createProductSchema = z.object({
   features: z.array(z.string()).optional(),
   highlighted: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
+  appleProductId: z.string().optional(),
+  iosPriceAmount: z.number().int().positive().optional(),
 });
 
 export const GET = adminRoute(async () => {
@@ -95,6 +97,8 @@ export const POST = adminRoute(async (req) => {
         stripePriceId: stripePrice.id,
         highlighted: data.highlighted,
         sortOrder: data.sortOrder,
+        appleProductId: data.appleProductId ?? null,
+        iosPriceAmount: data.iosPriceAmount ?? null,
       },
     });
 

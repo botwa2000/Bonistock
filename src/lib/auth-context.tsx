@@ -10,6 +10,7 @@ import {
 } from "react";
 import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
 import { isNative, registerPushNotifications } from "@/lib/native";
+import { initRevenueCat, loginRevenueCat, logoutRevenueCat } from "@/lib/revenuecat";
 
 interface UserData {
   id: string;
@@ -46,6 +47,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize RevenueCat once on native app startup
+  useEffect(() => {
+    if (isNative) {
+      initRevenueCat();
+    }
+  }, []);
+
   const fetchUser = useCallback(async () => {
     if (!session?.user?.id) {
       setUser(null);
@@ -66,8 +74,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           }
         }
 
-        // Register push token on native platforms
+        // Native platform setup
         if (isNative) {
+          // Associate RevenueCat customer with our user ID
+          loginRevenueCat(data.id);
+
+          // Register push token
           registerPushNotifications().then((token) => {
             if (token) {
               fetch("/api/user/push-token", {
@@ -122,8 +134,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    // Clean up push token on native before signing out
+    // Clean up native resources before signing out
     if (isNative) {
+      try {
+        await logoutRevenueCat();
+      } catch {}
       try {
         const token = await registerPushNotifications();
         if (token) {

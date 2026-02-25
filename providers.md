@@ -291,8 +291,9 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 7 | Encryption Key | 0 | N/A | Already done |
 | 8 | Finnhub (Analyst Data) | 1 | Free (60 calls/min) | Easy |
 | 9 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
+| 10 | RevenueCat (Apple IAP) | 1 | Free (up to $2.5M revenue) | Medium |
 
-**Total: 12 secrets to replace across 7 services.** All free tier.
+**Total: 13 secrets to replace across 8 services.** All free tier.
 
 ---
 
@@ -333,7 +334,96 @@ $SSH "cd /home/deploy/bonistock-prod && docker stack deploy -c docker-stack.prod
 
 ---
 
-## 9. yfinance (Primary Stock Data) — FREE, no API key
+## 9. RevenueCat (Apple IAP) — FREE up to $2.5M tracked revenue
+
+**What you need:** RevenueCat manages Apple In-App Purchases — receipt validation, subscription lifecycle, and server-to-server webhooks. It wraps StoreKit 2 so the app doesn't need to validate receipts directly.
+
+**Prerequisites (Apple side):**
+
+1. **Apple Developer Account** ($99/year) — https://developer.apple.com — You need this for any iOS app distribution anyway
+2. **App Store Connect** — Create IAP products:
+   - Subscription Group "Bonistock Plus":
+     - `com.bonifatus.bonistock.plus.monthly` (auto-renewable)
+     - `com.bonifatus.bonistock.plus.annual` (auto-renewable)
+   - Consumable IAPs:
+     - `com.bonifatus.bonistock.pass.1day`
+     - `com.bonifatus.bonistock.pass.3day`
+     - `com.bonifatus.bonistock.pass.12day`
+   - Set prices via Apple's price tier system (should be higher than Stripe prices to offset Apple's 30% commission)
+3. **App Store Connect API Key** — Go to Users & Access > Integrations > App Store Connect API > Generate. Download the `.p8` file. Note the Key ID and Issuer ID.
+
+**Steps (RevenueCat):**
+
+1. Go to https://app.revenuecat.com — Sign up (free, no credit card)
+2. **Create Project** — Name: `Bonistock`
+3. **Add App** — Platform: iOS — Bundle ID: `com.bonifatus.bonistock`
+4. **App Store Connect API Key** — Upload the `.p8` key file from step 3 above (Key ID + Issuer ID)
+5. **Entitlements** — Create entitlement: `plus` (granted by both subscription products)
+6. **Offerings** — Create a default offering with packages mapping to the 5 Apple product IDs
+7. **Webhook** — Go to Project Settings > Webhooks > Add:
+   - URL: `https://bonistock.com/api/revenuecat/webhook` (prod)
+   - Authorization header: `Bearer your-webhook-secret-here`
+   - Create a second webhook for dev: `https://dev.bonistock.com/api/revenuecat/webhook`
+8. **Note these values:**
+   - **Public API Key** (iOS) — shown on the app page (starts with `appl_`)
+   - **Webhook Authorization Secret** — the value you set in the webhook header
+
+**Secrets to update:**
+
+| Secret | Value |
+|--------|-------|
+| `REVENUECAT_WEBHOOK_SECRET` | The webhook authorization secret (value after `Bearer `) |
+
+**Environment variable (not a secret — baked into client bundle):**
+
+| Variable | Value | Where |
+|----------|-------|-------|
+| `NEXT_PUBLIC_REVENUECAT_API_KEY` | `appl_...` (public API key) | `docker-stack.{dev,prod}.yml` environment section |
+
+Set the public API key in the docker stack environment section (already has a placeholder):
+```yaml
+- NEXT_PUBLIC_REVENUECAT_API_KEY=appl_your_key_here
+```
+
+**Update command (secrets):**
+
+```bash
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183"
+
+# Dev
+$SSH "docker stack rm bonistock-dev && sleep 5"
+$SSH "docker secret rm bonistock_dev_REVENUECAT_WEBHOOK_SECRET"
+echo -n 'your-webhook-secret' | $SSH "docker secret create bonistock_dev_REVENUECAT_WEBHOOK_SECRET -"
+$SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.yml bonistock-dev"
+
+# Prod
+$SSH "docker stack rm bonistock-prod && sleep 5"
+$SSH "docker secret rm bonistock_prod_REVENUECAT_WEBHOOK_SECRET"
+echo -n 'your-webhook-secret' | $SSH "docker secret create bonistock_prod_REVENUECAT_WEBHOOK_SECRET -"
+$SSH "cd /home/deploy/bonistock-prod && docker stack deploy -c docker-stack.prod.yml bonistock-prod"
+```
+
+**iOS Payment Flow (how it works):**
+
+1. User opens pricing page on iOS app (Capacitor wrapper)
+2. App detects iOS → fetches offerings from RevenueCat (which returns Apple-localized prices from StoreKit)
+3. User taps Subscribe/Buy → native Apple payment sheet appears
+4. User authenticates with Face ID / Apple ID and pays
+5. Apple processes payment → notifies RevenueCat
+6. RevenueCat sends webhook to `POST /api/revenuecat/webhook`
+7. Webhook creates/updates Subscription or PassPurchase record in DB (with `paymentSource: APPLE`)
+8. App calls `refreshUser()` → user gets Plus tier or pass activations
+
+**Key differences from Stripe flow:**
+- No redirect to external checkout — native Apple payment sheet
+- Prices are set in App Store Connect (Apple's price tier system), not in our DB
+- Apple takes 30% commission (15% for small developers under $1M revenue)
+- Subscription management (cancel/refund) happens through Apple Settings, not our app
+- RevenueCat handles receipt validation server-side
+
+---
+
+## 10. yfinance (Primary Stock Data) — FREE, no API key
 
 **No setup required.** yfinance uses Yahoo Finance's public API. Just install the Python package:
 

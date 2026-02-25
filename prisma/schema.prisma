@@ -120,18 +120,20 @@ model Authenticator {
 // ──── Payment models ────
 
 model Subscription {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  stripeCustomerId      String   @unique
-  stripeSubscriptionId  String?  @unique
-  stripePriceId         String?
-  status                SubStatus @default(INACTIVE)
-  tier                  Tier     @default(FREE)
-  currentPeriodStart    DateTime?
-  currentPeriodEnd      DateTime?
-  cancelAtPeriodEnd     Boolean  @default(false)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                            String        @id @default(cuid())
+  userId                        String        @unique
+  stripeCustomerId              String        @unique
+  stripeSubscriptionId          String?       @unique
+  stripePriceId                 String?
+  status                        SubStatus     @default(INACTIVE)
+  tier                          Tier          @default(FREE)
+  currentPeriodStart            DateTime?
+  currentPeriodEnd              DateTime?
+  cancelAtPeriodEnd             Boolean       @default(false)
+  paymentSource                 PaymentSource @default(STRIPE)
+  appleOriginalTransactionId    String?       @unique
+  createdAt                     DateTime      @default(now())
+  updatedAt                     DateTime      @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -139,13 +141,15 @@ model Subscription {
 }
 
 model PassPurchase {
-  id                     String   @id @default(cuid())
+  id                     String        @id @default(cuid())
   userId                 String
   passType               PassType
   activationsTotal       Int
-  activationsUsed        Int      @default(0)
-  stripePaymentIntentId  String   @unique
-  purchasedAt            DateTime @default(now())
+  activationsUsed        Int           @default(0)
+  stripePaymentIntentId  String?       @unique
+  appleTransactionId     String?       @unique
+  paymentSource          PaymentSource @default(STRIPE)
+  purchasedAt            DateTime      @default(now())
 
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   activations PassActivation[]
@@ -431,6 +435,8 @@ model Product {
   trialDays       Int?             // e.g. 14 for subscriptions (null for passes)
   stripeProductId String           @unique
   stripePriceId   String           @unique
+  appleProductId  String?
+  iosPriceAmount  Int?
   active          Boolean          @default(true)
   highlighted     Boolean          @default(false)
   sortOrder       Int              @default(0)
@@ -454,6 +460,12 @@ model EmailTemplate {
 }
 
 // ──── Enums ────
+
+enum PaymentSource {
+  STRIPE
+  APPLE
+  ADMIN
+}
 
 enum ProductType {
   SUBSCRIPTION

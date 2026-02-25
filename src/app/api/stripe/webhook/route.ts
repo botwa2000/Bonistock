@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
             stripePriceId: subItem?.price.id,
             status: dbStatus,
             tier: "PLUS",
+            paymentSource: "STRIPE",
             ...(subItem?.current_period_start && {
               currentPeriodStart: new Date(subItem.current_period_start * 1000),
             }),
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
             activationsTotal: passConfig.count,
             activationsUsed: 0,
             stripePaymentIntentId: session.payment_intent as string,
+            paymentSource: "STRIPE",
           },
         });
 

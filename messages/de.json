@@ -284,7 +284,10 @@
     "deleteAccountDescription": "Ihr Konto und alle Daten dauerhaft l\u00f6schen. Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
     "typeDelete": "Geben Sie DELETE zur Best\u00e4tigung ein",
     "confirmDelete": "Mein Konto l\u00f6schen",
-    "oauthOnly": "Passwortverwaltung ist f\u00fcr Social-Login-Konten nicht verf\u00fcgbar."
+    "oauthOnly": "Passwortverwaltung ist f\u00fcr Social-Login-Konten nicht verf\u00fcgbar.",
+    "restorePurchases": "K\u00e4ufe wiederherstellen",
+    "restoreSuccess": "K\u00e4ufe erfolgreich wiederhergestellt.",
+    "restoreNone": "Keine K\u00e4ufe zum Wiederherstellen."
   },
   "settings": {
     "title": "Einstellungen",
@@ -624,7 +627,9 @@
     "emailTemplates": "E-Mail-Vorlagen",
     "preview": "Vorschau",
     "sendTest": "Test senden",
-    "close": "Schlie\u00dfen"
+    "close": "Schlie\u00dfen",
+    "appleProductId": "Apple-Produkt-ID",
+    "iosPrice": "iOS-Preis"
   },
   "tiers": {
     "free": "Kostenlos",

@@ -194,7 +194,7 @@ All four apps on this server use distinct prefixes:
 | Bonistock Prod     | `bonistock_prod_`   | `bonistock_prod_DATABASE_URL` |
 | Bonistock Dev      | `bonistock_dev_`    | `bonistock_dev_DATABASE_URL`  |
 
-### Current secrets (15 per environment)
+### Current secrets (16 per environment)
 
 | Secret                                | Description                     |
 |---------------------------------------|---------------------------------|
@@ -213,6 +213,7 @@ All four apps on this server use distinct prefixes:
 | `bonistock_{env}_STRIPE_SECRET_KEY`   | Stripe API secret key           |
 | `bonistock_{env}_STRIPE_PUBLISHABLE_KEY`| Stripe publishable key        |
 | `bonistock_{env}_STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `bonistock_{env}_REVENUECAT_WEBHOOK_SECRET` | RevenueCat webhook auth secret |
 
 > **Note:** Stripe price IDs are no longer stored as secrets. Products and prices are managed via the admin dashboard and stored in the database.
 

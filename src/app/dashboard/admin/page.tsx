@@ -57,6 +57,8 @@ interface Product {
   active: boolean;
   highlighted: boolean;
   sortOrder: number;
+  appleProductId: string | null;
+  iosPriceAmount: number | null;
 }
 
 interface AdminUser {
@@ -111,7 +113,9 @@ export default function AdminPage() {
     usualPrice: string;
     trialDays: string;
     highlighted: boolean;
-  }>({ name: "", description: "", priceAmount: "", usualPrice: "", trialDays: "", highlighted: false });
+    appleProductId: string;
+    iosPriceAmount: string;
+  }>({ name: "", description: "", priceAmount: "", usualPrice: "", trialDays: "", highlighted: false, appleProductId: "", iosPriceAmount: "" });
   const [saving, setSaving] = useState(false);
 
   // Users state
@@ -141,6 +145,8 @@ export default function AdminPage() {
   const [formFeatures, setFormFeatures] = useState("");
   const [formUsualPrice, setFormUsualPrice] = useState("");
   const [formHighlighted, setFormHighlighted] = useState(false);
+  const [formAppleProductId, setFormAppleProductId] = useState("");
+  const [formIosPriceAmount, setFormIosPriceAmount] = useState("");
 
   useEffect(() => {
     if (!loading && user?.role !== "ADMIN") {
@@ -236,6 +242,8 @@ export default function AdminPage() {
       usualPrice: product.usualPrice != null ? (product.usualPrice / 100).toFixed(2) : "",
       trialDays: product.trialDays != null ? String(product.trialDays) : "",
       highlighted: product.highlighted,
+      appleProductId: product.appleProductId ?? "",
+      iosPriceAmount: product.iosPriceAmount != null ? (product.iosPriceAmount / 100).toFixed(2) : "",
     });
   };
 
@@ -270,6 +278,17 @@ export default function AdminPage() {
       body.trialDays = editFields.trialDays ? parseInt(editFields.trialDays, 10) : null;
     }
 
+    // Apple IAP fields
+    body.appleProductId = editFields.appleProductId || null;
+    if (editFields.iosPriceAmount) {
+      const iosInCents = Math.round(parseFloat(editFields.iosPriceAmount) * 100);
+      if (!isNaN(iosInCents) && iosInCents > 0) {
+        body.iosPriceAmount = iosInCents;
+      }
+    } else {
+      body.iosPriceAmount = null;
+    }
+
     try {
       const res = await fetch(`/api/admin/products/${product.id}`, {
         method: "PATCH",
@@ -299,6 +318,8 @@ export default function AdminPage() {
     setFormTrialDays("");
     setFormFeatures("");
     setFormHighlighted(false);
+    setFormAppleProductId("");
+    setFormIosPriceAmount("");
     setCreateError(null);
   };
 
@@ -321,6 +342,8 @@ export default function AdminPage() {
       currency: formCurrency,
       highlighted: formHighlighted,
       ...(formUsualPrice && { usualPrice: Math.round(parseFloat(formUsualPrice) * 100) }),
+      ...(formAppleProductId && { appleProductId: formAppleProductId }),
+      ...(formIosPriceAmount && { iosPriceAmount: Math.round(parseFloat(formIosPriceAmount) * 100) }),
     };
 
     if (formType === "SUBSCRIPTION") {
@@ -880,6 +903,30 @@ export default function AdminPage() {
                 </div>
               )}
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">{t("appleProductId")}</label>
+                  <input
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={formAppleProductId}
+                    onChange={(e) => setFormAppleProductId(e.target.value)}
+                    placeholder="com.bonifatus.bonistock.plus.monthly"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">{t("iosPrice")}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={formIosPriceAmount}
+                    onChange={(e) => setFormIosPriceAmount(e.target.value)}
+                    placeholder="9.99"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs text-text-secondary mb-1">{t("features")}</label>
                 <textarea
@@ -934,6 +981,8 @@ export default function AdminPage() {
                     <th className="pb-2">{t("productType")}</th>
                     <th className="pb-2">{t("price")}</th>
                     <th className="pb-2">Usual</th>
+                    <th className="pb-2">{t("appleProductId")}</th>
+                    <th className="pb-2">{t("iosPrice")}</th>
                     <th className="pb-2">{t("status")}</th>
                     <th className="pb-2">{t("actions")}</th>
                   </tr>
@@ -999,6 +1048,33 @@ export default function AdminPage() {
                           />
                         ) : (
                           product.usualPrice ? formatCents(product.usualPrice) : "\u2014"
+                        )}
+                      </td>
+                      <td className="py-2 text-text-secondary">
+                        {editingProduct === product.id ? (
+                          <input
+                            className="w-40 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                            value={editFields.appleProductId}
+                            onChange={(e) => setEditFields((f) => ({ ...f, appleProductId: e.target.value }))}
+                            placeholder="com.bonifatus..."
+                          />
+                        ) : (
+                          <span className="text-xs">{product.appleProductId ?? "\u2014"}</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-text-secondary">
+                        {editingProduct === product.id ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                            value={editFields.iosPriceAmount}
+                            onChange={(e) => setEditFields((f) => ({ ...f, iosPriceAmount: e.target.value }))}
+                            placeholder="0.00"
+                          />
+                        ) : (
+                          product.iosPriceAmount ? formatCents(product.iosPriceAmount) : "\u2014"
                         )}
                       </td>
                       <td className="py-2">

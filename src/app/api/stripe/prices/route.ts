@@ -25,6 +25,8 @@ export async function GET() {
         stripePriceId: true,
         highlighted: true,
         sortOrder: true,
+        appleProductId: true,
+        iosPriceAmount: true,
       },
     });
 

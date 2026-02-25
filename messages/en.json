@@ -284,7 +284,10 @@
     "deleteAccountDescription": "Permanently delete your account and all data. This cannot be undone.",
     "typeDelete": "Type DELETE to confirm",
     "confirmDelete": "Delete My Account",
-    "oauthOnly": "Password management is not available for social login accounts."
+    "oauthOnly": "Password management is not available for social login accounts.",
+    "restorePurchases": "Restore Purchases",
+    "restoreSuccess": "Purchases restored successfully.",
+    "restoreNone": "No purchases to restore."
   },
   "settings": {
     "title": "Settings",
@@ -624,7 +627,9 @@
     "emailTemplates": "Email Templates",
     "preview": "Preview",
     "sendTest": "Send Test",
-    "close": "Close"
+    "close": "Close",
+    "appleProductId": "Apple Product ID",
+    "iosPrice": "iOS Price"
   },
   "tiers": {
     "free": "Free",

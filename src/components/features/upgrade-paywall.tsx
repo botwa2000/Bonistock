@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { isIOS } from "@/lib/native";
+import { getOfferings, purchasePackage, type RCPackage } from "@/lib/revenuecat";
 
 interface Product {
   id: string;
@@ -23,6 +25,8 @@ interface Product {
   stripePriceId: string;
   highlighted: boolean;
   sortOrder: number;
+  appleProductId?: string | null;
+  iosPriceAmount?: number | null;
 }
 
 function formatPrice(cents: number, interval?: "MONTH" | "YEAR" | null): string {
@@ -39,18 +43,28 @@ interface UpgradePaywallProps {
 export function UpgradePaywall({ feature }: UpgradePaywallProps) {
   const t = useTranslations("paywall");
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, refreshUser } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [annual, setAnnual] = useState(true);
+  const [rcPackages, setRcPackages] = useState<RCPackage[]>([]);
 
   useEffect(() => {
     fetch("/api/stripe/prices")
       .then((res) => res.json())
       .then((data: Product[]) => setProducts(data))
       .catch(() => {});
+
+    if (isIOS) {
+      getOfferings().then(setRcPackages).catch(() => {});
+    }
   }, []);
+
+  const findRcPackage = (product: Product): RCPackage | undefined =>
+    product.appleProductId
+      ? rcPackages.find((pkg) => pkg.productId === product.appleProductId)
+      : undefined;
 
   const passProducts = products
     .filter((p) => p.type === "PASS" && p.passType)
@@ -87,6 +101,28 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
 
     setError(null);
     setBuying(passType);
+
+    // iOS: use RevenueCat / Apple IAP
+    if (isIOS) {
+      const pkg = findRcPackage(product);
+      if (pkg) {
+        try {
+          const success = await purchasePackage(pkg.identifier);
+          if (success) {
+            await refreshUser();
+          } else {
+            setError("Purchase was canceled or failed. Please try again.");
+          }
+        } catch {
+          setError("Purchase failed. Please try again.");
+        } finally {
+          setBuying(null);
+        }
+        return;
+      }
+    }
+
+    // Web: use Stripe checkout
     try {
       const res = await fetch("/api/stripe/pass", {
         method: "POST",
@@ -122,6 +158,28 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
 
     setError(null);
     setBuying("subscription");
+
+    // iOS: use RevenueCat / Apple IAP
+    if (isIOS) {
+      const pkg = findRcPackage(activeSubscription);
+      if (pkg) {
+        try {
+          const success = await purchasePackage(pkg.identifier);
+          if (success) {
+            await refreshUser();
+          } else {
+            setError("Purchase was canceled or failed. Please try again.");
+          }
+        } catch {
+          setError("Purchase failed. Please try again.");
+        } finally {
+          setBuying(null);
+        }
+        return;
+      }
+    }
+
+    // Web: use Stripe checkout
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -157,13 +215,16 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
 
       <div className="mt-6 space-y-3">
         {/* Pass products */}
-        {passProducts.map((product) => (
+        {passProducts.map((product) => {
+          const rcPkg = findRcPackage(product);
+          const priceDisplay = isIOS && rcPkg ? rcPkg.priceString : formatPrice(product.priceAmount);
+          return (
           <div key={product.id} className="rounded-xl border border-border bg-surface-elevated p-4">
             <div className="flex items-center justify-between">
               <div className="text-left">
                 <div className="text-sm font-semibold text-text-primary">
                   {passNameMap[product.passType!] ?? product.name}
-                  <span className="ml-2 text-emerald-400">{formatPrice(product.priceAmount)}</span>
+                  <span className="ml-2 text-emerald-400">{priceDisplay}</span>
                 </div>
                 <div className="text-xs text-text-secondary">
                   {passDescMap[product.passType!] ?? product.description}
@@ -179,7 +240,8 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         <div className="flex items-center gap-3 text-xs text-text-tertiary">
           <div className="h-px flex-1 bg-surface" />
@@ -217,7 +279,11 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
               >
                 Monthly
                 {monthlyProduct && (
-                  <span className="ml-1">{formatPrice(monthlyProduct.priceAmount, "MONTH")}</span>
+                  <span className="ml-1">
+                    {isIOS && findRcPackage(monthlyProduct)
+                      ? `${findRcPackage(monthlyProduct)!.priceString}/mo`
+                      : formatPrice(monthlyProduct.priceAmount, "MONTH")}
+                  </span>
                 )}
               </button>
               <button
@@ -231,7 +297,11 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
               >
                 Annual
                 {annualProduct && (
-                  <span className="ml-1">{formatPrice(annualProduct.priceAmount, "YEAR")}</span>
+                  <span className="ml-1">
+                    {isIOS && findRcPackage(annualProduct)
+                      ? `${findRcPackage(annualProduct)!.priceString}/yr`
+                      : formatPrice(annualProduct.priceAmount, "YEAR")}
+                  </span>
                 )}
               </button>
             </div>

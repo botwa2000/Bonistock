@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { isNative } from "@/lib/native";
+import { restorePurchases } from "@/lib/revenuecat";
 
 interface SubscriptionInfo {
   tier: string;
@@ -20,11 +22,13 @@ interface SubscriptionInfo {
 
 export function SubscriptionSection() {
   const t = useTranslations("profile");
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [portalLoading, setPortalLoading] = useState(false);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.tier === "plus") {
@@ -87,6 +91,24 @@ export function SubscriptionSection() {
       }
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    setRestoreLoading(true);
+    setRestoreMessage(null);
+    try {
+      const hasEntitlements = await restorePurchases();
+      if (hasEntitlements) {
+        await refreshUser();
+        setRestoreMessage(t("restoreSuccess"));
+      } else {
+        setRestoreMessage(t("restoreNone"));
+      }
+    } catch {
+      setRestoreMessage(t("restoreNone"));
+    } finally {
+      setRestoreLoading(false);
     }
   };
 
@@ -234,7 +256,21 @@ export function SubscriptionSection() {
             <Button size="sm" variant="secondary">{t("changeTier")}</Button>
           </Link>
         )}
+        {isNative && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleRestorePurchases}
+            disabled={restoreLoading}
+          >
+            {restoreLoading ? "..." : t("restorePurchases")}
+          </Button>
+        )}
       </div>
+
+      {restoreMessage && (
+        <p className="mt-2 text-sm text-text-secondary">{restoreMessage}</p>
+      )}
     </Card>
   );
 }
