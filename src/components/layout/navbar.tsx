@@ -14,8 +14,9 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-2 md:px-8">
-        <Logo />
-        <div className="flex items-center gap-6">
+        <div className="sm:hidden"><Logo size="sm" showText={false} /></div>
+        <div className="hidden sm:block"><Logo /></div>
+        <div className="flex items-center gap-2 sm:gap-6">
           <div className="hidden items-center gap-5 text-sm text-text-secondary md:flex">
             <Link href="/pricing" className="transition-colors hover:text-text-primary">
               {t("nav.pricing")}
@@ -33,13 +34,13 @@ export function Navbar() {
               <Button size="sm">{t("nav.dashboard")}</Button>
             </Link>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="whitespace-nowrap">
                   {t("common.login")}
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href="/login" className="hidden sm:block">
                 <Button size="sm">{t("common.getStarted")}</Button>
               </Link>
             </div>

@@ -120,9 +120,9 @@ function InvestmentPreviewSection() {
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         {/* Stocks column */}
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-text-primary">{t("stockSectionTitle")}</h3>
+        <div className="min-w-0 space-y-3">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2.5">
+            <h3 className="text-sm font-semibold text-accent-fg">{t("stockSectionTitle")}</h3>
             <p className="mt-0.5 text-xs text-text-secondary">{t("stockSectionSubtitle")}</p>
           </div>
           {unlockedStocks.map((pick) => (
@@ -134,9 +134,9 @@ function InvestmentPreviewSection() {
         </div>
 
         {/* ETFs column */}
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-text-primary">{t("etfSectionTitle")}</h3>
+        <div className="min-w-0 space-y-3">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/5 px-3 py-2.5">
+            <h3 className="text-sm font-semibold text-blue-300 light:text-blue-600">{t("etfSectionTitle")}</h3>
             <p className="mt-0.5 text-xs text-text-secondary">{t("etfSectionSubtitle")}</p>
           </div>
           {unlockedEtfs.map((etf) => {
@@ -238,7 +238,7 @@ export default function LandingPageContent() {
   const t = useTranslations("landing");
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <Navbar />
       <Hero />
 

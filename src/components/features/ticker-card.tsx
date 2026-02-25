@@ -55,7 +55,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                   </p>
                 )}
               </div>
-              <div className="text-right flex-shrink-0">
+              <div className="text-right shrink-0">
                 <div className="text-[10px] sm:text-xs uppercase text-text-secondary">
                   {t("upside")}
                 </div>
@@ -140,7 +140,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                 </p>
               )}
             </div>
-            <div className="text-right flex-shrink-0">
+            <div className="text-right shrink-0">
               <div className="text-[10px] sm:text-xs uppercase text-text-secondary">
                 {t("upside")}
               </div>
