@@ -15,12 +15,27 @@ export async function POST() {
     where: { userId: session.user.id },
     select: {
       stripeSubscriptionId: true,
+      paymentSource: true,
       status: true,
       cancelAtPeriodEnd: true,
     },
   });
 
-  if (!subscription?.stripeSubscriptionId) {
+  if (!subscription) {
+    return NextResponse.json(
+      { error: "No active subscription found" },
+      { status: 404 }
+    );
+  }
+
+  if (subscription.paymentSource === "APPLE") {
+    return NextResponse.json(
+      { error: "Apple subscriptions must be managed through Apple Settings" },
+      { status: 400 }
+    );
+  }
+
+  if (!subscription.stripeSubscriptionId) {
     return NextResponse.json(
       { error: "No active subscription found" },
       { status: 404 }

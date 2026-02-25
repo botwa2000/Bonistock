@@ -67,10 +67,27 @@ export default function TermsPage() {
               <li><strong>Plus</strong> &mdash; monthly or annual subscription with full access</li>
             </ul>
             <p className="mt-2">
-              Subscriptions are billed monthly or annually as selected via Stripe.
-              You may cancel at any time; access continues until the end of the
-              billing period. Refunds are not provided for partial billing periods
-              or unused day pass activations.
+              <strong>Web payments:</strong> Subscriptions purchased on the web are
+              billed monthly or annually via Stripe. You may cancel at any time;
+              access continues until the end of the billing period.
+            </p>
+            <p className="mt-2">
+              <strong>Apple In-App Purchases:</strong> Subscriptions and passes
+              may also be purchased through Apple In-App Purchase on iOS. The
+              following terms apply to auto-renewable subscriptions purchased
+              through the App Store:
+            </p>
+            <ul className="mt-2 list-disc pl-5 space-y-1">
+              <li>Payment is charged to your Apple ID account at confirmation of purchase.</li>
+              <li>Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period.</li>
+              <li>Your account will be charged for renewal within 24 hours prior to the end of the current period at the rate of the selected plan.</li>
+              <li>You can manage and cancel your subscriptions by going to your Account Settings on the App Store after purchase.</li>
+              <li>Any unused portion of a free trial period, if offered, will be forfeited when you purchase a subscription.</li>
+            </ul>
+            <p className="mt-2">
+              Refunds are not provided for partial billing periods or unused day
+              pass activations. For App Store purchases, refunds are handled by
+              Apple in accordance with their refund policies.
             </p>
           </section>
 

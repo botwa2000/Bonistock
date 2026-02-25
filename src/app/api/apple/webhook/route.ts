@@ -146,17 +146,28 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      case "REFUND": {
+      case "REFUND":
+      case "REVOKE": {
         await db.subscription.updateMany({
           where: { userId, paymentSource: "APPLE" },
           data: { status: "CANCELED", tier: "FREE" },
         });
-        await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "refund", source: "APPLE" });
+        await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: notificationType === "REFUND" ? "refund" : "revoke", source: "APPLE" });
         notifyAdmins(
-          "Subscription refunded (Apple)",
-          `<h2>Subscription Refunded (Apple)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
+          `Subscription ${notificationType === "REFUND" ? "refunded" : "revoked"} (Apple)`,
+          `<h2>Subscription ${notificationType === "REFUND" ? "Refunded" : "Revoked"} (Apple)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
         );
-        log.info("apple/webhook", `Refund processed for user ${userId}`);
+        log.info("apple/webhook", `${notificationType} processed for user ${userId}`);
+        break;
+      }
+
+      case "GRACE_PERIOD_EXPIRED": {
+        await db.subscription.updateMany({
+          where: { userId, paymentSource: "APPLE" },
+          data: { status: "CANCELED", tier: "FREE" },
+        });
+        await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "grace_period_expired", source: "APPLE" });
+        log.info("apple/webhook", `Grace period expired for user ${userId}`);
         break;
       }
 

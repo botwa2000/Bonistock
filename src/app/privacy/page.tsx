@@ -42,8 +42,9 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3 font-medium text-text-secondary">Payment information:</p>
             <ul className="mt-1 list-disc pl-5 space-y-1">
-              <li>Subscription tier and billing status (managed by Stripe)</li>
-              <li>We do NOT store credit card numbers, CVVs, or full payment details &mdash; Stripe handles all payment data directly</li>
+              <li>Subscription tier and billing status (managed by Stripe on web, Apple on iOS)</li>
+              <li>Apple In-App Purchase transaction identifiers (for subscription management and purchase verification)</li>
+              <li>We do NOT store credit card numbers, CVVs, or full payment details &mdash; Stripe and Apple handle all payment data directly</li>
             </ul>
             <p className="mt-3 font-medium text-text-secondary">Usage data:</p>
             <ul className="mt-1 list-disc pl-5 space-y-1">
@@ -65,7 +66,7 @@ export default function PrivacyPage() {
             <ul className="mt-2 list-disc pl-5 space-y-1">
               <li>Provide, personalize, and improve the service</li>
               <li>Authenticate your identity and secure your account</li>
-              <li>Process subscription payments and pass purchases via Stripe</li>
+              <li>Process subscription payments and pass purchases via Stripe (web) and Apple In-App Purchase (iOS)</li>
               <li>Send transactional emails (verification, password reset, purchase confirmations)</li>
               <li>Send alerts and notifications you opt into</li>
               <li>Detect and prevent fraud, abuse, and security threats</li>
@@ -93,7 +94,8 @@ export default function PrivacyPage() {
               We do not sell your personal data. We share limited data with:
             </p>
             <ul className="mt-2 list-disc pl-5 space-y-1">
-              <li><strong>Stripe</strong> &mdash; payment processing (name, email, billing info)</li>
+              <li><strong>Stripe</strong> &mdash; payment processing on web (name, email, billing info)</li>
+              <li><strong>Apple</strong> &mdash; in-app payment processing on iOS (transaction IDs, purchase verification via App Store Server API)</li>
               <li><strong>Brevo</strong> &mdash; transactional email delivery (email address, name)</li>
               <li><strong>Sentry</strong> &mdash; error tracking (anonymized technical data, no PII by default)</li>
               <li><strong>Google / Facebook</strong> &mdash; authentication only; we receive data from them but do not share your Bonistock data back</li>

@@ -7,12 +7,13 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { isNative } from "@/lib/native";
+import { isNative, isIOS } from "@/lib/native";
 import { restorePurchases } from "@/lib/apple-iap";
 
 interface SubscriptionInfo {
   tier: string;
   status?: string;
+  paymentSource?: "STRIPE" | "APPLE";
   planName?: string;
   planPrice?: string;
   billingInterval?: string | null;
@@ -45,7 +46,16 @@ export function SubscriptionSection() {
   const tierVariant =
     tier === "plus" ? "info" : tier === "pass" ? "accent" : "default";
 
+  const isAppleSub = subInfo?.paymentSource === "APPLE";
+
   const handleManagePayment = async () => {
+    // Apple subscribers manage via App Store
+    if (isAppleSub) {
+      if (isIOS) {
+        window.location.href = "https://apps.apple.com/account/subscriptions";
+      }
+      return;
+    }
     setPortalLoading(true);
     try {
       const res = await fetch("/api/stripe/portal", { method: "POST" });
@@ -221,34 +231,50 @@ export function SubscriptionSection() {
         )}
         {tier === "plus" && subInfo && (
           <>
-            {subInfo.cancelAtPeriodEnd ? (
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={handleResume}
-                disabled={actionLoading}
-              >
-                {actionLoading ? "..." : t("resumeSubscription")}
-              </Button>
-            ) : (
-              !showCancelConfirm && (
+            {isAppleSub ? (
+              /* Apple subscribers — direct to App Store for all management */
+              isIOS && (
                 <Button
                   size="sm"
-                  variant="danger"
-                  onClick={() => setShowCancelConfirm(true)}
+                  variant="secondary"
+                  onClick={handleManagePayment}
                 >
-                  {t("cancelSubscription")}
+                  Manage in App Store
                 </Button>
               )
+            ) : (
+              /* Stripe subscribers — cancel/resume + billing portal */
+              <>
+                {subInfo.cancelAtPeriodEnd ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={handleResume}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? "..." : t("resumeSubscription")}
+                  </Button>
+                ) : (
+                  !showCancelConfirm && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => setShowCancelConfirm(true)}
+                    >
+                      {t("cancelSubscription")}
+                    </Button>
+                  )
+                )}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleManagePayment}
+                  disabled={portalLoading}
+                >
+                  {portalLoading ? "..." : t("managePayment")}
+                </Button>
+              </>
             )}
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleManagePayment}
-              disabled={portalLoading}
-            >
-              {portalLoading ? "..." : t("managePayment")}
-            </Button>
           </>
         )}
         {tier === "pass" && (

@@ -14,6 +14,8 @@ export async function GET() {
       status: true,
       tier: true,
       stripePriceId: true,
+      paymentSource: true,
+      appleOriginalTransactionId: true,
       currentPeriodEnd: true,
       cancelAtPeriodEnd: true,
     },
@@ -23,12 +25,16 @@ export async function GET() {
     return NextResponse.json({ tier: "free" });
   }
 
-  // Look up product details via stripePriceId
+  // Look up product details via stripePriceId or appleOriginalTransactionId
   let planName = "Plus";
   let planPrice = "";
   let billingInterval: string | null = null;
 
-  if (subscription.stripePriceId) {
+  if (subscription.paymentSource === "APPLE") {
+    // Apple subscriptions — show generic plan info (prices managed by Apple)
+    planName = "Plus (Apple)";
+    planPrice = "via App Store";
+  } else if (subscription.stripePriceId) {
     const product = await db.product.findUnique({
       where: { stripePriceId: subscription.stripePriceId },
       select: { name: true, priceAmount: true, billingInterval: true },
@@ -45,6 +51,7 @@ export async function GET() {
   return NextResponse.json({
     tier: "plus",
     status: subscription.status,
+    paymentSource: subscription.paymentSource,
     planName,
     planPrice,
     billingInterval,
