@@ -9,7 +9,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.bonifatus.bonistock
-      node: 20
+      node: 22
       xcode: latest
       cocoapods: default
     triggering:
