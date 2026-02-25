@@ -30,10 +30,10 @@ workflows:
 
       - name: Generate iOS project
         script: |
-          cp ios/exportOptions.plist /tmp/exportOptions.plist
+          cp ios/exportOptions.plist /tmp/exportOptions.plist 2>/dev/null || true
           rm -rf ios
           npx cap add ios
-          cp /tmp/exportOptions.plist ios/exportOptions.plist
+          [ -f /tmp/exportOptions.plist ] && cp /tmp/exportOptions.plist ios/exportOptions.plist || true
 
       - name: Capacitor sync
         script: npx cap sync ios
