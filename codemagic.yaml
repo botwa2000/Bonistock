@@ -28,6 +28,9 @@ workflows:
       - name: Install Node dependencies
         script: npm ci
 
+      - name: Generate iOS project
+        script: npx cap add ios
+
       - name: Capacitor sync
         script: npx cap sync ios
 
