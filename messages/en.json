@@ -138,11 +138,17 @@
     "description": "Description",
     "trendWarning": "Below 200-day moving average — analyst targets may be optimistic",
     "brokerAvailability": "Available on",
+    "keyDetails": "Key Details",
+    "currency": "Currency",
     "addToWatchlist": "Add to Watchlist",
     "addToMix": "Add to Mix",
     "backToList": "Back to list"
   },
   "etf": {
+    "keyDetails": "Key Details",
+    "exchange": "Exchange",
+    "currency": "Currency",
+    "brokerAvailability": "Available on",
     "factSheet": "Fact Sheet",
     "cagr1y": "1Y CAGR",
     "cagr3y": "3Y CAGR",

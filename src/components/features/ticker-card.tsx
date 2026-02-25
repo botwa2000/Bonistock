@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { StockPick } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getRegionFlag, getSectorIcon } from "@/lib/stock-icons";
-import { StockInfoPopup } from "@/components/features/stock-info-popup";
 import { hapticImpact } from "@/lib/native";
 
 interface TickerCardProps {
@@ -18,7 +16,6 @@ interface TickerCardProps {
 
 export function TickerCard({ pick, compact = false, locked = false }: TickerCardProps) {
   const t = useTranslations("stock");
-  const [showInfo, setShowInfo] = useState(false);
   const conviction =
     pick.buys + pick.holds + pick.sells > 0
       ? (pick.buys - pick.sells) / (pick.buys + pick.holds + pick.sells)
@@ -106,7 +103,6 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
   }
 
   return (
-    <>
       <Link href={`/dashboard/stock/${pick.symbol}`} onClick={() => hapticImpact("light")}>
         <Card variant="glass" hover className="flex flex-col gap-2 sm:gap-3 overflow-hidden">
           <div className="flex items-start justify-between gap-2">
@@ -118,17 +114,6 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                 <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                   {pick.analysts} {t("analysts")}
                 </Badge>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowInfo(true);
-                  }}
-                  className="flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full border border-border-subtle bg-surface-elevated text-[10px] sm:text-xs text-text-secondary hover:text-text-primary hover:border-emerald-400/50 transition-colors"
-                  title={t("moreInfo")}
-                >
-                  i
-                </button>
               </div>
               <h3 className="mt-1.5 sm:mt-2 text-sm sm:text-lg font-semibold text-text-primary truncate">
                 {pick.symbol} &middot; {pick.name}
@@ -187,9 +172,5 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
           )}
         </Card>
       </Link>
-      {showInfo && (
-        <StockInfoPopup pick={pick} onClose={() => setShowInfo(false)} />
-      )}
-    </>
   );
 }

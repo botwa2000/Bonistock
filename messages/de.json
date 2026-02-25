@@ -138,11 +138,17 @@
     "description": "Beschreibung",
     "trendWarning": "Unter dem 200-Tage-Durchschnitt \u2014 Analystenziele k\u00f6nnten zu optimistisch sein",
     "brokerAvailability": "Verf\u00fcgbar bei",
+    "keyDetails": "Eckdaten",
+    "currency": "W\u00e4hrung",
     "addToWatchlist": "Zur Watchlist hinzuf\u00fcgen",
     "addToMix": "Zum Mix hinzuf\u00fcgen",
     "backToList": "Zur\u00fcck zur Liste"
   },
   "etf": {
+    "keyDetails": "Eckdaten",
+    "exchange": "Börse",
+    "currency": "Währung",
+    "brokerAvailability": "Verfügbar bei",
     "factSheet": "Factsheet",
     "cagr1y": "1J CAGR",
     "cagr3y": "3J CAGR",

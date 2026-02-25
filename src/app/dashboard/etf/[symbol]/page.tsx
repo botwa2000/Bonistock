@@ -105,14 +105,49 @@ export default function EtfDetailPage({
         ))}
       </div>
 
-      <Card variant="glass" padding="lg">
-        <h2 className="text-lg font-semibold text-text-primary">
-          Historical Performance
-        </h2>
-        <div className="mt-4 flex h-48 items-center justify-center rounded-xl border border-border-subtle bg-surface-elevated text-sm text-text-tertiary">
-          Chart placeholder — historical NAV data will render here
+      <Card variant="glass">
+        <h3 className="text-base font-semibold text-text-primary">
+          {t("keyDetails")}
+        </h3>
+        <div className="mt-3 space-y-2 text-sm">
+          <div className="flex justify-between text-text-secondary">
+            <span>{t("exchange")}</span>
+            <span className="text-text-primary">{etf.exchange}</span>
+          </div>
+          <div className="flex justify-between text-text-secondary">
+            <span>{t("currency")}</span>
+            <span className="text-text-primary">{etf.currency}</span>
+          </div>
+          {etf.isin && (
+            <div className="flex justify-between text-text-secondary">
+              <span>ISIN</span>
+              <span className="text-text-primary">{etf.isin}</span>
+            </div>
+          )}
+          {etf.wkn && (
+            <div className="flex justify-between text-text-secondary">
+              <span>WKN</span>
+              <span className="text-text-primary">{etf.wkn}</span>
+            </div>
+          )}
         </div>
       </Card>
+
+      {etf.brokerAvailability && etf.brokerAvailability.length > 0 && (
+        <Card variant="glass">
+          <h3 className="text-xs uppercase text-text-secondary">{t("brokerAvailability")}</h3>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {etf.brokerAvailability.map((b) => (
+              <span
+                key={b}
+                className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-tertiary"
+              >
+                {b === "ibkr" ? "IBKR" : b === "t212" ? "T212" : b === "robinhood" ? "RH" : b === "etoro" ? "eToro" : b === "fidelity" ? "Fidelity" : b === "schwab" ? "Schwab" : b === "webull" ? "Webull" : b === "traderepublic" ? "Trade Republic" : b === "scalable" ? "Scalable" : b === "ing" ? "ING" : b === "comdirect" ? "comdirect" : b}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Link href="/dashboard/mix">
         <Button>Add to Auto-Mix</Button>
