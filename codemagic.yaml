@@ -19,6 +19,12 @@ workflows:
         - pattern: master
           include: true
     scripts:
+      - name: Set up Node 22
+        script: |
+          nvm install 22
+          nvm use 22
+          node --version
+
       - name: Install Node dependencies
         script: npm ci
 
