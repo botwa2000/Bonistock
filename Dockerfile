@@ -22,9 +22,6 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
 ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
 
-ARG NEXT_PUBLIC_REVENUECAT_API_KEY
-ENV NEXT_PUBLIC_REVENUECAT_API_KEY=$NEXT_PUBLIC_REVENUECAT_API_KEY
-
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -41,6 +38,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/certs ./certs
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

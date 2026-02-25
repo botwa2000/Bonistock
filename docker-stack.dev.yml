@@ -25,7 +25,10 @@ services:
       - bonistock_dev_APNS_TEAM_ID
       - bonistock_dev_APNS_KEY_P8
       - bonistock_dev_APNS_BUNDLE_ID
-      - bonistock_dev_REVENUECAT_WEBHOOK_SECRET
+      - bonistock_dev_APPLE_IAP_KEY_P8
+      - bonistock_dev_APPLE_IAP_KEY_ID
+      - bonistock_dev_APPLE_IAP_ISSUER_ID
+      - bonistock_dev_APPLE_APP_ID
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -33,7 +36,6 @@ services:
       - NEXT_PUBLIC_APP_URL=https://dev.bonistock.com
       - STOCK_SYNC_SOURCE=https://bonistock.com
       - NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S
-      - NEXT_PUBLIC_REVENUECAT_API_KEY=
     deploy:
       replicas: 1
       restart_policy:
@@ -89,5 +91,11 @@ secrets:
     external: true
   bonistock_dev_APNS_BUNDLE_ID:
     external: true
-  bonistock_dev_REVENUECAT_WEBHOOK_SECRET:
+  bonistock_dev_APPLE_IAP_KEY_P8:
+    external: true
+  bonistock_dev_APPLE_IAP_KEY_ID:
+    external: true
+  bonistock_dev_APPLE_IAP_ISSUER_ID:
+    external: true
+  bonistock_dev_APPLE_APP_ID:
     external: true

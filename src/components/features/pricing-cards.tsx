@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { openInAppBrowser, isIOS } from "@/lib/native";
-import { getOfferings, purchasePackage, type RCPackage } from "@/lib/revenuecat";
+import { getProducts, purchaseProduct, type AppleProduct } from "@/lib/apple-iap";
 
 interface Product {
   id: string;
@@ -50,31 +50,37 @@ export function PricingCards() {
   const [products, setProducts] = useState<Product[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
-  const [rcPackages, setRcPackages] = useState<RCPackage[]>([]);
+  const [appleProducts, setAppleProducts] = useState<AppleProduct[]>([]);
 
   useEffect(() => {
     fetch("/api/stripe/prices")
       .then((res) => res.json())
-      .then((data: Product[]) => setProducts(data))
+      .then((data: Product[]) => {
+        setProducts(data);
+        // Fetch Apple prices on iOS using product IDs from DB
+        if (isIOS) {
+          const appleIds = data
+            .map((p) => p.appleProductId)
+            .filter((id): id is string => !!id);
+          if (appleIds.length > 0) {
+            getProducts(appleIds).then(setAppleProducts).catch(() => {});
+          }
+        }
+      })
       .catch(() => {});
-
-    // Fetch Apple prices on iOS
-    if (isIOS) {
-      getOfferings().then(setRcPackages).catch(() => {});
-    }
   }, []);
 
-  // Helper: find RevenueCat package matching a product's appleProductId
-  const findRcPackage = (product: Product): RCPackage | undefined =>
+  // Helper: find Apple product matching a DB product's appleProductId
+  const findAppleProduct = (product: Product): AppleProduct | undefined =>
     product.appleProductId
-      ? rcPackages.find((pkg) => pkg.productId === product.appleProductId)
+      ? appleProducts.find((ap) => ap.identifier === product.appleProductId)
       : undefined;
 
   // Helper: get display price — use Apple-localized price on iOS if available
   const getDisplayPrice = (product: Product): number => {
     if (isIOS) {
-      const pkg = findRcPackage(product);
-      if (pkg) return Math.round(pkg.price * 100); // convert to cents
+      const ap = findAppleProduct(product);
+      if (ap) return Math.round(ap.price * 100); // convert to cents
     }
     return product.priceAmount;
   };
@@ -82,8 +88,8 @@ export function PricingCards() {
   // Helper: get formatted price string from Apple on iOS
   const getApplePriceString = (product: Product): string | null => {
     if (!isIOS) return null;
-    const pkg = findRcPackage(product);
-    return pkg?.priceString ?? null;
+    const ap = findAppleProduct(product);
+    return ap?.priceString ?? null;
   };
 
   const subscriptions = products.filter((p) => p.type === "SUBSCRIPTION");
@@ -134,24 +140,31 @@ export function PricingCards() {
     setError(null);
     setCheckingOut(true);
 
-    // iOS: use RevenueCat / Apple IAP
-    if (isIOS && activeProduct) {
-      const pkg = findRcPackage(activeProduct as Product);
-      if (pkg) {
-        try {
-          const success = await purchasePackage(pkg.identifier);
-          if (success) {
+    // iOS: use StoreKit 2 via @capgo/native-purchases
+    if (isIOS && (activeProduct as Product).appleProductId) {
+      try {
+        const result = await purchaseProduct((activeProduct as Product).appleProductId!);
+        if (result) {
+          // Verify with server and create DB records
+          const verifyRes = await fetch("/api/apple/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactionId: result.transactionId }),
+          });
+          if (verifyRes.ok) {
             await refreshUser();
           } else {
-            setError("Purchase was canceled or failed. Please try again.");
+            setError("Purchase verification failed. Please contact support.");
           }
-        } catch {
-          setError("Purchase failed. Please try again.");
-        } finally {
-          setCheckingOut(false);
+        } else {
+          setError("Purchase was canceled or failed. Please try again.");
         }
-        return;
+      } catch {
+        setError("Purchase failed. Please try again.");
+      } finally {
+        setCheckingOut(false);
       }
+      return;
     }
 
     // Web: use Stripe checkout
@@ -191,24 +204,30 @@ export function PricingCards() {
     setError(null);
     setBuying(product.id);
 
-    // iOS: use RevenueCat / Apple IAP
-    if (isIOS) {
-      const pkg = findRcPackage(product);
-      if (pkg) {
-        try {
-          const success = await purchasePackage(pkg.identifier);
-          if (success) {
+    // iOS: use StoreKit 2 via @capgo/native-purchases
+    if (isIOS && product.appleProductId) {
+      try {
+        const result = await purchaseProduct(product.appleProductId);
+        if (result) {
+          const verifyRes = await fetch("/api/apple/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactionId: result.transactionId }),
+          });
+          if (verifyRes.ok) {
             await refreshUser();
           } else {
-            setError("Purchase was canceled or failed. Please try again.");
+            setError("Purchase verification failed. Please contact support.");
           }
-        } catch {
-          setError("Purchase failed. Please try again.");
-        } finally {
-          setBuying(null);
+        } else {
+          setError("Purchase was canceled or failed. Please try again.");
         }
-        return;
+      } catch {
+        setError("Purchase failed. Please try again.");
+      } finally {
+        setBuying(null);
       }
+      return;
     }
 
     // Web: use Stripe checkout

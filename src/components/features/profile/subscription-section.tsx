@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { isNative } from "@/lib/native";
-import { restorePurchases } from "@/lib/revenuecat";
+import { restorePurchases } from "@/lib/apple-iap";
 
 interface SubscriptionInfo {
   tier: string;

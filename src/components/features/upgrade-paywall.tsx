@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { isIOS } from "@/lib/native";
-import { getOfferings, purchasePackage, type RCPackage } from "@/lib/revenuecat";
+import { getProducts, purchaseProduct, type AppleProduct } from "@/lib/apple-iap";
 
 interface Product {
   id: string;
@@ -48,22 +48,28 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [annual, setAnnual] = useState(true);
-  const [rcPackages, setRcPackages] = useState<RCPackage[]>([]);
+  const [appleProducts, setAppleProducts] = useState<AppleProduct[]>([]);
 
   useEffect(() => {
     fetch("/api/stripe/prices")
       .then((res) => res.json())
-      .then((data: Product[]) => setProducts(data))
+      .then((data: Product[]) => {
+        setProducts(data);
+        if (isIOS) {
+          const appleIds = data
+            .map((p) => p.appleProductId)
+            .filter((id): id is string => !!id);
+          if (appleIds.length > 0) {
+            getProducts(appleIds).then(setAppleProducts).catch(() => {});
+          }
+        }
+      })
       .catch(() => {});
-
-    if (isIOS) {
-      getOfferings().then(setRcPackages).catch(() => {});
-    }
   }, []);
 
-  const findRcPackage = (product: Product): RCPackage | undefined =>
+  const findAppleProduct = (product: Product): AppleProduct | undefined =>
     product.appleProductId
-      ? rcPackages.find((pkg) => pkg.productId === product.appleProductId)
+      ? appleProducts.find((ap) => ap.identifier === product.appleProductId)
       : undefined;
 
   const passProducts = products
@@ -102,24 +108,30 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
     setError(null);
     setBuying(passType);
 
-    // iOS: use RevenueCat / Apple IAP
-    if (isIOS) {
-      const pkg = findRcPackage(product);
-      if (pkg) {
-        try {
-          const success = await purchasePackage(pkg.identifier);
-          if (success) {
+    // iOS: use StoreKit 2 via @capgo/native-purchases
+    if (isIOS && product.appleProductId) {
+      try {
+        const result = await purchaseProduct(product.appleProductId);
+        if (result) {
+          const verifyRes = await fetch("/api/apple/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactionId: result.transactionId }),
+          });
+          if (verifyRes.ok) {
             await refreshUser();
           } else {
-            setError("Purchase was canceled or failed. Please try again.");
+            setError("Purchase verification failed. Please contact support.");
           }
-        } catch {
-          setError("Purchase failed. Please try again.");
-        } finally {
-          setBuying(null);
+        } else {
+          setError("Purchase was canceled or failed. Please try again.");
         }
-        return;
+      } catch {
+        setError("Purchase failed. Please try again.");
+      } finally {
+        setBuying(null);
       }
+      return;
     }
 
     // Web: use Stripe checkout
@@ -159,24 +171,30 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
     setError(null);
     setBuying("subscription");
 
-    // iOS: use RevenueCat / Apple IAP
-    if (isIOS) {
-      const pkg = findRcPackage(activeSubscription);
-      if (pkg) {
-        try {
-          const success = await purchasePackage(pkg.identifier);
-          if (success) {
+    // iOS: use StoreKit 2 via @capgo/native-purchases
+    if (isIOS && activeSubscription.appleProductId) {
+      try {
+        const result = await purchaseProduct(activeSubscription.appleProductId);
+        if (result) {
+          const verifyRes = await fetch("/api/apple/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactionId: result.transactionId }),
+          });
+          if (verifyRes.ok) {
             await refreshUser();
           } else {
-            setError("Purchase was canceled or failed. Please try again.");
+            setError("Purchase verification failed. Please contact support.");
           }
-        } catch {
-          setError("Purchase failed. Please try again.");
-        } finally {
-          setBuying(null);
+        } else {
+          setError("Purchase was canceled or failed. Please try again.");
         }
-        return;
+      } catch {
+        setError("Purchase failed. Please try again.");
+      } finally {
+        setBuying(null);
       }
+      return;
     }
 
     // Web: use Stripe checkout
@@ -216,8 +234,8 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
       <div className="mt-6 space-y-3">
         {/* Pass products */}
         {passProducts.map((product) => {
-          const rcPkg = findRcPackage(product);
-          const priceDisplay = isIOS && rcPkg ? rcPkg.priceString : formatPrice(product.priceAmount);
+          const appleProd = findAppleProduct(product);
+          const priceDisplay = isIOS && appleProd ? appleProd.priceString : formatPrice(product.priceAmount);
           return (
           <div key={product.id} className="rounded-xl border border-border bg-surface-elevated p-4">
             <div className="flex items-center justify-between">
@@ -280,8 +298,8 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
                 Monthly
                 {monthlyProduct && (
                   <span className="ml-1">
-                    {isIOS && findRcPackage(monthlyProduct)
-                      ? `${findRcPackage(monthlyProduct)!.priceString}/mo`
+                    {isIOS && findAppleProduct(monthlyProduct)
+                      ? `${findAppleProduct(monthlyProduct)!.priceString}/mo`
                       : formatPrice(monthlyProduct.priceAmount, "MONTH")}
                   </span>
                 )}
@@ -298,8 +316,8 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
                 Annual
                 {annualProduct && (
                   <span className="ml-1">
-                    {isIOS && findRcPackage(annualProduct)
-                      ? `${findRcPackage(annualProduct)!.priceString}/yr`
+                    {isIOS && findAppleProduct(annualProduct)
+                      ? `${findAppleProduct(annualProduct)!.priceString}/yr`
                       : formatPrice(annualProduct.priceAmount, "YEAR")}
                   </span>
                 )}
