@@ -30,30 +30,26 @@ workflows:
 
       - name: Generate iOS project
         script: |
-          cp ios/exportOptions.plist /tmp/exportOptions.plist 2>/dev/null || true
+          mkdir -p out
           rm -rf ios
-          npx cap add ios
-          [ -f /tmp/exportOptions.plist ] && cp /tmp/exportOptions.plist ios/exportOptions.plist || true
+          npx cap add ios --packagemanager CocoaPods
+          echo "=== iOS project created ==="
+          ls ios/App/Podfile
 
-      - name: Capacitor sync
-        script: npx cap sync ios
-
-      - name: Install CocoaPods
+      - name: Sync Capacitor
         script: |
-          cd ios/App
-          pod install
+          npx cap sync ios
+          echo "=== Sync complete, workspace check ==="
+          ls ios/App/App.xcworkspace
 
       - name: Set up code signing
-        script: |
-          xcode-project use-profiles
+        script: xcode-project use-profiles
 
       - name: Build IPA
         script: |
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
-            --scheme "App" \
-            --archive-flags="-destination 'generic/platform=iOS'" \
-            --export-options-plist ios/exportOptions.plist
+            --scheme "App"
 
     artifacts:
       - build/ios/ipa/*.ipa
