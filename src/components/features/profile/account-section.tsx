@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { signOut } from "next-auth/react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export function AccountSection() {
     try {
       const res = await fetch("/api/user/delete", { method: "POST" });
       if (res.ok) {
+        await signOut({ redirect: false });
         window.location.href = "/";
       }
     } finally {
