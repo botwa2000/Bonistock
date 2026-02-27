@@ -88,21 +88,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    {
+      ...Google({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      }),
       allowDangerousEmailAccountLinking: true,
-    }),
-    Facebook({
-      clientId: process.env.FACEBOOK_CLIENT_ID,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+    },
+    {
+      ...Facebook({
+        clientId: process.env.FACEBOOK_CLIENT_ID,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      }),
       allowDangerousEmailAccountLinking: true,
-    }),
-    Apple({
-      clientId: process.env.APPLE_OAUTH_CLIENT_ID,
-      clientSecret: process.env.APPLE_OAUTH_CLIENT_SECRET!,
+    },
+    {
+      ...Apple({
+        clientId: process.env.APPLE_OAUTH_CLIENT_ID,
+        clientSecret: process.env.APPLE_OAUTH_CLIENT_SECRET!,
+      }),
       allowDangerousEmailAccountLinking: true,
-    }),
+    },
     Credentials({
       credentials: {
         email: { type: "email" },
