@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   // Auto-detect region and language from Accept-Language header
   const acceptLang = req.headers.get("accept-language") ?? "";
   const isGerman = /\bde\b/i.test(acceptLang.split(",")[0] ?? "");
-  const detectedRegion = isGerman ? "DE" : "US";
+  const detectedRegion = isGerman ? "DE" : "GLOBAL";
   const detectedLanguage = isGerman ? "DE" : "EN";
 
   const passwordHash = await hashPassword(password);

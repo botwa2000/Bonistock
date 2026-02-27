@@ -207,6 +207,16 @@ def derive_brokers(exchange: str) -> list:
 # ── Phase 1: Discover candidates via yfinance screener ──
 # yfinance 1.2+ uses yf.screen() with EquityQuery objects.
 
+# ── Sub-unit currency normalization ──
+# Some exchanges report prices in sub-units (pence, agorot, cents).
+# We normalize to the main currency and divide price+target accordingly.
+SUB_UNIT_CURRENCIES = {
+    "GBp": ("GBP", 100),
+    "GBX": ("GBP", 100),
+    "ILA": ("ILS", 100),
+    "ZAc": ("ZAR", 100),
+}
+
 from yfinance import EquityQuery
 
 
@@ -314,6 +324,14 @@ def fetch_stock_data(symbol):
         if not target_price or target_price <= 0:
             return None
 
+        # Normalize sub-unit currencies (GBp → GBP, etc.)
+        currency = info.get("currency") or "USD"
+        if currency in SUB_UNIT_CURRENCIES:
+            main_currency, divisor = SUB_UNIT_CURRENCIES[currency]
+            price = price / divisor
+            target_price = target_price / divisor
+            currency = main_currency
+
         # Analyst recommendations (most recent period)
         buys, holds, sells = 0, 0, 0
         try:
@@ -340,11 +358,12 @@ def fetch_stock_data(symbol):
             "analysts": analysts,
             "sector": info.get("sector") or "Unknown",
             "exchange": info.get("exchange") or "",
-            "currency": info.get("currency") or "USD",
+            "currency": currency,
             "market_cap_raw": info.get("marketCap") or 0,
             "dividend_yield": info.get("dividendYield"),
             "two_hundred_day_avg": info.get("twoHundredDayAverage"),
             "description": (info.get("longBusinessSummary") or "")[:500],
+            "isin": info.get("isin") or None,
         }
     except Exception as e:
         print(f"  [fetch] Error for {symbol}: {e}")
@@ -450,13 +469,13 @@ def persist_stocks(stocks, conn, label=""):
                     buys, holds, sells, analysts,
                     sector, risk, horizon, region, exchange, currency,
                     "dividendYield", "marketCap", description, "whyThisPick",
-                    "belowSma200", "updatedAt"
+                    "belowSma200", isin, "updatedAt"
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s,
                     %s, %s::"RiskLevel", %s, %s, %s, %s,
                     %s, %s, %s, %s,
-                    %s, %s
+                    %s, %s, %s
                 )
                 ON CONFLICT (symbol) DO UPDATE SET
                     name = CASE
@@ -485,6 +504,9 @@ def persist_stocks(stocks, conn, label=""):
                         THEN EXCLUDED.description ELSE stocks.description END,
                     "whyThisPick" = EXCLUDED."whyThisPick",
                     "belowSma200" = EXCLUDED."belowSma200",
+                    isin = CASE
+                        WHEN EXCLUDED.isin IS NOT NULL
+                        THEN EXCLUDED.isin ELSE stocks.isin END,
                     "updatedAt" = EXCLUDED."updatedAt"
                 RETURNING id
             """, (
@@ -492,7 +514,7 @@ def persist_stocks(stocks, conn, label=""):
                 s["buys"], s["holds"], s["sells"], s["analysts"],
                 s["sector"], risk, "12M", region, s["exchange"], s["currency"],
                 div_yield, mkt_cap_label, s.get("description", ""), why,
-                below_sma200, today,
+                below_sma200, s.get("isin"), today,
             ))
 
             row = cur.fetchone()

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { RegionSwitcher } from "@/components/ui/region-switcher";
 
 export function Navbar() {
   const t = useTranslations();
@@ -28,6 +29,7 @@ export function Navbar() {
               {t("nav.about")}
             </Link>
           </div>
+          <RegionSwitcher />
           <LanguageSwitcher />
           {isLoggedIn ? (
             <Link href="/dashboard">

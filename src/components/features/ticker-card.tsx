@@ -23,9 +23,16 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
       ? (pick.buys - pick.sells) / (pick.buys + pick.holds + pick.sells)
       : 0;
 
-  const isNew = pick.createdAt
-    ? Date.now() - new Date(pick.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
-    : false;
+  const now = Date.now();
+  const createdMs = pick.createdAt ? now - new Date(pick.createdAt).getTime() : Infinity;
+  const updatedMs = pick.updatedAt ? now - new Date(pick.updatedAt).getTime() : Infinity;
+  // NEW: created < 7 days ago AND never updated by a subsequent run (createdAt ≈ updatedAt within 24h)
+  const isNew = createdMs < 7 * 24 * 60 * 60 * 1000
+    && (pick.updatedAt && pick.createdAt
+      ? Math.abs(new Date(pick.createdAt).getTime() - new Date(pick.updatedAt).getTime()) < 24 * 60 * 60 * 1000
+      : true);
+  // Updated: updatedAt < 24h AND not NEW
+  const isUpdated = !isNew && updatedMs < 24 * 60 * 60 * 1000;
 
   const riskVariant =
     pick.risk === "low"
@@ -121,6 +128,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
                   {pick.analysts} {t("analysts")}
                 </Badge>
                 {isNew && <Badge variant="accent" className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">NEW</Badge>}
+                {isUpdated && <Badge variant="info" className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">Updated</Badge>}
               </div>
               <h3 className="mt-1.5 sm:mt-2 text-sm sm:text-lg font-semibold text-text-primary truncate">
                 {pick.symbol} &middot; {pick.name}
@@ -221,7 +229,7 @@ export function TickerRow({ pick, locked = false }: { pick: StockPick; locked?: 
         <span className="hidden lg:block w-12 text-right text-text-secondary">{pick.analysts}</span>
         <span className="hidden lg:block w-16 text-right text-text-secondary">{(conviction * 100).toFixed(0)}%</span>
         <span className="hidden xl:block w-24 text-text-tertiary truncate">{pick.sector}</span>
-        <Badge variant={riskVariant} className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5">{pick.risk}</Badge>
+        <span className="hidden sm:block w-14"><Badge variant={riskVariant} className="text-[10px] px-1.5 py-0.5">{pick.risk}</Badge></span>
         {pick.isin && <span className="hidden xl:block w-28 text-[10px] text-text-tertiary">{pick.isin}</span>}
         {pick.wkn && <span className="hidden xl:block w-16 text-[10px] text-text-tertiary">{pick.wkn}</span>}
       </div>

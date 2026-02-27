@@ -169,7 +169,7 @@ export function EtfRow({ etf, locked = false }: { etf: EtfPick; locked?: boolean
         <span className="hidden md:block w-16 text-right text-text-secondary">{etf.fee != null ? `${etf.fee}%` : "N/A"}</span>
         <span className="hidden lg:block w-16 text-right text-text-secondary">{etf.sharpe.toFixed(2)}</span>
         <span className="hidden lg:block w-24 text-text-tertiary truncate">{etf.theme}</span>
-        <Badge variant="info" className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5">ETF</Badge>
+        <span className="hidden sm:block w-12"><Badge variant="info" className="text-[10px] px-1.5 py-0.5">ETF</Badge></span>
         {etf.isin && <span className="hidden xl:block w-28 text-[10px] text-text-tertiary">{etf.isin}</span>}
         {etf.wkn && <span className="hidden xl:block w-16 text-[10px] text-text-tertiary">{etf.wkn}</span>}
       </div>

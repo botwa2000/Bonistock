@@ -869,7 +869,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open IBKR Account",
     url: "https://www.interactivebrokers.com",
-    regions: ["us", "de"],
+    regions: ["global", "de"],
   },
   {
     id: "t212",
@@ -886,7 +886,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open Trading 212",
     url: "https://www.trading212.com",
-    regions: ["us", "de"],
+    regions: ["global", "de"],
     sparplan: true,
     sparplanMin: "€1",
   },
@@ -905,7 +905,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open Robinhood",
     url: "https://robinhood.com",
-    regions: ["us"],
+    regions: ["global"],
   },
   {
     id: "etoro",
@@ -922,7 +922,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open eToro Account",
     url: "https://www.etoro.com",
-    regions: ["us", "de"],
+    regions: ["global", "de"],
   },
   // US brokers
   {
@@ -940,7 +940,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open Fidelity Account",
     url: "https://www.fidelity.com",
-    regions: ["us"],
+    regions: ["global"],
   },
   {
     id: "schwab",
@@ -957,7 +957,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open Schwab Account",
     url: "https://www.schwab.com",
-    regions: ["us"],
+    regions: ["global"],
   },
   {
     id: "webull",
@@ -974,7 +974,7 @@ export const brokers: Broker[] = [
     ],
     cta: "Open Webull Account",
     url: "https://www.webull.com",
-    regions: ["us"],
+    regions: ["global"],
   },
   // German brokers
   {
@@ -1061,8 +1061,8 @@ export const regionConfigs: Record<
   UserRegion,
   { label: string; currency: string; taxNote?: string }
 > = {
-  us: {
-    label: "United States",
+  global: {
+    label: "Global",
     currency: "USD",
   },
   de: {

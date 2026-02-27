@@ -91,13 +91,13 @@ export default function SettingsPage() {
                 value={user.region}
                 onChange={(v) => updateSetting("region", v)}
                 options={[
-                  { value: "US", label: t("regionUs") },
+                  { value: "GLOBAL", label: t("regionUs") },
                   { value: "DE", label: t("regionDe") },
                 ]}
               />
             </div>
             <p className="mt-3 text-xs text-text-tertiary">
-              {user.region === "US" ? t("regionInfoUs") : t("regionInfoDe")}
+              {user.region === "GLOBAL" ? t("regionInfoUs") : t("regionInfoDe")}
             </p>
           </Card>
 

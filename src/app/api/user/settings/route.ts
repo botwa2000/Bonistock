@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/logger";
 
 const updateSchema = z.object({
-  region: z.enum(["US", "DE"]).optional(),
+  region: z.enum(["GLOBAL", "DE"]).optional(),
   language: z.enum(["EN", "DE", "ES", "FR"]).optional(),
   theme: z.enum(["DARK", "LIGHT"]).optional(),
   goal: z.enum(["GROWTH", "INCOME", "BALANCED"]).optional(),

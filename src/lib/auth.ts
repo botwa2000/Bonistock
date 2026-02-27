@@ -152,15 +152,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      // Block sign-in if the user's account has been deleted (soft-deleted)
+    async signIn({ user, account, profile }) {
+      // Handle OAuth sign-in for soft-deleted accounts: restore the user
       if (account?.provider !== "credentials" && user?.id) {
         const dbUser = await db.user.findUnique({
           where: { id: user.id },
-          select: { deletedAt: true },
+          select: { deletedAt: true, email: true },
         });
         if (dbUser?.deletedAt) {
-          return "/login?error=AccountDeleted";
+          // Restore the user in-place: clear deletedAt, refresh profile from OAuth
+          await db.user.update({
+            where: { id: user.id },
+            data: {
+              deletedAt: null,
+              email: profile?.email ?? dbUser.email,
+              name: (profile?.name as string) ?? user.name ?? null,
+              image: (profile?.image as string) ?? user.image ?? null,
+              emailVerified: new Date(),
+            },
+          });
+          // Allow sign-in to proceed — user gets a clean restored account
         }
       }
       return true;

@@ -20,7 +20,7 @@ interface UserData {
   name: string | null;
   role: string;
   tier: "free" | "pass" | "plus";
-  region: "US" | "DE";
+  region: "GLOBAL" | "DE";
   theme: "DARK" | "LIGHT";
   language: "EN" | "DE" | "ES" | "FR";
   goal: "GROWTH" | "INCOME" | "BALANCED";
@@ -68,6 +68,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           if (["en", "de"].includes(locale)) {
             document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
           }
+        }
+
+        // Sync region cookie with user's saved region preference
+        if (data.region) {
+          document.cookie = `NEXT_REGION=${data.region}; path=/; max-age=31536000; SameSite=Lax`;
         }
 
         // Native platform setup

@@ -2,7 +2,7 @@ export type RiskLevel = "low" | "balanced" | "high";
 export type Goal = "growth" | "income" | "balanced";
 export type Tier = "free" | "pass" | "plus";
 export type PassDuration = "1day" | "3day" | "12day";
-export type UserRegion = "us" | "de";
+export type UserRegion = "global" | "de";
 export type Horizon = "6M" | "12M" | "24M";
 export type Region = "us" | "europe" | "em" | "global";
 export type BrokerId =
@@ -43,6 +43,7 @@ export interface StockPick {
   isin?: string;
   wkn?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface EtfPick {
@@ -63,6 +64,7 @@ export interface EtfPick {
   isin?: string;
   wkn?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Broker {
@@ -133,6 +135,27 @@ export interface WatchlistItem {
   changePercent: number;
   upside: number;
   addedAt: string;
+}
+
+export interface StockHistoryItem {
+  symbol: string;
+  name: string;
+  sector: string;
+  region: string;
+  appearances: number;
+  avgUpside: number;
+  latestUpside: number;
+  firstDate: string;
+  lastDate: string;
+}
+
+export interface StockHistoryTimeline {
+  date: string;
+  price: number;
+  target: number;
+  upside: number;
+  analysts: number;
+  risk: string;
 }
 
 export type StockMixStrategy = "maxUpside" | "balancedRisk" | "dividendIncome" | "sectorDiversified";

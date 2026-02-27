@@ -175,6 +175,15 @@ CATEGORY_TO_THEME = {
 }
 
 
+# ── Sub-unit currency normalization ──
+# ETFs store % returns, not absolute prices, so only the currency label needs fixing.
+SUB_UNIT_CURRENCIES = {
+    "GBp": "GBP",
+    "GBX": "GBP",
+    "ILA": "ILS",
+    "ZAc": "ZAR",
+}
+
 UCITS_THEME_MAP = {
     "VWCE.DE": "Core Global Market",
     "IWDA.AS": "Core Global Market",
@@ -316,6 +325,8 @@ def fetch_etf_data(symbol):
         name = info.get("shortName") or info.get("longName") or symbol
         exchange = info.get("exchange") or ""
         currency = info.get("currency") or "USD"
+        # Normalize sub-unit currency labels (GBp → GBP, etc.)
+        currency = SUB_UNIT_CURRENCIES.get(currency, currency)
         category = info.get("category") or ""
         theme = map_theme(category, symbol)
         region = derive_region(exchange)
@@ -335,6 +346,7 @@ def fetch_etf_data(symbol):
             "exchange": exchange,
             "currency": currency,
             "description": description,
+            "isin": info.get("isin") or None,
         }
     except Exception as e:
         print(f"  [fetch] Error for {symbol}: {e}")
@@ -391,11 +403,11 @@ def persist_etfs(etfs, conn, label=""):
                 INSERT INTO etfs (
                     id, symbol, name, cagr1y, cagr3y, cagr5y,
                     drawdown, fee, sharpe, theme, region,
-                    exchange, currency, description, "updatedAt"
+                    exchange, currency, description, isin, "updatedAt"
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s
+                    %s, %s, %s, %s, %s
                 )
                 ON CONFLICT (symbol) DO UPDATE SET
                     name = CASE
@@ -416,12 +428,15 @@ def persist_etfs(etfs, conn, label=""):
                     description = CASE
                         WHEN EXCLUDED.description != ''
                         THEN EXCLUDED.description ELSE etfs.description END,
+                    isin = CASE
+                        WHEN EXCLUDED.isin IS NOT NULL
+                        THEN EXCLUDED.isin ELSE etfs.isin END,
                     "updatedAt" = EXCLUDED."updatedAt"
                 RETURNING id
             """, (
                 etf_id, e["symbol"], e["name"], e["cagr1y"], e["cagr3y"], e["cagr5y"],
                 e["drawdown"], e["fee"], e["sharpe"], e["theme"], e["region"],
-                e["exchange"], e["currency"], e.get("description", ""), now,
+                e["exchange"], e["currency"], e.get("description", ""), e.get("isin"), now,
             ))
 
             row = cur.fetchone()

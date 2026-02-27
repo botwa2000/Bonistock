@@ -48,7 +48,7 @@ export function StockFilterBar({
 }: StockFilterBarProps) {
   const t = useTranslations("filters");
   const { user } = useAuth();
-  const region = (user?.region ?? "US").toLowerCase() as "us" | "de";
+  const region = (user?.region ?? "GLOBAL").toLowerCase() as "global" | "de";
   const [collapsed, setCollapsed] = useState(true);
 
   const set = <K extends keyof StockFilters>(key: K, value: StockFilters[K]) =>
@@ -337,7 +337,7 @@ export function EtfFilterBar({
 }: EtfFilterBarProps) {
   const t = useTranslations("filters");
   const { user } = useAuth();
-  const region = (user?.region ?? "US").toLowerCase() as "us" | "de";
+  const region = (user?.region ?? "GLOBAL").toLowerCase() as "global" | "de";
   const [collapsed, setCollapsed] = useState(true);
 
   const set = <K extends keyof EtfFilters>(key: K, value: EtfFilters[K]) =>

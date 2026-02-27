@@ -3,7 +3,7 @@ import { authenticatedRoute } from "@/lib/api-utils";
 import { getUserTier } from "@/lib/tier";
 import { db } from "@/lib/db";
 
-const DATES_PER_PAGE = 7;
+const ITEMS_PER_PAGE = 25;
 
 export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
   const tier = await getUserTier(userId);
@@ -15,86 +15,150 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
   }
 
   const { searchParams } = req.nextUrl;
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
-  const symbolFilter = searchParams.get("symbol") ?? null;
+  const view = searchParams.get("view") ?? "stocks";
 
-  // Get distinct dates (newest first)
-  const allDatesRaw = await db.stockSnapshot.findMany({
-    select: { date: true },
-    distinct: ["date"],
-    orderBy: { date: "desc" },
-  });
-  const allDates = allDatesRaw.map((d) => d.date);
-  const totalDates = allDates.length;
+  // ── Timeline view for a single stock ──
+  if (view === "timeline") {
+    const symbol = searchParams.get("symbol");
+    if (!symbol) {
+      return NextResponse.json({ error: "symbol is required for timeline view" }, { status: 400 });
+    }
 
-  // Paginate dates
-  const start = (page - 1) * DATES_PER_PAGE;
-  const paginatedDates = allDates.slice(start, start + DATES_PER_PAGE);
+    const snapshots = await db.stockSnapshot.findMany({
+      where: { symbol },
+      orderBy: { date: "desc" },
+      select: {
+        date: true,
+        price: true,
+        target: true,
+        upside: true,
+        analysts: true,
+        risk: true,
+      },
+    });
 
-  if (paginatedDates.length === 0) {
     return NextResponse.json({
-      dates: [],
-      totalDates,
-      page,
-      recurring: [],
+      symbol,
+      timeline: snapshots.map((s) => ({
+        date: s.date.toISOString().split("T")[0],
+        price: s.price,
+        target: s.target,
+        upside: s.upside,
+        analysts: s.analysts,
+        risk: s.risk.toLowerCase(),
+      })),
     });
   }
 
-  // Fetch snapshots for those dates
-  const where: Record<string, unknown> = {
-    date: { in: paginatedDates },
-  };
-  if (symbolFilter) where.symbol = symbolFilter;
+  // ── Stock-centric view (default) ──
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const search = searchParams.get("search") ?? "";
+  const sector = searchParams.get("sector") ?? "";
+  const dateRange = searchParams.get("dateRange") ?? "all";
+  const sortBy = searchParams.get("sortBy") ?? "appearances";
 
-  const snapshots = await db.stockSnapshot.findMany({
-    where,
-    orderBy: [{ date: "desc" }, { upside: "desc" }],
-  });
-
-  // Count appearances for each symbol across all history
-  const appearanceCounts = await db.stockSnapshot.groupBy({
-    by: ["symbol"],
-    _count: { date: true },
-  });
-  const appearanceMap = new Map(
-    appearanceCounts.map((a) => [a.symbol, a._count.date])
-  );
-
-  // Group by date
-  const dateGroups = new Map<string, typeof snapshots>();
-  for (const snap of snapshots) {
-    const key = snap.date.toISOString().split("T")[0];
-    if (!dateGroups.has(key)) dateGroups.set(key, []);
-    dateGroups.get(key)!.push(snap);
+  // Build date filter
+  let dateFilter: Date | undefined;
+  if (dateRange === "7d") {
+    dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  } else if (dateRange === "30d") {
+    dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  } else if (dateRange === "90d") {
+    dateFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   }
 
-  const dates = [...dateGroups.entries()].map(([date, picks]) => ({
-    date,
-    picks: picks.map((p) => ({
-      symbol: p.symbol,
-      name: p.name,
-      price: p.price,
-      target: p.target,
-      upside: p.upside,
-      buys: p.buys,
-      holds: p.holds,
-      sells: p.sells,
-      analysts: p.analysts,
-      sector: p.sector,
-      risk: p.risk.toLowerCase(),
-      region: p.region,
-      marketCap: p.marketCap,
-      appearances: appearanceMap.get(p.symbol) ?? 1,
-    })),
-  }));
+  // Use raw SQL for efficient groupBy with filters
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIdx = 1;
 
-  // Recurring: top 10 most-frequently-picked stocks
+  if (dateFilter) {
+    conditions.push(`date >= $${paramIdx}`);
+    params.push(dateFilter);
+    paramIdx++;
+  }
+  if (search) {
+    conditions.push(`(symbol ILIKE $${paramIdx} OR name ILIKE $${paramIdx})`);
+    params.push(`%${search}%`);
+    paramIdx++;
+  }
+  if (sector) {
+    conditions.push(`sector = $${paramIdx}`);
+    params.push(sector);
+    paramIdx++;
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  // Determine sort column
+  let orderClause: string;
+  switch (sortBy) {
+    case "latestUpside":
+      orderClause = '"latestUpside" DESC';
+      break;
+    case "avgUpside":
+      orderClause = '"avgUpside" DESC';
+      break;
+    case "name":
+      orderClause = "name ASC";
+      break;
+    default:
+      orderClause = "appearances DESC";
+  }
+
+  const offset = (page - 1) * ITEMS_PER_PAGE;
+
+  // Count total unique symbols
+  const countResult = await db.$queryRawUnsafe<[{ count: bigint }]>(
+    `SELECT COUNT(*) as count FROM (
+      SELECT symbol FROM stock_snapshots ${whereClause} GROUP BY symbol
+    ) sub`,
+    ...params
+  );
+  const totalItems = Number(countResult[0]?.count ?? 0);
+
+  // Grouped query
+  const stocks = await db.$queryRawUnsafe<Array<{
+    symbol: string;
+    name: string;
+    sector: string;
+    region: string;
+    appearances: bigint;
+    avgUpside: number;
+    latestUpside: number;
+    firstDate: Date;
+    lastDate: Date;
+  }>>(
+    `SELECT
+      symbol,
+      MAX(name) as name,
+      MAX(sector) as sector,
+      MAX(region) as region,
+      COUNT(*)::bigint as appearances,
+      ROUND(AVG(upside))::int as "avgUpside",
+      (ARRAY_AGG(upside ORDER BY date DESC))[1] as "latestUpside",
+      MIN(date) as "firstDate",
+      MAX(date) as "lastDate"
+    FROM stock_snapshots
+    ${whereClause}
+    GROUP BY symbol
+    ORDER BY ${orderClause}
+    LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`,
+    ...params
+  );
+
+  // Get distinct sectors for filter dropdown
+  const sectors = await db.$queryRawUnsafe<Array<{ sector: string }>>(
+    `SELECT DISTINCT sector FROM stock_snapshots WHERE sector != '' ORDER BY sector`
+  );
+
+  // Recurring: top 5 most-frequently-picked stocks (always across all data)
   const recurringRaw = await db.stockSnapshot.groupBy({
     by: ["symbol", "name"],
     _count: { date: true },
     _avg: { upside: true },
     orderBy: { _count: { date: "desc" } },
-    take: 10,
+    take: 5,
   });
 
   const recurring = recurringRaw.map((r) => ({
@@ -105,9 +169,21 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
   }));
 
   return NextResponse.json({
-    dates,
-    totalDates,
+    stocks: stocks.map((s) => ({
+      symbol: s.symbol,
+      name: s.name,
+      sector: s.sector,
+      region: s.region,
+      appearances: Number(s.appearances),
+      avgUpside: Number(s.avgUpside),
+      latestUpside: Number(s.latestUpside),
+      firstDate: s.firstDate instanceof Date ? s.firstDate.toISOString().split("T")[0] : String(s.firstDate).split("T")[0],
+      lastDate: s.lastDate instanceof Date ? s.lastDate.toISOString().split("T")[0] : String(s.lastDate).split("T")[0],
+    })),
+    totalItems,
     page,
+    totalPages: Math.ceil(totalItems / ITEMS_PER_PAGE),
+    sectors: sectors.map((s) => s.sector),
     recurring,
   });
 });
