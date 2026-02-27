@@ -42,6 +42,11 @@ workflows:
           echo "=== Sync complete, workspace check ==="
           ls ios/App/App.xcworkspace
 
+      - name: Generate app icon
+        script: |
+          npx @capacitor/assets generate --ios --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#ffffff'
+          echo "=== App icon generated ==="
+
       - name: Set version and build number
         script: |
           APP_VERSION=$(node -p "require('./package.json').version")
