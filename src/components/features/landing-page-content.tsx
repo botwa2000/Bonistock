@@ -88,9 +88,10 @@ function InvestmentPreviewSection() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/stocks").then((res) => res.json()).catch(() => []),
+      fetch("/api/stocks").then((res) => res.json()).catch(() => ({ stocks: [] })),
       fetch("/api/etfs").then((res) => res.json()).catch(() => []),
-    ]).then(([stockData, etfData]: [StockPick[], EtfData[]]) => {
+    ]).then(([stockRes, etfData]: [{ stocks: StockPick[] }, EtfData[]]) => {
+      const stockData = stockRes.stocks ?? [];
       if (Array.isArray(stockData)) setStocks(stockData);
       if (Array.isArray(etfData)) setEtfs(etfData);
     });

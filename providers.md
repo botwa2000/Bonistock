@@ -290,10 +290,11 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 6 | Stripe (Payments) | 3 | Free setup (2.9%+30c/tx) | Medium |
 | 7 | Encryption Key | 0 | N/A | Already done |
 | 8 | Finnhub (Analyst Data) | 1 | Free (60 calls/min) | Easy |
-| 9 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
-| 10 | Apple IAP (Direct StoreKit 2) | 4 | Free (Apple takes 30% commission) | Medium |
+| 9 | Apple IAP (Direct StoreKit 2) | 4 | Free (Apple takes 30% commission) | Medium |
+| 10 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
+| 11 | Apple Sign In (Web OAuth) | 2 | Free | Medium |
 
-**Total: 16 secrets to replace across 8 services.** All free tier.
+**Total: 18 secrets to replace across 9 services.** All free tier.
 
 ---
 
@@ -474,6 +475,102 @@ grep bonistock /var/log/syslog
 
 ---
 
+## 11. Apple Sign In (Web OAuth) — FREE
+
+**What you need:** Apple OAuth credentials so users can "Sign In with Apple" on the web (login and register pages). This is separate from Apple IAP — it's the web OAuth flow using NextAuth's Apple provider.
+
+**Prerequisites:**
+
+1. **Apple Developer Account** ($99/year) — https://developer.apple.com — same account used for IAP
+2. **App ID with Sign In with Apple enabled**
+
+**Steps:**
+
+1. Go to https://developer.apple.com/account/resources/identifiers/list
+2. **Enable Sign In with Apple on your App ID:**
+   - The page shows your identifiers filtered by "App IDs" (dropdown at top-right)
+   - Click your existing App ID (`com.bonifatus.bonistock`)
+   - Scroll down to **Capabilities**, check **Sign In with Apple**
+   - Click **Save**
+3. **Create a Services ID** (this is the OAuth client for the web):
+   - Go back to the Identifiers list
+   - Change the **dropdown filter at the top-right** from "App IDs" to **"Services IDs"**
+   - Click the **+** button to register a new Services ID
+   - Description: `Bonistock Web`
+   - Identifier: `com.bonifatus.bonistock.web` (this becomes your `APPLE_OAUTH_CLIENT_ID`)
+   - Click **Continue**, then **Register**
+4. **Configure Sign In with Apple on the Services ID:**
+   - Click the Services ID you just created (`com.bonifatus.bonistock.web`)
+   - Check **Sign In with Apple**, then click **Configure**
+   - Primary App ID: select `com.bonifatus.bonistock`
+   - Domains: `bonistock.com`, `dev.bonistock.com`
+   - Return URLs:
+     - `https://dev.bonistock.com/api/auth/callback/apple`
+     - `https://bonistock.com/api/auth/callback/apple`
+   - Click **Save**, then **Continue**, then **Save** again
+4. **Keys** — Go to https://developer.apple.com/account/resources/authkeys
+   - Click **+** to create a new key
+   - Name: `Bonistock Sign In`
+   - Enable **Sign In with Apple**, click **Configure** → select your Primary App ID
+   - Click **Continue**, then **Register**
+   - **Download the `.p8` key file** (you can only download it once!)
+   - Note the **Key ID** (e.g. `ABC123DEFG`)
+5. Note your **Team ID** — visible at https://developer.apple.com/account (top-right, 10-character alphanumeric)
+
+**Generate the client secret:**
+
+Apple doesn't give you a static client secret. You must generate a JWT signed with your `.p8` key. This JWT is valid for up to 6 months and must be regenerated before it expires.
+
+```bash
+# Install ruby-jwt (one-time)
+gem install jwt
+
+# Generate the secret (replace placeholders)
+ruby -e '
+require "jwt"
+key = OpenSSL::PKey::EC.new(File.read("AuthKey_XXXXXXXXXX.p8"))
+now = Time.now.to_i
+payload = {
+  iss: "YOUR_TEAM_ID",
+  iat: now,
+  exp: now + 86400 * 180,  # 6 months
+  aud: "https://appleid.apple.com",
+  sub: "com.bonifatus.bonistock.web"
+}
+puts JWT.encode(payload, key, "ES256", { kid: "YOUR_KEY_ID" })
+'
+```
+
+The output string is your `APPLE_OAUTH_CLIENT_SECRET`. Set a calendar reminder to regenerate it before it expires (every 6 months).
+
+**Secrets to update:**
+
+| Secret | Value |
+|--------|-------|
+| `APPLE_OAUTH_CLIENT_ID` | Services ID (e.g. `com.bonifatus.bonistock.web`) |
+| `APPLE_OAUTH_CLIENT_SECRET` | Generated JWT (see above) |
+
+**Update command:**
+
+```bash
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183"
+
+# Dev
+$SSH "docker stack rm bonistock-dev && sleep 5"
+$SSH "docker secret rm bonistock_dev_APPLE_OAUTH_CLIENT_ID && docker secret rm bonistock_dev_APPLE_OAUTH_CLIENT_SECRET"
+echo -n 'com.bonifatus.bonistock.web' | $SSH "docker secret create bonistock_dev_APPLE_OAUTH_CLIENT_ID -"
+echo -n 'eyJhbGciOiJFUzI1NiIs...' | $SSH "docker secret create bonistock_dev_APPLE_OAUTH_CLIENT_SECRET -"
+$SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.yml bonistock-dev"
+```
+
+**Important notes:**
+
+- The client secret JWT expires after 6 months. You must regenerate it and update the Docker secret before expiry, or Apple Sign In will stop working.
+- Apple may hide the user's real email (Private Email Relay). The app handles this — NextAuth links accounts by Apple's stable user ID, not email.
+- This is web-only OAuth. The native iOS app uses Apple's native Sign In with Apple flow separately (handled by Capacitor).
+
+---
+
 ## Production Secrets
 
 Once dev is fully tested, repeat the same process for production secrets using the `bonistock_prod_` prefix. Key differences:
@@ -481,5 +578,6 @@ Once dev is fully tested, repeat the same process for production secrets using t
 - **Stripe:** Switch from Test Mode to Live Mode, create new webhook endpoint for `https://bonistock.com/api/stripe/webhook`
 - **Google OAuth:** Add `https://bonistock.com/api/auth/callback/google` to redirect URIs
 - **Facebook OAuth:** Submit app for review to go live, add `https://bonistock.com/api/auth/callback/facebook`
+- **Apple Sign In:** Same Services ID works for both environments (both return URLs were added). Regenerate the client secret JWT every 6 months.
 - **Sentry:** Create a separate `bonistock-prod` project (or use the same DSN with environment tagging)
 - **Encryption Key:** Generate a NEW key for production (`openssl rand -hex 32`) — never reuse the dev key

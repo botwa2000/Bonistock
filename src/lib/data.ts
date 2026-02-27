@@ -91,6 +91,44 @@ export async function getBrokers(region?: string) {
   return brokers;
 }
 
+/* ─── Weekly free-tier symbol snapshot ─── */
+
+let cachedFreeSymbols: { symbols: string[]; weekKey: string } | null = null;
+
+function getWeekKey(): string {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 1=Mon, …
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diffToMonday),
+  );
+  return monday.toISOString().split("T")[0]; // e.g. "2026-02-23"
+}
+
+/**
+ * Returns the set of stock symbols free-tier users may view this week.
+ * The snapshot is taken from the current top-5 by upside on the first
+ * request of each Monday-to-Sunday period, then cached in memory for
+ * the rest of the week so free users see a consistent set.
+ */
+export async function getWeeklyFreeSymbols(): Promise<string[]> {
+  const weekKey = getWeekKey();
+
+  if (cachedFreeSymbols && cachedFreeSymbols.weekKey === weekKey) {
+    return cachedFreeSymbols.symbols;
+  }
+
+  const topStocks = await db.stock.findMany({
+    select: { symbol: true },
+    orderBy: { upside: "desc" },
+    take: 5,
+  });
+
+  const symbols = topStocks.map((s) => s.symbol);
+  cachedFreeSymbols = { symbols, weekKey };
+  return symbols;
+}
+
 export async function getDemoPortfolios() {
   return db.demoPortfolio.findMany({
     include: {

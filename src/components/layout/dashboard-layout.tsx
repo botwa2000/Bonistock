@@ -23,7 +23,8 @@ const sidebarLinks: SidebarLink[] = [
   { href: "/dashboard/etfs", labelKey: "nav.etfs", icon: "layers" },
   { href: "/dashboard/mix", labelKey: "nav.mix", icon: "mix" },
   { href: "/dashboard/brokers", labelKey: "nav.brokers", icon: "compare" },
-  { href: "/dashboard/watchlist", labelKey: "nav.watchlist", icon: "eye", tier: "plus" },
+  { href: "/dashboard/watchlist", labelKey: "nav.watchlist", icon: "eye" },
+  { href: "/dashboard/performance", labelKey: "nav.performance", icon: "perf", tier: "plus" },
   { href: "/dashboard/alerts", labelKey: "nav.alerts", icon: "bell", tier: "plus" },
 ];
 
@@ -34,6 +35,7 @@ const iconMap: Record<string, string> = {
   mix: "\u2726",
   compare: "\u21C4",
   eye: "\u25C9",
+  perf: "\u2713",
   bell: "\u266A",
 };
 

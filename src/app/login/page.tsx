@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
-import { GoogleIcon, FacebookIcon } from "@/components/ui/icons";
+import { GoogleIcon, FacebookIcon, AppleIcon } from "@/components/ui/icons";
 import { hapticNotification } from "@/lib/native";
 
 export default function LoginPage() {
@@ -23,7 +23,7 @@ export default function LoginPage() {
 function LoginContent() {
   const t = useTranslations("login");
   const searchParams = useSearchParams();
-  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook, loginWithApple } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
@@ -194,6 +194,20 @@ function LoginContent() {
                   }}
                 >
                   <FacebookIcon /> <span className="ml-2">Continue with Facebook</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  fullWidth
+                  onClick={async () => {
+                    try {
+                      await loginWithApple();
+                    } catch {
+                      setError("Sign-in failed. Please check your connection and try again.");
+                    }
+                  }}
+                >
+                  <AppleIcon /> <span className="ml-2">Continue with Apple</span>
                 </Button>
               </div>
 

@@ -7,6 +7,7 @@ import type { EtfPick } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getExchangeName } from "@/lib/exchange-names";
 
 export default function EtfDetailPage({
   params,
@@ -112,7 +113,7 @@ export default function EtfDetailPage({
         <div className="mt-3 space-y-2 text-sm">
           <div className="flex justify-between text-text-secondary">
             <span>{t("exchange")}</span>
-            <span className="text-text-primary">{etf.exchange}</span>
+            <span className="text-text-primary">{getExchangeName(etf.exchange)}</span>
           </div>
           <div className="flex justify-between text-text-secondary">
             <span>{t("currency")}</span>

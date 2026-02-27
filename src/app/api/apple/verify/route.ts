@@ -7,7 +7,7 @@ import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
 import { notifyAdmins } from "@/lib/admin-notify";
 import { sendPushToUser } from "@/lib/push";
-import { getAppleApiClient, getAppleVerifier } from "@/lib/apple-server";
+import { getAppleApiClient, getAppleVerifier, getAppleEnvironments, Environment } from "@/lib/apple-server";
 
 const PASS_MAP: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; count: number }> = {
   "com.bonifatus.bonistock.pass.1day": { type: "ONE_DAY", count: 1 },
@@ -16,9 +16,45 @@ const PASS_MAP: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; c
 };
 
 /**
+ * Fetch and verify a transaction from Apple, trying both environments.
+ * TestFlight / sandbox testers use SANDBOX, real App Store uses PRODUCTION.
+ */
+async function fetchAndVerifyTransaction(transactionId: string) {
+  const [primary, fallback] = getAppleEnvironments();
+
+  for (const env of [primary, fallback]) {
+    const envName = env === Environment.PRODUCTION ? "PRODUCTION" : "SANDBOX";
+    const client = getAppleApiClient(env);
+    const verifier = getAppleVerifier(env);
+    if (!client || !verifier) {
+      log.debug("apple/verify", `Skipping ${envName} — client or verifier not available`);
+      continue;
+    }
+
+    try {
+      log.debug("apple/verify", `Trying ${envName} for txn=${transactionId}`);
+      const txnResponse = await client.getTransactionInfo(transactionId);
+      if (!txnResponse.signedTransactionInfo) {
+        log.debug("apple/verify", `No signedTransactionInfo in ${envName} response`);
+        continue;
+      }
+      const txn = await verifier.verifyAndDecodeTransaction(txnResponse.signedTransactionInfo);
+      log.info("apple/verify", `Verified txn=${transactionId} via ${envName}`);
+      return txn;
+    } catch (err) {
+      log.debug("apple/verify", `${envName} failed for txn=${transactionId}:`, err);
+      // Try the next environment
+    }
+  }
+
+  return null;
+}
+
+/**
  * POST /api/apple/verify
  * Client sends { transactionId } right after a successful StoreKit 2 purchase.
  * Server verifies with Apple App Store Server API, then creates DB records.
+ * Tries both production and sandbox environments to handle TestFlight + App Store.
  */
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -40,23 +76,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing transactionId" }, { status: 400 });
   }
 
-  const client = getAppleApiClient();
-  const verifier = getAppleVerifier();
-  if (!client || !verifier) {
+  log.info("apple/verify", `Verify request: txn=${transactionId}, user=${userId}`);
+
+  // Check that at least one environment is configured
+  const [primary] = getAppleEnvironments();
+  if (!getAppleApiClient(primary) && !getAppleApiClient(primary === Environment.PRODUCTION ? Environment.SANDBOX : Environment.PRODUCTION)) {
     log.error("apple/verify", "Apple IAP not configured");
     return NextResponse.json({ error: "Apple IAP not configured" }, { status: 500 });
   }
 
   try {
-    // Fetch transaction from Apple
-    const txnResponse = await client.getTransactionInfo(transactionId);
-    if (!txnResponse.signedTransactionInfo) {
-      log.error("apple/verify", `No signed transaction info for txn ${transactionId}`);
-      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    const txn = await fetchAndVerifyTransaction(transactionId);
+    if (!txn) {
+      log.error("apple/verify", `Transaction verification failed in both environments for txn=${transactionId}`);
+      return NextResponse.json({ error: "Transaction not found or verification failed" }, { status: 404 });
     }
-
-    // Verify JWS signature and decode
-    const txn = await verifier.verifyAndDecodeTransaction(txnResponse.signedTransactionInfo);
 
     const productId = txn.productId;
     const originalTransactionId = txn.originalTransactionId;
@@ -113,7 +147,7 @@ export async function POST(req: NextRequest) {
       });
       await sendEmail(user.email, subject, html);
       await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS", source: "APPLE", productId });
-      notifyAdmins(
+      await notifyAdmins(
         "New Plus subscription (Apple)",
         `<h2>New Plus Subscription (Apple IAP)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
       );
@@ -141,7 +175,7 @@ export async function POST(req: NextRequest) {
       });
       await sendEmail(user.email, subject, html);
       await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count, source: "APPLE" });
-      notifyAdmins(
+      await notifyAdmins(
         `Day Pass purchased (Apple): ${passNames[passConfig.type]}`,
         `<h2>Day Pass Purchased (Apple IAP)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
       );

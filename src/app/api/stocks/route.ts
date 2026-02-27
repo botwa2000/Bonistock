@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getStocks } from "@/lib/data";
+import { getStocks, getWeeklyFreeSymbols } from "@/lib/data";
 import { mapStockToFrontend } from "@/lib/api-mappers";
 import { log } from "@/lib/logger";
 
@@ -30,7 +30,13 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const stocks = await getStocks(parsed.data);
+  const [stocks, freeSymbols] = await Promise.all([
+    getStocks(parsed.data),
+    getWeeklyFreeSymbols(),
+  ]);
   log.info("stocks", `Returning ${stocks.length} stocks (${Date.now() - start}ms)`);
-  return NextResponse.json(stocks.map(mapStockToFrontend));
+  return NextResponse.json({
+    stocks: stocks.map(mapStockToFrontend),
+    freeSymbols,
+  });
 }

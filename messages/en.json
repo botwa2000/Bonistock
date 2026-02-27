@@ -42,7 +42,8 @@
     "settings": "Settings",
     "account": "Account",
     "admin": "Admin",
-    "history": "Pick History"
+    "history": "Pick History",
+    "performance": "Performance"
   },
   "landing": {
     "heroTitle": "Stock picks ranked by analyst consensus. ETFs ranked by real returns.",
@@ -142,7 +143,10 @@
     "currency": "Currency",
     "addToWatchlist": "Add to Watchlist",
     "addToMix": "Add to Mix",
-    "backToList": "Back to list"
+    "backToList": "Back to list",
+    "new": "NEW",
+    "addedDaysAgo": "Added {days}d ago",
+    "addedToday": "Added today"
   },
   "etf": {
     "keyDetails": "Key Details",
@@ -182,7 +186,48 @@
     "stockMix": "Stock Mix",
     "etfMix": "ETF Mix",
     "etfAmount": "ETF Investment Amount",
-    "etfSubtitle": "Enter your budget to get a diversified ETF allocation ranked by Sharpe ratio"
+    "etfSubtitle": "Enter your budget to get a diversified ETF allocation ranked by Sharpe ratio",
+    "strategy_maxUpside": "Max Upside",
+    "strategy_balancedRisk": "Balanced Risk",
+    "strategy_dividendIncome": "Dividend Income",
+    "strategy_sectorDiversified": "Sector Diversified",
+    "strategyDesc_maxUpside": "Picks stocks with the highest analyst upside, weighted by rank.",
+    "strategyDesc_balancedRisk": "Only low and balanced risk stocks, ranked by upside.",
+    "strategyDesc_dividendIncome": "Dividend-paying stocks, ranked by yield with equal weight.",
+    "strategyDesc_sectorDiversified": "Top stock per sector for maximum diversification, equal weight.",
+    "etfStrategy_bestSharpe": "Best Sharpe",
+    "etfStrategy_lowestFee": "Lowest Fee",
+    "etfStrategy_highestReturn": "Highest Return",
+    "etfStrategy_themeDiversified": "Theme Diversified",
+    "etfStrategyDesc_bestSharpe": "ETFs with the best risk-adjusted returns (Sharpe ratio), weighted by Sharpe.",
+    "etfStrategyDesc_lowestFee": "ETFs with the lowest expense ratios, equally weighted.",
+    "etfStrategyDesc_highestReturn": "ETFs with the highest 5-year annualized returns, equally weighted.",
+    "etfStrategyDesc_themeDiversified": "Top ETF per theme for broad diversification, equally weighted."
+  },
+  "performance": {
+    "title": "Pick Performance",
+    "subtitle": "Track how our stock picks and your watchlist have performed over time",
+    "plusRequired": "Performance tracking is available for Plus and Pass subscribers.",
+    "upgradeCta": "Upgrade to Plus",
+    "loadError": "Failed to load performance data. Please try again later.",
+    "avgReturn": "Avg. Return",
+    "winRate": "Win Rate",
+    "totalPicks": "Total Picks",
+    "winners": "Winners",
+    "ourPicks": "Our Picks",
+    "myWatchlist": "My Watchlist",
+    "symbol": "Symbol",
+    "name": "Name",
+    "sector": "Sector",
+    "risk": "Risk",
+    "entryPrice": "Entry Price",
+    "currentPrice": "Current Price",
+    "return": "Return",
+    "since": "Since",
+    "addedOn": "Added",
+    "noData": "No performance data available yet. Check back once we have historical snapshots.",
+    "watchlistEmpty": "Your watchlist is empty. Add stocks to track their performance.",
+    "goToWatchlist": "Go to Watchlist"
   },
   "brokers": {
     "title": "Compare Brokers",
@@ -540,6 +585,18 @@
     "minCagr": "Min CAGR (5Y)",
     "reset": "Reset Filters",
     "results": "results",
+    "searchPlaceholder": "Search by name, symbol, ISIN, WKN...",
+    "sortUpside": "Sort: Upside",
+    "sortName": "Sort: Name",
+    "sortPrice": "Sort: Price",
+    "sortAnalysts": "Sort: Analysts",
+    "sortConviction": "Sort: Conviction",
+    "sortDividend": "Sort: Dividend Yield",
+    "sortCagr": "Sort: 5Y CAGR",
+    "sortFee": "Sort: Fee",
+    "sortDrawdown": "Sort: Drawdown",
+    "sortSharpe": "Sort: Sharpe",
+    "showMore": "Show More ({remaining} remaining)",
     "noResults": "No stocks match your filters. Try broadening your criteria.",
     "brokerNote": "Not all stocks/ETFs are available on every broker. European-listed ETFs (UCITS) are typically not available on US-only brokers like Robinhood."
   },
@@ -629,7 +686,9 @@
     "sendTest": "Send Test",
     "close": "Close",
     "appleProductId": "Apple Product ID",
-    "iosPrice": "iOS Price"
+    "iosPrice": "iOS Price",
+    "eurPrice": "EUR Price",
+    "eurIosPrice": "EUR iOS Price"
   },
   "tiers": {
     "free": "Free",

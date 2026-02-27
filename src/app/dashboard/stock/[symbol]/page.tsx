@@ -7,6 +7,9 @@ import type { StockPick } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatPrice } from "@/lib/currency";
+import { getExchangeName } from "@/lib/exchange-names";
+import { useWatchlist } from "@/lib/use-watchlist";
 
 export default function StockDetailPage({
   params,
@@ -19,6 +22,7 @@ export default function StockDetailPage({
   const [pick, setPick] = useState<StockPick | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const { toggle, isWatchlisted } = useWatchlist();
 
   useEffect(() => {
     fetch(`/api/stocks/${encodeURIComponent(symbol)}`)
@@ -75,6 +79,14 @@ export default function StockDetailPage({
             {pick.belowSma200 && <Badge variant="warning">Below SMA 200</Badge>}
           </div>
           <p className="mt-1 text-lg text-text-secondary">{pick.name}</p>
+          {pick.createdAt && (() => {
+            const daysAgo = Math.floor((Date.now() - new Date(pick.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+            return daysAgo < 7 ? (
+              <Badge variant="accent" className="mt-1">NEW &mdash; Added {daysAgo === 0 ? "today" : `${daysAgo}d ago`}</Badge>
+            ) : (
+              <span className="mt-1 text-xs text-text-tertiary">Added {daysAgo}d ago</span>
+            );
+          })()}
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-tertiary">
             <span>{pick.sector}</span>
             {pick.isin && <Badge variant="default">ISIN: {pick.isin}</Badge>}
@@ -85,13 +97,13 @@ export default function StockDetailPage({
           <div>
             <div className="text-xs uppercase text-text-secondary">Price</div>
             <div className="text-2xl font-semibold text-text-primary">
-              ${pick.price.toFixed(2)}
+              {formatPrice(pick.price, pick.currency)}
             </div>
           </div>
           <div>
             <div className="text-xs uppercase text-text-secondary">{t("priceTarget")}</div>
             <div className="text-2xl font-semibold text-accent-fg">
-              ${pick.target.toFixed(0)}
+              {formatPrice(pick.target, pick.currency)}
             </div>
           </div>
           <div>
@@ -152,7 +164,7 @@ export default function StockDetailPage({
               </div>
               <div className="flex justify-between text-text-secondary">
                 <span>{t("exchange")}</span>
-                <span className="text-text-primary">{pick.exchange}</span>
+                <span className="text-text-primary">{getExchangeName(pick.exchange)}</span>
               </div>
               <div className="flex justify-between text-text-secondary">
                 <span>{t("currency")}</span>
@@ -250,8 +262,12 @@ export default function StockDetailPage({
 
           <div className="flex gap-2">
             <Button fullWidth>{t("addToMix")}</Button>
-            <Button variant="secondary" fullWidth>
-              {t("addToWatchlist")}
+            <Button
+              variant={isWatchlisted(pick.symbol) ? "primary" : "secondary"}
+              fullWidth
+              onClick={() => toggle(pick.symbol)}
+            >
+              {isWatchlisted(pick.symbol) ? "\u2665 Watchlisted" : t("addToWatchlist")}
             </Button>
           </div>
         </div>

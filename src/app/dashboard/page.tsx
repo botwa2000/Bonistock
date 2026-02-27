@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import type { StockPick, StockFilters } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge } from "@/components/ui/badge";
-import { TickerCard } from "@/components/features/ticker-card";
+import { TickerCard, TickerRow } from "@/components/features/ticker-card";
 import { DayPassBanner } from "@/components/features/day-pass-banner";
 import { StockFilterBar, defaultStockFilters } from "@/components/features/filter-bar";
 import { PaymentToast } from "@/components/features/payment-toast";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
+
+const PAGE_SIZE = 50;
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -22,16 +25,24 @@ export default function DashboardPage() {
   const tier = user?.tier ?? "free";
 
   const [stocks, setStocks] = useState<StockPick[]>([]);
+  const [freeSymbols, setFreeSymbols] = useState<Set<string>>(new Set());
   const [etfCount, setEtfCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<StockFilters>(defaultStockFilters);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const handleFilterChange = useCallback((newFilters: StockFilters) => {
+    setFilters(newFilters);
+    setVisibleCount(PAGE_SIZE);
+  }, []);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/stocks").then((r) => r.json()),
       fetch("/api/etfs").then((r) => r.json()),
-    ]).then(([stockData, etfData]) => {
-      setStocks(stockData);
+    ]).then(([stockRes, etfData]) => {
+      setStocks(stockRes.stocks);
+      setFreeSymbols(new Set(stockRes.freeSymbols));
       setEtfCount(etfData.length);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -42,14 +53,8 @@ export default function DashboardPage() {
     [stocks]
   );
 
-  // Top 5 stocks (by upside, the default sort) are free-tier visible
-  const freeSymbols = useMemo(
-    () => new Set(stocks.slice(0, 5).map((s) => s.symbol)),
-    [stocks]
-  );
-
   const filtered = useMemo(() => {
-    return stocks.filter((p) => {
+    let result = stocks.filter((p) => {
       if (filters.region !== "all" && p.region !== filters.region) return false;
       if (filters.sector !== "all" && p.sector !== filters.sector) return false;
       if (filters.risk !== "any" && p.risk !== filters.risk) return false;
@@ -62,8 +67,40 @@ export default function DashboardPage() {
       if (p.upside < filters.minUpside) return false;
       if (p.price > filters.maxPrice) return false;
       if (filters.dividendOnly && p.dividendYield <= 0) return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        if (
+          !p.symbol.toLowerCase().includes(q) &&
+          !p.name.toLowerCase().includes(q) &&
+          !(p.isin && p.isin.toLowerCase().includes(q)) &&
+          !(p.wkn && p.wkn.toLowerCase().includes(q)) &&
+          !p.exchange.toLowerCase().includes(q) &&
+          !p.sector.toLowerCase().includes(q) &&
+          !p.description.toLowerCase().includes(q)
+        ) return false;
+      }
       return true;
     });
+
+    // Sort
+    const dir = filters.sortDir === "asc" ? 1 : -1;
+    result.sort((a, b) => {
+      switch (filters.sortBy) {
+        case "name": return dir * a.name.localeCompare(b.name);
+        case "price": return dir * (a.price - b.price);
+        case "analysts": return dir * (a.analysts - b.analysts);
+        case "conviction": {
+          const ca = a.buys + a.holds + a.sells > 0 ? (a.buys - a.sells) / (a.buys + a.holds + a.sells) : 0;
+          const cb = b.buys + b.holds + b.sells > 0 ? (b.buys - b.sells) / (b.buys + b.holds + b.sells) : 0;
+          return dir * (ca - cb);
+        }
+        case "dividendYield": return dir * ((a.dividendYield ?? 0) - (b.dividendYield ?? 0));
+        case "upside":
+        default: return dir * (a.upside - b.upside);
+      }
+    });
+
+    return result;
   }, [stocks, filters]);
 
   const avgUpside =
@@ -113,7 +150,7 @@ export default function DashboardPage() {
 
       <StockFilterBar
         filters={filters}
-        onChange={setFilters}
+        onChange={handleFilterChange}
         resultCount={filtered.length}
         sectors={sectors}
         maxUpside={maxUpside}
@@ -141,16 +178,63 @@ export default function DashboardPage() {
         <Card variant="glass" className="py-12 text-center">
           <p className="text-text-secondary">{tf("noResults")}</p>
         </Card>
+      ) : filters.viewMode === "list" ? (
+        <>
+          <div className="hidden md:flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1 text-[10px] sm:text-xs uppercase text-text-tertiary">
+            <span className="w-14 sm:w-20">Symbol</span>
+            <span className="flex-1">Name</span>
+            <span className="hidden md:block w-24 text-right">Price</span>
+            <span className="hidden md:block w-24 text-right">Target</span>
+            <span className="w-14 sm:w-16 text-right">Upside</span>
+            <span className="hidden lg:block w-12 text-right">Analysts</span>
+            <span className="hidden lg:block w-16 text-right">Conv.</span>
+            <span className="hidden xl:block w-24">Sector</span>
+            <span className="hidden sm:block w-14">Risk</span>
+            <span className="hidden xl:block w-28">ISIN</span>
+            <span className="hidden xl:block w-16">WKN</span>
+          </div>
+          <div className="space-y-1">
+            {filtered.slice(0, visibleCount).map((pick) => (
+              <TickerRow
+                key={pick.symbol}
+                pick={pick}
+                locked={tier === "free" && !freeSymbols.has(pick.symbol)}
+              />
+            ))}
+          </div>
+          {filtered.length > visibleCount && (
+            <div className="flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              >
+                Show More ({filtered.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((pick) => (
-            <TickerCard
-              key={pick.symbol}
-              pick={pick}
-              locked={tier === "free" && !freeSymbols.has(pick.symbol)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.slice(0, visibleCount).map((pick) => (
+              <TickerCard
+                key={pick.symbol}
+                pick={pick}
+                locked={tier === "free" && !freeSymbols.has(pick.symbol)}
+              />
+            ))}
+          </div>
+          {filtered.length > visibleCount && (
+            <div className="flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              >
+                Show More ({filtered.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <Card variant="accent" className="flex items-center gap-4">

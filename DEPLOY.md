@@ -194,29 +194,37 @@ All four apps on this server use distinct prefixes:
 | Bonistock Prod     | `bonistock_prod_`   | `bonistock_prod_DATABASE_URL` |
 | Bonistock Dev      | `bonistock_dev_`    | `bonistock_dev_DATABASE_URL`  |
 
-### Current secrets (19 per environment)
+### Current secrets (25 per environment)
 
-| Secret                                | Description                     |
-|---------------------------------------|---------------------------------|
-| `bonistock_{env}_DATABASE_URL`        | PostgreSQL connection string    |
-| `bonistock_{env}_NEXTAUTH_SECRET`     | Auth JWT signing secret         |
-| `bonistock_{env}_BREVO_SMTP_USER`     | Brevo SMTP username             |
-| `bonistock_{env}_BREVO_SMTP_KEY`      | Brevo SMTP password             |
-| `bonistock_{env}_EMAIL_FROM`          | Sender address for emails       |
-| `bonistock_{env}_GOOGLE_CLIENT_ID`    | Google OAuth client ID          |
-| `bonistock_{env}_GOOGLE_CLIENT_SECRET`| Google OAuth client secret      |
-| `bonistock_{env}_FACEBOOK_CLIENT_ID`  | Facebook OAuth client ID        |
-| `bonistock_{env}_FACEBOOK_CLIENT_SECRET`| Facebook OAuth client secret  |
-| `bonistock_{env}_FMP_API_KEY`         | Financial Modeling Prep API key |
-| `bonistock_{env}_SENTRY_DSN`          | Sentry error tracking DSN       |
-| `bonistock_{env}_ENCRYPTION_KEY`      | AES-256 key (32-byte hex)       |
-| `bonistock_{env}_STRIPE_SECRET_KEY`   | Stripe API secret key           |
-| `bonistock_{env}_STRIPE_PUBLISHABLE_KEY`| Stripe publishable key        |
-| `bonistock_{env}_STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `bonistock_{env}_APPLE_IAP_KEY_P8`   | Apple IAP .p8 key contents      |
-| `bonistock_{env}_APPLE_IAP_KEY_ID`   | Apple IAP key ID                |
-| `bonistock_{env}_APPLE_IAP_ISSUER_ID`| Apple IAP issuer ID             |
-| `bonistock_{env}_APPLE_APP_ID`       | Numeric Apple App ID            |
+| Secret                                  | Description                       |
+|-----------------------------------------|-----------------------------------|
+| `bonistock_{env}_DATABASE_URL`          | PostgreSQL connection string      |
+| `bonistock_{env}_NEXTAUTH_SECRET`       | Auth JWT signing secret           |
+| `bonistock_{env}_BREVO_SMTP_USER`       | Brevo SMTP username               |
+| `bonistock_{env}_BREVO_SMTP_KEY`        | Brevo SMTP password               |
+| `bonistock_{env}_EMAIL_FROM`            | Sender address for emails         |
+| `bonistock_{env}_GOOGLE_CLIENT_ID`      | Google OAuth client ID            |
+| `bonistock_{env}_GOOGLE_CLIENT_SECRET`  | Google OAuth client secret        |
+| `bonistock_{env}_FACEBOOK_CLIENT_ID`    | Facebook OAuth client ID          |
+| `bonistock_{env}_FACEBOOK_CLIENT_SECRET`| Facebook OAuth client secret      |
+| `bonistock_{env}_FMP_API_KEY`           | Financial Modeling Prep API key   |
+| `bonistock_{env}_FINNHUB_API_KEY`       | Finnhub analyst data API key      |
+| `bonistock_{env}_ENCRYPTION_KEY`        | AES-256 key (32-byte hex)         |
+| `bonistock_{env}_STRIPE_SECRET_KEY`     | Stripe API secret key             |
+| `bonistock_{env}_STRIPE_PUBLISHABLE_KEY`| Stripe publishable key            |
+| `bonistock_{env}_STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret     |
+| `bonistock_{env}_APNS_KEY_ID`           | APNs push key ID                  |
+| `bonistock_{env}_APNS_TEAM_ID`          | Apple Developer Team ID           |
+| `bonistock_{env}_APNS_KEY_P8`           | APNs push .p8 key contents        |
+| `bonistock_{env}_APNS_BUNDLE_ID`        | iOS bundle identifier             |
+| `bonistock_{env}_APPLE_IAP_KEY_P8`      | Apple IAP .p8 key contents        |
+| `bonistock_{env}_APPLE_IAP_KEY_ID`      | Apple IAP key ID                  |
+| `bonistock_{env}_APPLE_IAP_ISSUER_ID`   | Apple IAP issuer ID               |
+| `bonistock_{env}_APPLE_APP_ID`          | Numeric Apple App ID              |
+| `bonistock_{env}_APPLE_OAUTH_CLIENT_ID` | Apple Sign In Services ID         |
+| `bonistock_{env}_APPLE_OAUTH_CLIENT_SECRET`| Apple Sign In JWT client secret|
+
+All secret values are in the local `.secrets` file (git-ignored).
 
 > **Note:** Stripe price IDs are no longer stored as secrets. Products and prices are managed via the admin dashboard and stored in the database.
 

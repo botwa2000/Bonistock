@@ -5,21 +5,37 @@ import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
 import { notifyAdmins } from "@/lib/admin-notify";
-import { getAppleVerifier } from "@/lib/apple-server";
+import { getAppleVerifier, getAppleEnvironments, Environment } from "@/lib/apple-server";
+
+/**
+ * Try to verify and decode an Apple notification with both environments.
+ * Sandbox notifications come from TestFlight / sandbox testers / App Review.
+ */
+async function verifyNotification(signedPayload: string) {
+  const [primary, fallback] = getAppleEnvironments();
+  for (const env of [primary, fallback]) {
+    const envName = env === Environment.PRODUCTION ? "PRODUCTION" : "SANDBOX";
+    const verifier = getAppleVerifier(env);
+    if (!verifier) continue;
+    try {
+      const notification = await verifier.verifyAndDecodeNotification(signedPayload);
+      log.debug("apple/webhook", `Notification verified via ${envName}`);
+      return { notification, verifier };
+    } catch (err) {
+      log.debug("apple/webhook", `${envName} verification failed:`, err);
+    }
+  }
+  return null;
+}
 
 /**
  * POST /api/apple/webhook
  * Apple App Store Server Notifications V2.
  * Apple sends JWS-signed payloads — no shared secret needed.
  * Handles subscription lifecycle: renewals, cancellations, expirations, billing issues.
+ * Tries both production and sandbox verifiers.
  */
 export async function POST(req: NextRequest) {
-  const verifier = getAppleVerifier();
-  if (!verifier) {
-    log.error("apple/webhook", "Apple JWS verifier not configured");
-    return NextResponse.json({ error: "Not configured" }, { status: 500 });
-  }
-
   let body: { signedPayload?: string };
   try {
     body = await req.json();
@@ -33,9 +49,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Verify JWS signature using Apple root CA certs
-    const notification = await verifier.verifyAndDecodeNotification(signedPayload);
+    // Verify JWS signature using Apple root CA certs — try both environments
+    const result = await verifyNotification(signedPayload);
+    if (!result) {
+      log.error("apple/webhook", "Failed to verify notification in any environment");
+      return NextResponse.json({ error: "Verification failed" }, { status: 400 });
+    }
 
+    const { notification, verifier } = result;
     const notificationType = notification.notificationType;
     const subtype = notification.subtype;
     const signedTransactionInfo = notification.data?.signedTransactionInfo;
@@ -47,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Decode the transaction
+    // Decode the transaction using the same verifier that worked for the notification
     const txn = await verifier.verifyAndDecodeTransaction(signedTransactionInfo);
     const originalTransactionId = txn.originalTransactionId;
     const productId = txn.productId;
@@ -130,7 +151,7 @@ export async function POST(req: NextRequest) {
         });
         await sendEmail(user.email, subject, html);
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "expired", source: "APPLE" });
-        notifyAdmins(
+        await notifyAdmins(
           "Subscription expired (Apple)",
           `<h2>Subscription Expired (Apple)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
         );
@@ -153,7 +174,7 @@ export async function POST(req: NextRequest) {
           data: { status: "CANCELED", tier: "FREE" },
         });
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: notificationType === "REFUND" ? "refund" : "revoke", source: "APPLE" });
-        notifyAdmins(
+        await notifyAdmins(
           `Subscription ${notificationType === "REFUND" ? "refunded" : "revoked"} (Apple)`,
           `<h2>Subscription ${notificationType === "REFUND" ? "Refunded" : "Revoked"} (Apple)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
         );

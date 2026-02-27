@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import Facebook from "next-auth/providers/facebook";
+import Apple from "next-auth/providers/apple";
 import { z } from "zod";
 import { db } from "./db";
 import { verifyPassword } from "./password";
@@ -92,6 +93,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Facebook({
       clientId: process.env.FACEBOOK_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+    }),
+    Apple({
+      clientId: process.env.APPLE_OAUTH_CLIENT_ID,
+      clientSecret: process.env.APPLE_OAUTH_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: true,
     }),
     Credentials({

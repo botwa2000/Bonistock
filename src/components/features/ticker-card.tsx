@@ -6,6 +6,8 @@ import type { StockPick } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getRegionFlag, getSectorIcon } from "@/lib/stock-icons";
+import { getExchangeName } from "@/lib/exchange-names";
+import { formatPrice } from "@/lib/currency";
 import { hapticImpact } from "@/lib/native";
 
 interface TickerCardProps {
@@ -20,6 +22,10 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
     pick.buys + pick.holds + pick.sells > 0
       ? (pick.buys - pick.sells) / (pick.buys + pick.holds + pick.sells)
       : 0;
+
+  const isNew = pick.createdAt
+    ? Date.now() - new Date(pick.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
+    : false;
 
   const riskVariant =
     pick.risk === "low"
@@ -37,7 +43,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                   <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getRegionFlag(pick.region)}</Badge>
-                  <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge>
+                  <span title={getExchangeName(pick.exchange)}><Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge></span>
                   <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getSectorIcon(pick.sector)} {pick.sector}</Badge>
                   <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                     {pick.analysts} {t("analysts")}
@@ -109,19 +115,19 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1 sm:gap-2 overflow-hidden max-h-12">
                 <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getRegionFlag(pick.region)}</Badge>
-                <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge>
+                <span title={getExchangeName(pick.exchange)}><Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge></span>
                 <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getSectorIcon(pick.sector)} {pick.sector}</Badge>
                 <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">
                   {pick.analysts} {t("analysts")}
                 </Badge>
+                {isNew && <Badge variant="accent" className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">NEW</Badge>}
               </div>
               <h3 className="mt-1.5 sm:mt-2 text-sm sm:text-lg font-semibold text-text-primary truncate">
                 {pick.symbol} &middot; {pick.name}
               </h3>
               {!compact && (
                 <p className="text-xs sm:text-sm text-text-secondary truncate">
-                  ${pick.price.toFixed(2)} &middot; target $
-                  {pick.target.toFixed(0)} &middot; {pick.horizon}
+                  {formatPrice(pick.price, pick.currency)} &middot; target {formatPrice(pick.target, pick.currency)} &middot; {pick.horizon}
                 </p>
               )}
             </div>
@@ -172,5 +178,53 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
           )}
         </Card>
       </Link>
+  );
+}
+
+export function TickerRow({ pick, locked = false }: { pick: StockPick; locked?: boolean }) {
+  const t = useTranslations("stock");
+
+  const conviction =
+    pick.buys + pick.holds + pick.sells > 0
+      ? (pick.buys - pick.sells) / (pick.buys + pick.holds + pick.sells)
+      : 0;
+
+  const riskVariant =
+    pick.risk === "low" ? "success" : pick.risk === "high" ? "danger" : "warning";
+
+  if (locked) {
+    return (
+      <div className="relative">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-sm blur-[4px] pointer-events-none opacity-40">
+          <span className="w-16 font-semibold truncate">***</span>
+          <span className="flex-1 truncate">***</span>
+          <span className="w-20 text-right">***</span>
+          <span className="w-16 text-right">***</span>
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Link href="/pricing" className="rounded-lg bg-emerald-400/90 px-3 py-1 text-xs font-semibold text-gray-900 hover:bg-emerald-300 transition-colors">
+            Unlock
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Link href={`/dashboard/stock/${pick.symbol}`} onClick={() => hapticImpact("light")}>
+      <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-border bg-surface hover:bg-surface-elevated transition-colors px-2 sm:px-3 py-2 text-xs sm:text-sm">
+        <span className="w-14 sm:w-20 font-semibold text-text-primary truncate">{pick.symbol}</span>
+        <span className="flex-1 min-w-0 text-text-secondary truncate">{pick.name}</span>
+        <span className="hidden md:block w-24 text-right text-text-secondary">{formatPrice(pick.price, pick.currency)}</span>
+        <span className="hidden md:block w-24 text-right text-text-secondary">{formatPrice(pick.target, pick.currency)}</span>
+        <span className="w-14 sm:w-16 text-right font-semibold text-accent-fg">+{pick.upside}%</span>
+        <span className="hidden lg:block w-12 text-right text-text-secondary">{pick.analysts}</span>
+        <span className="hidden lg:block w-16 text-right text-text-secondary">{(conviction * 100).toFixed(0)}%</span>
+        <span className="hidden xl:block w-24 text-text-tertiary truncate">{pick.sector}</span>
+        <Badge variant={riskVariant} className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5">{pick.risk}</Badge>
+        {pick.isin && <span className="hidden xl:block w-28 text-[10px] text-text-tertiary">{pick.isin}</span>}
+        {pick.wkn && <span className="hidden xl:block w-16 text-[10px] text-text-tertiary">{pick.wkn}</span>}
+      </div>
+    </Link>
   );
 }

@@ -3,13 +3,14 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import type { EtfPick, EtfFilters } from "@/lib/types";
+import type { EtfPick, EtfFilters, EtfMixStrategy } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { EtfFilterBar, defaultEtfFilters } from "@/components/features/filter-bar";
 import { EtfCard } from "@/components/features/etf-card";
+import { formatPrice } from "@/lib/currency";
 
 interface EtfAllocation {
   symbol: string;
@@ -20,11 +21,70 @@ interface EtfAllocation {
   dollars: number;
 }
 
+const ETF_STRATEGIES: EtfMixStrategy[] = ["bestSharpe", "lowestFee", "highestReturn", "themeDiversified"];
+
+function buildEtfAllocations(
+  strategy: EtfMixStrategy,
+  candidates: EtfPick[],
+  amount: number,
+): { allocations: EtfAllocation[]; cash: number } {
+  let top: EtfPick[] = [];
+
+  switch (strategy) {
+    case "bestSharpe": {
+      top = [...candidates].sort((a, b) => b.sharpe - a.sharpe).slice(0, 5);
+      break;
+    }
+    case "lowestFee": {
+      const withFee = candidates.filter((e) => e.fee != null);
+      top = [...withFee].sort((a, b) => (a.fee ?? 99) - (b.fee ?? 99)).slice(0, 5);
+      break;
+    }
+    case "highestReturn": {
+      top = [...candidates].sort((a, b) => (b.cagr5y ?? b.cagr1y ?? 0) - (a.cagr5y ?? a.cagr1y ?? 0)).slice(0, 5);
+      break;
+    }
+    case "themeDiversified": {
+      const byTheme = new Map<string, EtfPick>();
+      const sorted = [...candidates].sort((a, b) => b.sharpe - a.sharpe);
+      for (const e of sorted) {
+        if (!byTheme.has(e.theme)) byTheme.set(e.theme, e);
+      }
+      top = [...byTheme.values()].slice(0, 5);
+      break;
+    }
+  }
+
+  if (top.length === 0) return { allocations: [], cash: amount };
+
+  // bestSharpe weights by Sharpe ratio; others use equal weight
+  const useSharpeWeight = strategy === "bestSharpe";
+  const totalSharpe = useSharpeWeight ? top.reduce((sum, e) => sum + e.sharpe, 0) : 0;
+
+  const allocations: EtfAllocation[] = top.map((e) => {
+    const weight = useSharpeWeight && totalSharpe > 0 ? e.sharpe / totalSharpe : 1 / top.length;
+    const dollars = Math.round(amount * weight * 100) / 100;
+    return {
+      symbol: e.symbol,
+      name: e.name,
+      sharpe: e.sharpe,
+      fee: e.fee,
+      weight,
+      dollars,
+    };
+  });
+
+  const spent = allocations.reduce((s, a) => s + a.dollars, 0);
+  const cash = Math.round((amount - spent) * 100) / 100;
+  return { allocations, cash };
+}
+
 export function EtfMix() {
   const t = useTranslations("mix");
   const [etfs, setEtfs] = useState<EtfPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState(1000);
+  const [strategy, setStrategy] = useState<EtfMixStrategy>("bestSharpe");
   const [filters, setFilters] = useState<EtfFilters>(defaultEtfFilters);
 
   useEffect(() => {
@@ -39,8 +99,8 @@ export function EtfMix() {
     [etfs]
   );
 
-  const result = useMemo(() => {
-    let candidates = etfs.filter((e) => {
+  const candidates = useMemo(() => {
+    return etfs.filter((e) => {
       if (filters.region !== "all" && e.region !== filters.region) return false;
       if (filters.theme !== "all" && e.theme !== filters.theme) return false;
       if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any))
@@ -51,32 +111,12 @@ export function EtfMix() {
       }
       return true;
     });
+  }, [etfs, filters]);
 
-    // Rank by Sharpe ratio (best risk-adjusted return)
-    const ranked = [...candidates].sort((a, b) => b.sharpe - a.sharpe);
-    const top = ranked.slice(0, 5);
-
-    if (top.length === 0) return { allocations: [], cash: amount };
-
-    const totalSharpe = top.reduce((sum, e) => sum + e.sharpe, 0);
-
-    const allocations: EtfAllocation[] = top.map((e) => {
-      const weight = totalSharpe > 0 ? e.sharpe / totalSharpe : 1 / top.length;
-      const dollars = Math.round(amount * weight * 100) / 100;
-      return {
-        symbol: e.symbol,
-        name: e.name,
-        sharpe: e.sharpe,
-        fee: e.fee,
-        weight,
-        dollars,
-      };
-    });
-
-    const spent = allocations.reduce((s, a) => s + a.dollars, 0);
-    const cash = Math.round((amount - spent) * 100) / 100;
-    return { allocations, cash };
-  }, [etfs, amount, filters]);
+  const result = useMemo(
+    () => buildEtfAllocations(strategy, candidates, amount),
+    [strategy, candidates, amount],
+  );
 
   if (loading) {
     return (
@@ -88,6 +128,24 @@ export function EtfMix() {
 
   return (
     <div className="space-y-5">
+      {/* Strategy selector */}
+      <div className="flex flex-wrap gap-2">
+        {ETF_STRATEGIES.map((s) => (
+          <button
+            key={s}
+            onClick={() => setStrategy(s)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              strategy === s
+                ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
+                : "bg-surface text-text-secondary border border-border hover:text-text-primary"
+            }`}
+          >
+            {t(`etfStrategy_${s}`)}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-text-tertiary">{t(`etfStrategyDesc_${strategy}`)}</p>
+
       <Card variant="glass" padding="sm" className="flex items-center gap-3">
         <Input
           label={t("etfAmount")}
@@ -104,16 +162,7 @@ export function EtfMix() {
       <EtfFilterBar
         filters={filters}
         onChange={setFilters}
-        resultCount={etfs.filter((e) => {
-          if (filters.region !== "all" && e.region !== filters.region) return false;
-          if (filters.theme !== "all" && e.theme !== filters.theme) return false;
-          if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any)) return false;
-          if (filters.minCagr > 0) {
-            const cagr = e.cagr5y ?? e.cagr1y ?? 0;
-            if (cagr < filters.minCagr) return false;
-          }
-          return true;
-        }).length}
+        resultCount={candidates.length}
         themes={themes}
       />
 
@@ -130,7 +179,7 @@ export function EtfMix() {
                 {etf && <EtfCard etf={etf} compact />}
                 <div className="mt-1 flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated/80 px-3 py-1.5 text-xs">
                   <Badge>{Math.round(alloc.weight * 100)}%</Badge>
-                  <span className="font-semibold text-text-primary">${alloc.dollars.toFixed(2)}</span>
+                  <span className="font-semibold text-text-primary">{formatPrice(alloc.dollars)}</span>
                 </div>
               </div>
             );
@@ -147,7 +196,7 @@ export function EtfMix() {
           {t("unusedCash")}
         </span>
         <Badge variant="default" className="text-sm font-semibold">
-          ${result.cash.toFixed(2)}
+          {formatPrice(result.cash)}
         </Badge>
       </Card>
 

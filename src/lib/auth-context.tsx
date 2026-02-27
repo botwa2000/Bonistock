@@ -35,6 +35,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   loginWithGoogle: () => Promise<void>;
   loginWithFacebook: () => Promise<void>;
+  loginWithApple: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -122,6 +123,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     await signIn("facebook", { callbackUrl: "/dashboard" });
   }, []);
 
+  const loginWithApple = useCallback(async () => {
+    await signIn("apple", { callbackUrl: "/dashboard" });
+  }, []);
+
   const logout = useCallback(async () => {
     // Clean up native resources before signing out
     if (isNative) {
@@ -150,6 +155,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         login,
         loginWithGoogle,
         loginWithFacebook,
+        loginWithApple,
         logout,
         refreshUser: fetchUser,
       }}

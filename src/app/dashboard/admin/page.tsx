@@ -59,6 +59,8 @@ interface Product {
   sortOrder: number;
   appleProductId: string | null;
   iosPriceAmount: number | null;
+  eurPriceAmount: number | null;
+  eurIosPriceAmount: number | null;
 }
 
 interface AdminUser {
@@ -147,6 +149,8 @@ export default function AdminPage() {
   const [formHighlighted, setFormHighlighted] = useState(false);
   const [formAppleProductId, setFormAppleProductId] = useState("");
   const [formIosPriceAmount, setFormIosPriceAmount] = useState("");
+  const [formEurPriceAmount, setFormEurPriceAmount] = useState("");
+  const [formEurIosPriceAmount, setFormEurIosPriceAmount] = useState("");
 
   useEffect(() => {
     if (!loading && user?.role !== "ADMIN") {
@@ -344,6 +348,8 @@ export default function AdminPage() {
       ...(formUsualPrice && { usualPrice: Math.round(parseFloat(formUsualPrice) * 100) }),
       ...(formAppleProductId && { appleProductId: formAppleProductId }),
       ...(formIosPriceAmount && { iosPriceAmount: Math.round(parseFloat(formIosPriceAmount) * 100) }),
+      ...(formEurPriceAmount && { eurPriceAmount: Math.round(parseFloat(formEurPriceAmount) * 100) }),
+      ...(formEurIosPriceAmount && { eurIosPriceAmount: Math.round(parseFloat(formEurIosPriceAmount) * 100) }),
     };
 
     if (formType === "SUBSCRIPTION") {
@@ -923,6 +929,33 @@ export default function AdminPage() {
                     value={formIosPriceAmount}
                     onChange={(e) => setFormIosPriceAmount(e.target.value)}
                     placeholder="9.99"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">{t("eurPrice")}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={formEurPriceAmount}
+                    onChange={(e) => setFormEurPriceAmount(e.target.value)}
+                    placeholder="6.49"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">{t("eurIosPrice")}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={formEurIosPriceAmount}
+                    onChange={(e) => setFormEurIosPriceAmount(e.target.value)}
+                    placeholder="9.49"
                   />
                 </div>
               </div>

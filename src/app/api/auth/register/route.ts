@@ -49,12 +49,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Auto-detect region and language from Accept-Language header
+  const acceptLang = req.headers.get("accept-language") ?? "";
+  const isGerman = /\bde\b/i.test(acceptLang.split(",")[0] ?? "");
+  const detectedRegion = isGerman ? "DE" : "US";
+  const detectedLanguage = isGerman ? "DE" : "EN";
+
   const passwordHash = await hashPassword(password);
   const user = await db.user.create({
     data: {
       email,
       name,
       passwordHash,
+      region: detectedRegion,
+      language: detectedLanguage,
       tosAcceptedAt: new Date(),
       tosVersion: "1.0",
       privacyAcceptedAt: new Date(),
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
   await sendEmail(email, subject, html);
   await logAudit(user.id, "REGISTER", { email });
 
-  notifyAdmins(
+  await notifyAdmins(
     `New signup: ${name} (${email})`,
     `<h2>New User Registration</h2><p><strong>Name:</strong> ${name}</p><p><strong>Email:</strong> ${email}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
   );

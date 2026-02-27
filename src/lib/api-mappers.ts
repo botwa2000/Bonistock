@@ -27,6 +27,7 @@ interface DbStock {
   belowSma200: boolean;
   isin?: string | null;
   wkn?: string | null;
+  createdAt?: Date | null;
   brokerAvailability: DbStockBroker[];
 }
 
@@ -50,6 +51,7 @@ interface DbEtf {
   description: string;
   isin?: string | null;
   wkn?: string | null;
+  createdAt?: Date | null;
   brokerAvailability: DbEtfBroker[];
 }
 
@@ -77,6 +79,7 @@ export function mapStockToFrontend(stock: DbStock): StockPick {
     belowSma200: stock.belowSma200,
     isin: stock.isin ?? undefined,
     wkn: stock.wkn ?? undefined,
+    createdAt: stock.createdAt ? stock.createdAt.toISOString() : undefined,
     brokerAvailability: stock.brokerAvailability.map((ba) => ba.brokerId) as StockPick["brokerAvailability"],
   };
 }
@@ -98,6 +101,7 @@ export function mapEtfToFrontend(etf: DbEtf): EtfPick {
     description: etf.description,
     isin: etf.isin ?? undefined,
     wkn: etf.wkn ?? undefined,
+    createdAt: etf.createdAt ? etf.createdAt.toISOString() : undefined,
     brokerAvailability: etf.brokerAvailability.map((ba) => ba.brokerId) as EtfPick["brokerAvailability"],
   };
 }

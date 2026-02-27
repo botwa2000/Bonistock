@@ -29,6 +29,8 @@ services:
       - bonistock_dev_APPLE_IAP_KEY_ID
       - bonistock_dev_APPLE_IAP_ISSUER_ID
       - bonistock_dev_APPLE_APP_ID
+      - bonistock_dev_APPLE_OAUTH_CLIENT_ID
+      - bonistock_dev_APPLE_OAUTH_CLIENT_SECRET
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -98,4 +100,8 @@ secrets:
   bonistock_dev_APPLE_IAP_ISSUER_ID:
     external: true
   bonistock_dev_APPLE_APP_ID:
+    external: true
+  bonistock_dev_APPLE_OAUTH_CLIENT_ID:
+    external: true
+  bonistock_dev_APPLE_OAUTH_CLIENT_SECRET:
     external: true

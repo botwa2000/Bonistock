@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         }
         log.info("stripe/webhook", `Subscription activated for user ${userId}, status=${dbStatus}`);
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS" });
-        notifyAdmins(
+        await notifyAdmins(
           "New Plus subscription",
           `<h2>New Plus Subscription</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Amount:</strong> ${session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "N/A"}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
         log.info("stripe/webhook", `Pass purchased for user ${userId}: ${passConfig.type} (${passConfig.count} activations)`);
         await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count });
         const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
-        notifyAdmins(
+        await notifyAdmins(
           `Day Pass purchased: ${passNames[passConfig.type]}`,
           `<h2>Day Pass Purchased</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
@@ -185,6 +185,10 @@ export async function POST(req: NextRequest) {
             settingsUrl: `${appUrl}/settings`,
           });
           await sendEmail(sub.user.email, pfSubject, pfHtml);
+          await notifyAdmins(
+            "Payment failed",
+            `<h2>Payment Failed</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Subscription:</strong> ${subscriptionId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          );
         }
       }
       break;
@@ -209,6 +213,16 @@ export async function POST(req: NextRequest) {
           }),
         },
       });
+      const updSub = await db.subscription.findUnique({
+        where: { stripeSubscriptionId: subscription.id },
+        include: { user: { select: { email: true, name: true } } },
+      });
+      if (updSub) {
+        await notifyAdmins(
+          `Subscription updated: ${statusMap[subscription.status] ?? subscription.status}`,
+          `<h2>Subscription Updated</h2><p><strong>User:</strong> ${updSub.user.name ?? "Unknown"} (${updSub.user.email})</p><p><strong>Status:</strong> ${statusMap[subscription.status] ?? subscription.status}</p><p><strong>Cancel at period end:</strong> ${subscription.cancel_at_period_end}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+        );
+      }
       break;
     }
 
@@ -231,7 +245,7 @@ export async function POST(req: NextRequest) {
         });
         await sendEmail(sub.user.email, scSubject, scHtml);
         await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel" });
-        notifyAdmins(
+        await notifyAdmins(
           "Subscription canceled",
           `<h2>Subscription Canceled</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );

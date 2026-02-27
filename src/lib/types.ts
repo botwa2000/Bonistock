@@ -42,6 +42,7 @@ export interface StockPick {
   belowSma200: boolean;
   isin?: string;
   wkn?: string;
+  createdAt?: string;
 }
 
 export interface EtfPick {
@@ -61,6 +62,7 @@ export interface EtfPick {
   description: string;
   isin?: string;
   wkn?: string;
+  createdAt?: string;
 }
 
 export interface Broker {
@@ -133,6 +135,14 @@ export interface WatchlistItem {
   addedAt: string;
 }
 
+export type StockMixStrategy = "maxUpside" | "balancedRisk" | "dividendIncome" | "sectorDiversified";
+export type EtfMixStrategy = "bestSharpe" | "lowestFee" | "highestReturn" | "themeDiversified";
+
+export type StockSortBy = "upside" | "name" | "price" | "analysts" | "conviction" | "dividendYield";
+export type EtfSortBy = "cagr5y" | "name" | "fee" | "drawdown" | "sharpe";
+export type SortDir = "asc" | "desc";
+export type ViewMode = "grid" | "list";
+
 export interface StockFilters {
   region: Region | "all";
   sector: string;
@@ -144,6 +154,10 @@ export interface StockFilters {
   broker: BrokerId | "any";
   marketCap: "small" | "mid" | "large" | "mega" | "any";
   dividendOnly: boolean;
+  search: string;
+  sortBy: StockSortBy;
+  sortDir: SortDir;
+  viewMode: ViewMode;
 }
 
 export interface EtfFilters {
@@ -151,4 +165,8 @@ export interface EtfFilters {
   theme: string;
   minCagr: number;
   broker: BrokerId | "any";
+  search: string;
+  sortBy: EtfSortBy;
+  sortDir: SortDir;
+  viewMode: ViewMode;
 }

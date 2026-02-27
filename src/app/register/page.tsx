@@ -8,11 +8,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
-import { GoogleIcon, FacebookIcon } from "@/components/ui/icons";
+import { GoogleIcon, FacebookIcon, AppleIcon } from "@/components/ui/icons";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { loginWithGoogle, loginWithFacebook } = useAuth();
+  const { loginWithGoogle, loginWithFacebook, loginWithApple } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,6 +107,14 @@ export default function RegisterPage() {
               onClick={loginWithFacebook}
             >
               <FacebookIcon /> <span className="ml-2">Continue with Facebook</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={loginWithApple}
+            >
+              <AppleIcon /> <span className="ml-2">Continue with Apple</span>
             </Button>
           </div>
 

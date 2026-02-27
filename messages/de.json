@@ -42,7 +42,8 @@
     "settings": "Einstellungen",
     "account": "Konto",
     "admin": "Admin",
-    "history": "Pick-Verlauf"
+    "history": "Pick-Verlauf",
+    "performance": "Performance"
   },
   "landing": {
     "heroTitle": "Aktien bewertet nach Analystenkonsens. ETFs bewertet nach realen Renditen.",
@@ -142,7 +143,10 @@
     "currency": "W\u00e4hrung",
     "addToWatchlist": "Zur Watchlist hinzuf\u00fcgen",
     "addToMix": "Zum Mix hinzuf\u00fcgen",
-    "backToList": "Zur\u00fcck zur Liste"
+    "backToList": "Zur\u00fcck zur Liste",
+    "new": "NEU",
+    "addedDaysAgo": "Hinzugef\u00fcgt vor {days} Tagen",
+    "addedToday": "Heute hinzugef\u00fcgt"
   },
   "etf": {
     "keyDetails": "Eckdaten",
@@ -182,7 +186,48 @@
     "stockMix": "Aktien-Mix",
     "etfMix": "ETF-Mix",
     "etfAmount": "ETF-Anlagebetrag",
-    "etfSubtitle": "Geben Sie Ihr Budget ein, um eine diversifizierte ETF-Aufteilung basierend auf der Sharpe Ratio zu erhalten"
+    "etfSubtitle": "Geben Sie Ihr Budget ein, um eine diversifizierte ETF-Aufteilung basierend auf der Sharpe Ratio zu erhalten",
+    "strategy_maxUpside": "Max. Kurspotenzial",
+    "strategy_balancedRisk": "Ausgewogenes Risiko",
+    "strategy_dividendIncome": "Dividenden-Einkommen",
+    "strategy_sectorDiversified": "Branchen-Diversifiziert",
+    "strategyDesc_maxUpside": "Aktien mit dem höchsten Analysten-Kurspotenzial, nach Rang gewichtet.",
+    "strategyDesc_balancedRisk": "Nur Aktien mit niedrigem und ausgewogenem Risiko, nach Kurspotenzial sortiert.",
+    "strategyDesc_dividendIncome": "Dividenden-Aktien, nach Rendite sortiert mit gleicher Gewichtung.",
+    "strategyDesc_sectorDiversified": "Top-Aktie pro Branche für maximale Diversifizierung, gleiche Gewichtung.",
+    "etfStrategy_bestSharpe": "Beste Sharpe Ratio",
+    "etfStrategy_lowestFee": "Niedrigste Gebühren",
+    "etfStrategy_highestReturn": "Höchste Rendite",
+    "etfStrategy_themeDiversified": "Themen-Diversifiziert",
+    "etfStrategyDesc_bestSharpe": "ETFs mit den besten risikobereinigten Renditen (Sharpe Ratio), nach Sharpe gewichtet.",
+    "etfStrategyDesc_lowestFee": "ETFs mit den niedrigsten Kostenquoten, gleich gewichtet.",
+    "etfStrategyDesc_highestReturn": "ETFs mit den höchsten annualisierten 5-Jahres-Renditen, gleich gewichtet.",
+    "etfStrategyDesc_themeDiversified": "Top-ETF pro Thema für breite Diversifizierung, gleich gewichtet."
+  },
+  "performance": {
+    "title": "Pick-Performance",
+    "subtitle": "Verfolgen Sie, wie unsere Aktienauswahl und Ihre Watchlist sich entwickelt haben",
+    "plusRequired": "Performance-Tracking ist für Plus- und Pass-Abonnenten verfügbar.",
+    "upgradeCta": "Auf Plus upgraden",
+    "loadError": "Performance-Daten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
+    "avgReturn": "Durchschn. Rendite",
+    "winRate": "Gewinnquote",
+    "totalPicks": "Gesamt-Picks",
+    "winners": "Gewinner",
+    "ourPicks": "Unsere Picks",
+    "myWatchlist": "Meine Watchlist",
+    "symbol": "Symbol",
+    "name": "Name",
+    "sector": "Branche",
+    "risk": "Risiko",
+    "entryPrice": "Einstiegspreis",
+    "currentPrice": "Aktueller Preis",
+    "return": "Rendite",
+    "since": "Seit",
+    "addedOn": "Hinzugefügt",
+    "noData": "Noch keine Performance-Daten verfügbar. Schauen Sie später wieder, wenn historische Daten vorliegen.",
+    "watchlistEmpty": "Ihre Watchlist ist leer. Fügen Sie Aktien hinzu, um deren Performance zu verfolgen.",
+    "goToWatchlist": "Zur Watchlist"
   },
   "brokers": {
     "title": "Broker vergleichen",
@@ -540,6 +585,18 @@
     "minCagr": "Min. CAGR (5J)",
     "reset": "Filter zur\u00fccksetzen",
     "results": "Ergebnisse",
+    "searchPlaceholder": "Nach Name, Symbol, ISIN, WKN suchen...",
+    "sortUpside": "Sortierung: Kurspotenzial",
+    "sortName": "Sortierung: Name",
+    "sortPrice": "Sortierung: Preis",
+    "sortAnalysts": "Sortierung: Analysten",
+    "sortConviction": "Sortierung: \u00dcberzeugung",
+    "sortDividend": "Sortierung: Dividendenrendite",
+    "sortCagr": "Sortierung: 5J CAGR",
+    "sortFee": "Sortierung: Geb\u00fchren",
+    "sortDrawdown": "Sortierung: Drawdown",
+    "sortSharpe": "Sortierung: Sharpe",
+    "showMore": "Mehr anzeigen ({remaining} verbleibend)",
     "noResults": "Keine Aktien entsprechen Ihren Filtern. Versuchen Sie, Ihre Kriterien zu erweitern.",
     "brokerNote": "Nicht alle Aktien/ETFs sind bei jedem Broker verf\u00fcgbar. In Europa gelistete ETFs (UCITS) sind in der Regel bei reinen US-Brokern wie Robinhood nicht verf\u00fcgbar."
   },
@@ -629,7 +686,9 @@
     "sendTest": "Test senden",
     "close": "Schlie\u00dfen",
     "appleProductId": "Apple-Produkt-ID",
-    "iosPrice": "iOS-Preis"
+    "iosPrice": "iOS-Preis",
+    "eurPrice": "EUR-Preis",
+    "eurIosPrice": "EUR iOS-Preis"
   },
   "tiers": {
     "free": "Kostenlos",
