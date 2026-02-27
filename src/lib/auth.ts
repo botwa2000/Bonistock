@@ -160,12 +160,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           select: { deletedAt: true, email: true },
         });
         if (dbUser?.deletedAt) {
-          // Restore the user in-place: clear deletedAt, refresh profile from OAuth
+          const oauthEmail = profile?.email as string | undefined;
+
+          // Check if another active user already owns this email
+          // (happens when user deleted account then re-registered, but a stale
+          // OAuth Account record still points to the old soft-deleted user)
+          if (oauthEmail) {
+            const emailOwner = await db.user.findFirst({
+              where: { email: oauthEmail, deletedAt: null, id: { not: user.id } },
+            });
+            if (emailOwner) {
+              // Remove the stale Account link so next OAuth attempt
+              // creates a fresh link to the active user
+              await db.account.deleteMany({
+                where: { userId: user.id, provider: account!.provider },
+              });
+              return "/login?error=PleaseRetry";
+            }
+          }
+
+          // No conflict — restore the deleted user in-place
           await db.user.update({
             where: { id: user.id },
             data: {
               deletedAt: null,
-              email: profile?.email ?? dbUser.email,
+              email: oauthEmail ?? dbUser.email,
               name: (profile?.name as string) ?? user.name ?? null,
               image: (profile?.image as string) ?? user.image ?? null,
               emailVerified: new Date(),
