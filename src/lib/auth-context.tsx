@@ -6,10 +6,13 @@ import {
   useState,
   useCallback,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
 import { isNative, registerPushNotifications } from "@/lib/native";
+
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface UserData {
   id: string;
@@ -91,6 +94,34 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     fetchUser();
   }, [status, fetchUser]);
 
+  // Inactivity timeout — log out after 30 minutes of no interaction
+  const lastActivityRef = useRef(Date.now());
+  const isLoggedIn = !!session?.user;
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const resetTimer = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const events = ["mousedown", "keydown", "touchstart", "scroll"] as const;
+    for (const e of events) window.addEventListener(e, resetTimer, { passive: true });
+
+    const interval = setInterval(() => {
+      if (Date.now() - lastActivityRef.current >= INACTIVITY_TIMEOUT_MS) {
+        signOut({ redirect: false }).then(() => {
+          window.location.href = "/login?reason=inactive";
+        });
+      }
+    }, 60_000); // check every minute
+
+    return () => {
+      for (const e of events) window.removeEventListener(e, resetTimer);
+      clearInterval(interval);
+    };
+  }, [isLoggedIn]);
+
   const login = useCallback(
     async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
       const result = await signIn("credentials", {
@@ -149,7 +180,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        isLoggedIn: !!session?.user,
+        isLoggedIn,
         user,
         loading: status === "loading" || loading,
         login,

@@ -32,6 +32,7 @@ function LoginContent() {
   const [submitting, setSubmitting] = useState(false);
 
   const verified = searchParams.get("verified") === "true";
+  const inactive = searchParams.get("reason") === "inactive";
   const authError = searchParams.get("error");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,6 +116,11 @@ function LoginContent() {
           <p className="mt-1 text-sm text-text-secondary">{t("subtitle")}</p>
         </div>
 
+        {inactive && (
+          <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-300">
+            You were logged out due to inactivity. Please sign in again.
+          </div>
+        )}
         {verified && (
           <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-center text-xs text-success-fg">
             Email verified successfully. You can now log in.

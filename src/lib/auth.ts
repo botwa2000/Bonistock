@@ -21,7 +21,10 @@ const cookiePrefix = useSecureCookies ? "__Secure-" : "";
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   adapter: PrismaAdapter(db),
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days absolute session lifetime
+  },
   pages: {
     signIn: "/login",
     error: "/login",
