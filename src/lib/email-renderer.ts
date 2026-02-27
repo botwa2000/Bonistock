@@ -9,6 +9,7 @@ import {
   subscriptionCanceledEmail,
   emailChangeConfirmation,
   paymentFailedEmail,
+  accountDeletionWithSubscriptionEmail,
 } from "@/lib/email-templates";
 
 // Hardcoded fallbacks keyed by slug
@@ -52,6 +53,10 @@ const fallbacks: Record<string, (vars: Record<string, string>) => { subject: str
     <p>Hi ${v.userName ?? ""},</p>
     <p>Your Bonistock account has been successfully deleted. All your personal data has been anonymized.</p>
     <p>If you change your mind, you're welcome to create a new account anytime.</p>`),
+  }),
+  accountDeletionWithSubscription: (v) => ({
+    subject: "Your account has been deleted & subscription canceled",
+    html: accountDeletionWithSubscriptionEmail(v.userName ?? "", v.tier ?? "Plus", v.paymentSource ?? "STRIPE"),
   }),
 };
 

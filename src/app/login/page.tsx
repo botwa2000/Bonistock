@@ -131,7 +131,9 @@ function LoginContent() {
           <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-center text-xs text-danger-fg">
             {authError === "OAuthAccountNotLinked"
               ? "This email is already registered with a different sign-in method."
-              : "Sign-in failed. Please try again or use a different method."}
+              : authError === "AccountDeleted"
+                ? "This account has been deleted. Please create a new account to continue."
+                : "Sign-in failed. Please try again or use a different method."}
           </div>
         )}
 

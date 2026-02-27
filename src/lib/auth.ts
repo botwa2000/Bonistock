@@ -152,6 +152,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Block sign-in if the user's account has been deleted (soft-deleted)
+      if (account?.provider !== "credentials" && user?.id) {
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { deletedAt: true },
+        });
+        if (dbUser?.deletedAt) {
+          return "/login?error=AccountDeleted";
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.userId = user.id;
@@ -167,6 +180,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const dbUser = await db.user.findUnique({
           where: { id: token.userId as string },
           select: {
+            deletedAt: true,
             role: true,
             region: true,
             theme: true,
@@ -174,18 +188,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             goal: true,
           },
         });
-        if (dbUser) {
-          token.role = dbUser.role;
-          token.region = dbUser.region;
-          token.theme = dbUser.theme;
-          token.language = dbUser.language;
-          token.goal = dbUser.goal;
+        if (!dbUser || dbUser.deletedAt) {
+          // User deleted or doesn't exist — invalidate the session
+          return { ...token, userId: null, expired: true };
         }
+        token.role = dbUser.role;
+        token.region = dbUser.region;
+        token.theme = dbUser.theme;
+        token.language = dbUser.language;
+        token.goal = dbUser.goal;
       }
 
       return token;
     },
     async session({ session, token }) {
+      // If token was invalidated (user deleted), return empty session
+      if (token.expired) {
+        session.user = undefined as unknown as typeof session.user;
+        return session;
+      }
       if (session.user && token.userId) {
         session.user.id = token.userId as string;
         (session as unknown as Record<string, unknown>).role = token.role;
