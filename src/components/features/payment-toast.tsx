@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/components/features/analytics";
 
 function PaymentToastInner() {
   const searchParams = useSearchParams();
@@ -16,6 +17,7 @@ function PaymentToastInner() {
     const subscription = searchParams.get("subscription");
     const pass = searchParams.get("pass");
     const canceled = searchParams.get("canceled");
+    const sessionId = searchParams.get("session_id");
 
     if (subscription === "success") {
       setToast({ message: "Subscription activated! Welcome to Plus.", variant: "success" });
@@ -27,11 +29,32 @@ function PaymentToastInner() {
       return;
     }
 
+    // Fire conversion event with dynamic value from Stripe session
+    if ((subscription === "success" || pass === "success") && sessionId) {
+      fetch(`/api/stripe/session?id=${encodeURIComponent(sessionId)}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (!data) return;
+          const itemName = subscription === "success" ? "Bonistock Plus" : "Day Pass";
+          const itemId = subscription === "success" ? "plus_subscription" : "day_pass";
+
+          // GA4 standard e-commerce purchase event (flows to Google Ads via linked property)
+          trackEvent("purchase", {
+            transaction_id: data.sessionId,
+            value: data.amount,
+            currency: data.currency,
+            items: [{ item_id: itemId, item_name: itemName, price: data.amount, quantity: 1 }],
+          });
+        })
+        .catch(() => { /* analytics failure is non-critical */ });
+    }
+
     // Clean URL params
     const url = new URL(window.location.href);
     url.searchParams.delete("subscription");
     url.searchParams.delete("pass");
     url.searchParams.delete("canceled");
+    url.searchParams.delete("session_id");
     router.replace(url.pathname + url.search, { scroll: false });
 
     // Refresh user tier after successful payment (webhook may need a moment)

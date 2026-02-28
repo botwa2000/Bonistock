@@ -1,3 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+    dataLayer?: any[];
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export type RiskLevel = "low" | "balanced" | "high";
 export type Goal = "growth" | "income" | "balanced";
 export type Tier = "free" | "pass" | "plus";

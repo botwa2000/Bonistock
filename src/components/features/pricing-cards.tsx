@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { openInAppBrowser, isIOS } from "@/lib/native";
 import { getProducts, purchaseProduct, type AppleProduct } from "@/lib/apple-iap";
+import { trackEvent } from "@/components/features/analytics";
 
 interface ProductPrice {
   currencyId: string;
@@ -263,6 +264,12 @@ export function PricingCards() {
       });
       const data = await res.json();
       if (data.url) {
+        const price = getRegionalPrice(activeProduct as Product);
+        trackEvent("begin_checkout", {
+          currency: displayCurrencyId,
+          value: price / 100,
+          items: [{ item_id: "plus_subscription", item_name: (activeProduct as Product).name, price: price / 100, quantity: 1 }],
+        });
         openInAppBrowser(data.url);
       } else {
         setError(data.error ?? "Something went wrong. Please try again.");
@@ -328,6 +335,12 @@ export function PricingCards() {
       });
       const data = await res.json();
       if (data.url) {
+        const price = getRegionalPrice(product);
+        trackEvent("begin_checkout", {
+          currency: displayCurrencyId,
+          value: price / 100,
+          items: [{ item_id: `day_pass_${product.passType}`, item_name: product.name, price: price / 100, quantity: 1 }],
+        });
         openInAppBrowser(data.url);
       } else {
         setError(data.error ?? "Something went wrong. Please try again.");

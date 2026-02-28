@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
 import { GoogleIcon, FacebookIcon, AppleIcon } from "@/components/ui/icons";
+import { trackEvent } from "@/components/features/analytics";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function RegisterPage() {
 
       const data = await res.json();
       if (res.ok) {
+        trackEvent("sign_up", { method: "email" });
         setSuccess(true);
       } else {
         setError(data.error);

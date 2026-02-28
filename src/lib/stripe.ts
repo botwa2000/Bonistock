@@ -70,7 +70,7 @@ export async function createCheckoutSession(
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?subscription=success`,
+    success_url: `${appUrl}/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/pricing?canceled=true`,
     metadata: { userId },
   });
@@ -94,7 +94,7 @@ export async function createPassCheckoutSession(
     customer: customerId,
     mode: "payment",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?pass=success`,
+    success_url: `${appUrl}/dashboard?pass=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/pricing?canceled=true`,
     metadata: { userId, passType },
     invoice_creation: { enabled: true },

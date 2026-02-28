@@ -305,7 +305,7 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 10 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
 | 11 | Apple Sign In (Web OAuth) | 2 | Free | Medium |
 | 12 | PostHog (Product Analytics) | 0 (build args) | Free (1M events/month) | Easy |
-| 13 | Google Analytics & Google Ads | 0 (build args) | Free (GA4) + Ads budget | Medium |
+| 13 | Google Analytics & Google Ads | 0 (build args) | Free (GA4) + Ads budget | Easy (code done) |
 
 **Total: 18 secrets to replace across 9 services + 4 build-time variables.** All free tier (except Google Ads spend).
 
@@ -665,157 +665,136 @@ After first deploy with events flowing:
 
 ## 13. Google Analytics & Google Ads Conversion Tracking — FREE
 
-**What you need:** GA4 property for website analytics and conversion tracking, linked to Google Ads for campaign optimization. GA4 is already supported in the codebase via the `NEXT_PUBLIC_GA_MEASUREMENT_ID` build arg.
+**What you need:** GA4 property for website analytics, linked to Google Ads for campaign optimization. Conversion events are fired **from code** (not page-view/URL-based) with **dynamic purchase values** from real Stripe transactions.
 
 ### Step 1: Create a GA4 Property
 
 1. Go to https://analytics.google.com — Sign in with your Google account
 2. **Admin** (gear icon, bottom-left) → **Create** → **Property**
-3. Property name: `Bonistock` (or `Bonistock Dev`)
+3. Property name: `Bonistock`
 4. Set your timezone and currency (EUR recommended since most users are EU)
 5. Business description: choose your industry and size
 6. **Data Streams** → **Add stream** → **Web**
-   - URL: `https://bonistock.com` (or `https://dev.bonistock.com` for dev)
+   - URL: `https://bonistock.com`
    - Stream name: `Bonistock Web`
-7. Copy the **Measurement ID** (starts with `G-`, e.g. `G-XXXXXXXXXX`) — this is your `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+7. Copy the **Measurement ID** (starts with `G-`) → this is `NEXT_PUBLIC_GA_MEASUREMENT_ID`
 
-### Step 2: Pass GA4 Measurement ID as Docker build arg
+### Step 2: Set build args
 
-Like PostHog, GA4 is a `NEXT_PUBLIC_*` build-time variable:
+GA4, Google Ads, and PostHog are `NEXT_PUBLIC_*` build-time variables. Store them in `.env.build` on the server (see DEPLOY.md for setup). The Dockerfile has all the `ARG` definitions.
 
-| Build Arg | Dev | Prod |
-|-----------|-----|------|
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | `G-...` (dev stream) | `G-...` (prod stream) |
+| Build Arg | Value |
+|-----------|-------|
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | `G-4M5V64CQ8S` |
+| `NEXT_PUBLIC_GOOGLE_ADS_ID` | `AW-17983336228` |
+| `NEXT_PUBLIC_POSTHOG_KEY` | `phc_...` |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://eu.i.posthog.com` |
 
-Add to your `docker build` command:
+These are passed as `--build-arg` during `docker build`. See DEPLOY.md for the exact deploy commands.
 
-```bash
-# Dev
-DOCKER_BUILDKIT=1 docker build \
-  --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com \
-  --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YOUR_DEV_ID \
-  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_DEV_KEY \
-  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
-  -t bonistock:dev .
+### Step 3: Link GA4 to Google Ads
 
-# Prod
-DOCKER_BUILDKIT=1 docker build \
-  --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com \
-  --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YOUR_PROD_ID \
-  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_PROD_KEY \
-  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
-  -t bonistock:prod .
-```
+1. Go to https://ads.google.com — Sign in
+2. **In Google Analytics:** Admin → Property Settings → **Product Links** → **Google Ads Links** → **Link**
+3. Select your Google Ads account → **Confirm** → **Submit**
+4. This enables bidirectional data flow: GA4 audiences in Ads, and Ads cost data in GA4
 
-The `Dockerfile` already has `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` defined.
+### Step 4: How conversion events work (already implemented in code)
 
-### Step 3: Create a Google Ads account and link to GA4
+All conversion events are **code-based** — they fire automatically from JavaScript when the user performs an action. There are **no page-view or URL-based triggers** to configure. You do NOT need to create events in the Google Ads UI or manually enter values.
 
-1. Go to https://ads.google.com — Sign up or sign in
-2. Create a Google Ads account if you don't have one
-3. **Link GA4 to Google Ads:**
-   - In **Google Analytics**: Admin → Property Settings → **Product Links** → **Google Ads Links** → **Link**
-   - Select your Google Ads account → **Confirm** → **Submit**
-   - This enables bidirectional data flow: GA4 audiences in Ads, and Ads cost data in GA4
+The app fires 3 standard GA4 e-commerce events. Each event sends **dynamic values** from real user actions:
 
-### Step 4: Set up conversion actions in Google Ads
+| Event | Trigger | Where it fires | Value sent |
+|-------|---------|----------------|------------|
+| `purchase` | User completes Stripe checkout and returns to dashboard | `payment-toast.tsx` on `/dashboard?subscription=success&session_id=cs_xxx` | **Dynamic** — real amount + currency fetched from Stripe session via `/api/stripe/session` |
+| `sign_up` | User registers a new account | `register/page.tsx` after successful `POST /api/auth/register` | No monetary value (method: "email") |
+| `begin_checkout` | User clicks "Start Plus" or "Buy" on pricing page | `pricing-cards.tsx` when Stripe checkout URL is opened | **Dynamic** — product price in user's display currency |
 
-There are two approaches — **import from GA4** (recommended) or **create directly in Google Ads**:
+#### How dynamic purchase values work
 
-#### Option A: Import GA4 events as conversions (recommended)
+The `purchase` event does NOT use hardcoded values. Here's the flow:
 
-This is the easiest approach — define events in GA4, then import them into Google Ads:
-
-1. **In GA4:** Admin → Events → **Create event** (or use existing events):
-   - `purchase` — fires on successful checkout (Stripe redirect back)
-   - `sign_up` — fires on new account creation
-   - `begin_checkout` — fires when user clicks a pricing CTA
-2. **In GA4:** Admin → Events → find the event → toggle **Mark as conversion** (or Admin → Conversions → **New conversion event**)
-3. **In Google Ads:** Tools & Settings → **Conversions** → **Import** → **Google Analytics 4 properties** → select the linked property → select the conversion events → **Import**
-4. Google Ads now optimizes campaigns toward these conversions
-
-#### Option B: Create Google Ads conversion actions with gtag.js
-
-For more control (e.g. passing revenue values), create conversions directly in Google Ads:
-
-1. **In Google Ads:** Tools & Settings → **Conversions** → **+ New conversion action** → **Website**
-2. Enter your domain, scan it, then choose **Add a conversion action manually**
-3. Fill in:
-   - **Category:** Purchase/Sale (for subscriptions/passes) or Sign-up (for registrations)
-   - **Conversion name:** e.g. `Subscription Purchase`, `Day Pass Purchase`, `Sign Up`
-   - **Value:** Use different values per conversion, or "Don't use a value"
-   - **Count:** "One" for purchases (one per click), "Every" for recurring
-4. Click **Create and continue** — Google Ads shows a code snippet with:
-   - **Conversion ID:** `AW-XXXXXXXXX`
-   - **Conversion Label:** `AbCdEfGhIjKlMn` (unique per action)
-
-5. **Send conversion events from the app** by calling `gtag('event', 'conversion', ...)` at the right moments. The GA4 gtag.js is already loaded by the app — you just need to add the Google Ads config and conversion calls.
-
-**To add Google Ads tracking alongside GA4**, update `src/components/features/analytics.tsx`. The gtag snippet already loads `gtag.js` — you just need to add a second `gtag('config', 'AW-XXXXXXXXX')` call for your Google Ads conversion ID:
+1. Stripe checkout `success_url` includes `{CHECKOUT_SESSION_ID}` — Stripe replaces this with the real session ID on redirect
+2. User lands on `/dashboard?subscription=success&session_id=cs_live_xxx`
+3. `payment-toast.tsx` calls `GET /api/stripe/session?id=cs_live_xxx`
+4. The API retrieves the real `amount_total` and `currency` from Stripe
+5. The `purchase` event fires with the exact amount the user paid:
 
 ```js
-// In the GA4 script block, after gtag('config', gaId):
-gtag('config', 'AW-XXXXXXXXX');  // Google Ads conversion ID
-```
-
-Then fire conversions on your success pages or event handlers:
-
-```js
-// Example: after successful Stripe checkout redirect
-gtag('event', 'conversion', {
-  send_to: 'AW-XXXXXXXXX/AbCdEfGhIjKlMn',  // ID/Label from Google Ads
-  value: 9.99,
-  currency: 'EUR',
-  transaction_id: sessionId,  // Stripe session ID for deduplication
-});
-```
-
-### Step 5: Recommended GA4 events for Bonistock
-
-Set up these events as GA4 conversions for campaign optimization:
-
-| Event Name | When it fires | Conversion value |
-|-----------|---------------|-----------------|
-| `purchase` | After successful Stripe checkout (subscription or pass) | Subscription/pass price |
-| `sign_up` | New account created | No monetary value |
-| `begin_checkout` | User clicks a pricing plan CTA | No monetary value |
-
-**Enhanced e-commerce (optional):** For richer reporting, you can send `purchase` events with item details:
-
-```js
+// Fired automatically — no manual setup needed
 gtag('event', 'purchase', {
-  transaction_id: stripeSessionId,
-  value: 9.99,
-  currency: 'EUR',
+  transaction_id: 'cs_live_xxx',    // Stripe session ID (deduplication)
+  value: 9.99,                       // Real amount from Stripe
+  currency: 'EUR',                   // Real currency from Stripe
   items: [{
-    item_id: 'plus_monthly',
-    item_name: 'Bonistock Plus Monthly',
+    item_id: 'plus_subscription',    // or 'day_pass'
+    item_name: 'Bonistock Plus',     // or 'Day Pass'
     price: 9.99,
     quantity: 1,
   }],
 });
 ```
 
-### Step 6: Verify conversions are tracking
+This means Google Ads receives the **actual revenue** from each conversion — no manual value entry needed.
 
-1. **GA4 Realtime:** Analytics → Reports → Realtime → check events appear
-2. **GA4 DebugView:** Enable debug mode by installing the [GA Debugger Chrome extension](https://chrome.google.com/webstore/detail/google-analytics-debugger/jnkmfdileelhofjcijamephohjechhna) → Analytics → Admin → DebugView → events appear in real-time with parameters
-3. **Google Tag Assistant:** https://tagassistant.google.com — connect your domain and verify the tag is firing
-4. **Google Ads conversions:** Tools & Settings → Conversions → status should change from "Unverified" to "Recording" after the first conversion fires (can take up to 24h)
+### Step 5: Import conversions into Google Ads
 
-### Step 7: Google Ads campaign best practices
+Since the events are standard GA4 e-commerce events, import them into Google Ads:
 
-- **Conversion tracking must be verified before launching campaigns** — Google Ads needs conversion data to optimize bidding
-- **Use Target CPA or Maximize Conversions bidding** once you have 15+ conversions in 30 days
-- **Exclude existing customers** — create an audience in GA4 of users who already purchased, then exclude them in Google Ads campaigns
-- **Set a conversion window** — 30 days is default; 7 days is better for day passes, 30 days for subscriptions
-- **Attribution model** — use "Data-driven" (default) or "Last click" for simplicity
+1. **In GA4:** Admin → Events — wait until the events appear (they show up after the first real event fires; may take up to 24h)
+2. **In GA4:** Admin → Events → find `purchase` → toggle **Mark as key event** (formerly "conversion")
+3. Repeat for `sign_up` and `begin_checkout`
+4. **In Google Ads:** Goals → **Conversions** → **Import** → **Google Analytics 4 properties**
+5. Select linked property → check `purchase`, `sign_up`, `begin_checkout` → **Import**
+6. Google Ads now receives these events with dynamic values and uses them for campaign optimization and Smart Bidding
 
-**Codebase files involved:**
+**Important:** The `purchase` event includes `value` and `currency`, so Google Ads automatically receives the revenue data. You do NOT need to enter conversion values manually in the Google Ads UI — select "Use the value from the Google Analytics event" when importing.
 
-- `src/components/features/analytics.tsx` — loads gtag.js and GA4 config when analytics consent is given
-- `src/components/features/cookie-consent.tsx` — manages analytics consent (GA4 only loads when accepted)
-- `Dockerfile` — `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` defined as build arg
+### Step 6: Google Ads tag setup
+
+The Google Ads tag (`AW-17983336228`) is already loaded in the codebase alongside GA4. The `analytics.tsx` component calls:
+
+```js
+gtag('config', 'G-4M5V64CQ8S');    // GA4
+gtag('config', 'AW-17983336228');   // Google Ads
+```
+
+Both configs share the same `gtag.js` script. When a GA4 event fires, it's automatically sent to both GA4 AND Google Ads (because both are configured). No separate conversion snippets needed.
+
+### Step 7: Verify everything is working
+
+1. **Deploy** with all build args set (see DEPLOY.md)
+2. **Accept analytics cookies** on the site
+3. **Check GA4 Realtime:** Analytics → Reports → Realtime → confirm `page_view` events appear
+4. **Test `sign_up`:** Register a new account → check GA4 Events for `sign_up`
+5. **Test `begin_checkout`:** Click a pricing CTA → check GA4 Events for `begin_checkout`
+6. **Test `purchase`:** Complete a test Stripe checkout → check GA4 Events for `purchase` with value and currency
+7. **Google Tag Assistant:** https://tagassistant.google.com — connect your domain, verify both `G-` and `AW-` tags are firing
+8. **Google Ads:** Goals → Conversions → status changes from "Unverified" → "Recording" after first event (can take up to 24h)
+
+### Step 8: Google Ads campaign setup
+
+Once conversions are verified and recording:
+
+- **Bidding strategy:** Use **Maximize Conversions** or **Target CPA** once you have 15+ conversions in 30 days
+- **Conversion window:** 30 days for subscriptions, 7 days for day passes
+- **Attribution model:** Use "Data-driven" (default) — Google Ads automatically attributes conversions to the best touchpoint
+- **Exclude existing customers:** In GA4, create an audience for users with tier=plus → export to Google Ads → exclude from campaigns
+- **Campaign types:** Search campaigns for high-intent keywords ("stock screener", "stock picks"); Performance Max for broader reach
+
+### Codebase files involved
+
+| File | Role |
+|------|------|
+| `src/components/features/analytics.tsx` | Loads gtag.js, configures GA4 + Google Ads, exports `trackEvent()` helper |
+| `src/components/features/payment-toast.tsx` | Fires `purchase` event with dynamic Stripe session data on checkout success |
+| `src/components/features/pricing-cards.tsx` | Fires `begin_checkout` event with product price when user clicks CTA |
+| `src/app/register/page.tsx` | Fires `sign_up` event after successful registration |
+| `src/app/api/stripe/session/route.ts` | Returns checkout session amount/currency for client-side conversion tracking |
+| `src/lib/stripe.ts` | Includes `{CHECKOUT_SESSION_ID}` in Stripe success_url for session lookup |
+| `src/lib/types.ts` | Global `window.gtag` type declaration |
+| `Dockerfile` | `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` + `ARG NEXT_PUBLIC_GOOGLE_ADS_ID` |
 
 ---
 

@@ -44,17 +44,26 @@ export function Analytics() {
   }, []);
 
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
 
   if (!enabled) return null;
 
+  // Build gtag config calls: GA4 + Google Ads (if set)
+  const gtagConfigs = [
+    gaId ? `gtag('config', '${gaId}');` : "",
+    adsId ? `gtag('config', '${adsId}');` : "",
+  ].filter(Boolean).join("\n              ");
+
+  const hasGtag = gaId || adsId;
+
   return (
     <>
-      {gaId && (
+      {hasGtag && (
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${gaId || adsId}`}
             strategy="afterInteractive"
           />
           <Script id="google-analytics" strategy="afterInteractive">
@@ -62,7 +71,7 @@ export function Analytics() {
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${gaId}');
+              ${gtagConfigs}
             `}
           </Script>
         </>
@@ -77,4 +86,17 @@ export function Analytics() {
       )}
     </>
   );
+}
+
+/**
+ * Helper to fire gtag events from anywhere in the app.
+ * Safe to call even if gtag is not loaded (analytics consent not given).
+ */
+export function trackEvent(
+  eventName: string,
+  params?: Record<string, unknown>
+) {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", eventName, params);
+  }
 }
