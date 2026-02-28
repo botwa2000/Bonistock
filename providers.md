@@ -305,7 +305,7 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 10 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
 | 11 | Apple Sign In (Web OAuth) | 2 | Free | Medium |
 | 12 | PostHog (Product Analytics) | 0 (build args) | Free (1M events/month) | Easy |
-| 13 | Google Analytics & Google Ads | 0 (build args) | Free (GA4) + Ads budget | Easy (code done) |
+| 13 | Google Analytics, Tag & Ads | 0 (build args) | Free (GA4) + Ads budget | Easy (code done) |
 
 **Total: 18 secrets to replace across 9 services + 4 build-time variables.** All free tier (except Google Ads spend).
 
@@ -607,194 +607,416 @@ $SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.y
 3. Choose **EU Cloud** (`eu.i.posthog.com`) — recommended for GDPR. US Cloud (`us.i.posthog.com`) is also available.
 4. Go to **Settings → Project → Project API Key** — copy the key (starts with `phc_`)
 
-**Important:** PostHog uses `NEXT_PUBLIC_*` build-time variables, not Docker Swarm secrets. The key gets baked into the Next.js client bundle at build time via `--build-arg`.
+**Important:** PostHog uses `NEXT_PUBLIC_*` build-time variables, not Docker Swarm secrets. The key gets baked into the Next.js client bundle at build time via `--build-arg`. See DEPLOY.md for the exact deploy commands — the keys are already included inline.
 
-**Build args to set (in your `docker build` command):**
-
-| Build Arg | Dev | Prod |
-|-----------|-----|------|
-| `NEXT_PUBLIC_POSTHOG_KEY` | `phc_...` (dev project key) | `phc_...` (prod project key) |
-| `NEXT_PUBLIC_POSTHOG_HOST` | `https://eu.i.posthog.com` | `https://eu.i.posthog.com` |
-
-**Update command:**
-
-Add `--build-arg` flags to the `docker build` step in your deploy commands:
-
-```bash
-# Dev deploy
-DOCKER_BUILDKIT=1 docker build \
-  --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com \
-  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_DEV_KEY \
-  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
-  -t bonistock:dev .
-
-# Prod deploy
-DOCKER_BUILDKIT=1 docker build \
-  --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com \
-  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_PROD_KEY \
-  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
-  -t bonistock:prod .
-```
-
-The `Dockerfile` already has `ARG NEXT_PUBLIC_POSTHOG_KEY` and `ARG NEXT_PUBLIC_POSTHOG_HOST` defined.
-
-**Dashboard setup (recommended):**
-
-After first deploy with events flowing:
-
-1. **Autocapture** — enabled by default, captures clicks and pageviews automatically
-2. **Session Replay** — enable in Settings → Session Replay (records user sessions for debugging UX)
-3. **Custom events** — the app doesn't send custom `posthog.capture()` calls yet; autocapture covers pageviews and clicks
-4. **Data retention** — set to 1 year under Settings → Data Management
-5. **Persons** — PostHog assigns anonymous IDs; no `posthog.identify()` call is made (anonymous analytics only)
-
-**How it works in the codebase:**
-
-- `src/components/features/analytics.tsx` — loads PostHog snippet (+ GA4) only when `consent.analytics === true`
-- `src/components/features/cookie-consent.tsx` — user must accept analytics cookies before any tracking fires
-- If `NEXT_PUBLIC_POSTHOG_KEY` is not set (empty), the PostHog script block is not rendered at all
-
-**Verify it works:**
-
-1. Deploy with the key set
-2. Open the site → accept analytics cookies
-3. Navigate a few pages
-4. Check PostHog dashboard → Events → you should see `$pageview` events within 1–2 minutes
-
----
-
-## 13. Google Analytics & Google Ads Conversion Tracking — FREE
-
-**What you need:** GA4 property for website analytics, linked to Google Ads for campaign optimization. Conversion events are fired **from code** (not page-view/URL-based) with **dynamic purchase values** from real Stripe transactions.
-
-### Step 1: Create a GA4 Property
-
-1. Go to https://analytics.google.com — Sign in with your Google account
-2. **Admin** (gear icon, bottom-left) → **Create** → **Property**
-3. Property name: `Bonistock`
-4. Set your timezone and currency (EUR recommended since most users are EU)
-5. Business description: choose your industry and size
-6. **Data Streams** → **Add stream** → **Web**
-   - URL: `https://bonistock.com`
-   - Stream name: `Bonistock Web`
-7. Copy the **Measurement ID** (starts with `G-`) → this is `NEXT_PUBLIC_GA_MEASUREMENT_ID`
-
-### Step 2: Set build args
-
-GA4, Google Ads, and PostHog are `NEXT_PUBLIC_*` build-time variables. Store them in `.env.build` on the server (see DEPLOY.md for setup). The Dockerfile has all the `ARG` definitions.
+**Build args (already in docker-stack env + deploy commands):**
 
 | Build Arg | Value |
 |-----------|-------|
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | `G-4M5V64CQ8S` |
-| `NEXT_PUBLIC_GOOGLE_ADS_ID` | `AW-17983336228` |
-| `NEXT_PUBLIC_POSTHOG_KEY` | `phc_...` |
+| `NEXT_PUBLIC_POSTHOG_KEY` | Your `phc_...` key |
 | `NEXT_PUBLIC_POSTHOG_HOST` | `https://eu.i.posthog.com` |
 
-These are passed as `--build-arg` during `docker build`. See DEPLOY.md for the exact deploy commands.
+### PostHog Dashboard Setup
 
-### Step 3: Link GA4 to Google Ads
+After the first deploy with events flowing, configure these in the PostHog dashboard:
 
-1. Go to https://ads.google.com — Sign in
-2. **In Google Analytics:** Admin → Property Settings → **Product Links** → **Google Ads Links** → **Link**
-3. Select your Google Ads account → **Confirm** → **Submit**
-4. This enables bidirectional data flow: GA4 audiences in Ads, and Ads cost data in GA4
+1. **Session Replay** — Go to **Settings → Session Replay** → toggle **Enable** on. This records user sessions so you can replay exactly what a user did, which pages they visited, and where they dropped off. Essential for debugging UX issues and understanding conversion funnels.
 
-### Step 4: How conversion events work (already implemented in code)
+2. **Autocapture** — Enabled by default. PostHog automatically captures every click, pageview, and form submission without you needing to define individual events. No action needed.
 
-All conversion events are **code-based** — they fire automatically from JavaScript when the user performs an action. There are **no page-view or URL-based triggers** to configure. You do NOT need to create events in the Google Ads UI or manually enter values.
+3. **Data Retention** — Go to **Settings → Data Management** → set retention to **1 year** (free tier default). This controls how long event data is kept.
 
-The app fires 3 standard GA4 e-commerce events. Each event sends **dynamic values** from real user actions:
+4. **Persons & Privacy** — PostHog assigns anonymous IDs to visitors. No personal data (name, email) is sent. Analytics are fully anonymous.
 
-| Event | Trigger | Where it fires | Value sent |
-|-------|---------|----------------|------------|
-| `purchase` | User completes Stripe checkout and returns to dashboard | `payment-toast.tsx` on `/dashboard?subscription=success&session_id=cs_xxx` | **Dynamic** — real amount + currency fetched from Stripe session via `/api/stripe/session` |
-| `sign_up` | User registers a new account | `register/page.tsx` after successful `POST /api/auth/register` | No monetary value (method: "email") |
-| `begin_checkout` | User clicks "Start Plus" or "Buy" on pricing page | `pricing-cards.tsx` when Stripe checkout URL is opened | **Dynamic** — product price in user's display currency |
+### Verify PostHog Is Working — Complete Checklist
 
-#### How dynamic purchase values work
+After deploying with the key set, walk through every item below. All checks should pass.
 
-The `purchase` event does NOT use hardcoded values. Here's the flow:
+**Step 1 — Confirm the script loads:**
 
-1. Stripe checkout `success_url` includes `{CHECKOUT_SESSION_ID}` — Stripe replaces this with the real session ID on redirect
-2. User lands on `/dashboard?subscription=success&session_id=cs_live_xxx`
-3. `payment-toast.tsx` calls `GET /api/stripe/session?id=cs_live_xxx`
-4. The API retrieves the real `amount_total` and `currency` from Stripe
-5. The `purchase` event fires with the exact amount the user paid:
+1. Open https://bonistock.com (or dev.bonistock.com)
+2. Accept analytics cookies when the cookie banner appears
+3. Open browser DevTools → **Network** tab
+4. Filter by `posthog` — you should see requests to `eu.i.posthog.com`
+5. If you see **no requests**: the cookie consent was not accepted, or the key is missing from the build
 
-```js
-// Fired automatically — no manual setup needed
-gtag('event', 'purchase', {
-  transaction_id: 'cs_live_xxx',    // Stripe session ID (deduplication)
-  value: 9.99,                       // Real amount from Stripe
-  currency: 'EUR',                   // Real currency from Stripe
-  items: [{
-    item_id: 'plus_subscription',    // or 'day_pass'
-    item_name: 'Bonistock Plus',     // or 'Day Pass'
-    price: 9.99,
-    quantity: 1,
-  }],
-});
-```
+**Step 2 — Confirm events arrive in PostHog:**
 
-This means Google Ads receives the **actual revenue** from each conversion — no manual value entry needed.
+1. Go to https://eu.posthog.com → your project
+2. Click **Events** in the left sidebar
+3. You should see `$pageview` events arriving within 1–2 minutes of browsing the site
+4. Click any event to expand it — verify it shows the correct URL, browser, and country
+5. If **no events appear after 5 minutes**: check that `NEXT_PUBLIC_POSTHOG_KEY` was set during build (not just at runtime)
 
-### Step 5: Import conversions into Google Ads
+**Step 3 — Confirm session replay works:**
 
-Since the events are standard GA4 e-commerce events, import them into Google Ads:
+1. In PostHog, click **Session Replay** in the left sidebar
+2. You should see recorded sessions from your browsing
+3. Click a session to replay it — you should see your exact page navigation, scrolls, and clicks
+4. If **no replays appear**: go to **Settings → Session Replay** and confirm it is enabled
 
-1. **In GA4:** Admin → Events — wait until the events appear (they show up after the first real event fires; may take up to 24h)
-2. **In GA4:** Admin → Events → find `purchase` → toggle **Mark as key event** (formerly "conversion")
-3. Repeat for `sign_up` and `begin_checkout`
-4. **In Google Ads:** Goals → **Conversions** → **Import** → **Google Analytics 4 properties**
-5. Select linked property → check `purchase`, `sign_up`, `begin_checkout` → **Import**
-6. Google Ads now receives these events with dynamic values and uses them for campaign optimization and Smart Bidding
+**Step 4 — Confirm autocapture events:**
 
-**Important:** The `purchase` event includes `value` and `currency`, so Google Ads automatically receives the revenue data. You do NOT need to enter conversion values manually in the Google Ads UI — select "Use the value from the Google Analytics event" when importing.
+1. In PostHog → **Events**, filter by event type `$autocapture`
+2. You should see events for every button click, link click, and form interaction on the site
+3. Click an event — the **Elements** section shows which HTML element was clicked
 
-### Step 6: Google Ads tag setup
+**Step 5 — Confirm cookie consent is respected:**
 
-The Google Ads tag (`AW-17983336228`) is already loaded in the codebase alongside GA4. The `analytics.tsx` component calls:
+1. Open the site in an incognito window (no cookies)
+2. Do NOT accept the cookie banner — just browse
+3. Open DevTools → Network → filter `posthog` — there should be **zero** requests
+4. Now accept cookies → PostHog requests should start appearing immediately
+5. This confirms GDPR compliance: no tracking fires before consent
 
-```js
-gtag('config', 'G-4M5V64CQ8S');    // GA4
-gtag('config', 'AW-17983336228');   // Google Ads
-```
+**Step 6 — Check the PostHog dashboard overview:**
 
-Both configs share the same `gtag.js` script. When a GA4 event fires, it's automatically sent to both GA4 AND Google Ads (because both are configured). No separate conversion snippets needed.
+1. Go to **Web Analytics** (left sidebar) — you should see:
+   - Active users count
+   - Top pages by pageviews
+   - Referrer sources
+   - Device and browser breakdown
+   - Country breakdown
+2. If this dashboard is empty, click **Create Dashboard** → choose **Web Analytics** template
 
-### Step 7: Verify everything is working
+**All 6 steps passing = PostHog is fully set up and working correctly.**
 
-1. **Deploy** with all build args set (see DEPLOY.md)
-2. **Accept analytics cookies** on the site
-3. **Check GA4 Realtime:** Analytics → Reports → Realtime → confirm `page_view` events appear
-4. **Test `sign_up`:** Register a new account → check GA4 Events for `sign_up`
-5. **Test `begin_checkout`:** Click a pricing CTA → check GA4 Events for `begin_checkout`
-6. **Test `purchase`:** Complete a test Stripe checkout → check GA4 Events for `purchase` with value and currency
-7. **Google Tag Assistant:** https://tagassistant.google.com — connect your domain, verify both `G-` and `AW-` tags are firing
-8. **Google Ads:** Goals → Conversions → status changes from "Unverified" → "Recording" after first event (can take up to 24h)
+---
 
-### Step 8: Google Ads campaign setup
+## 13. Google Analytics, Google Tag & Google Ads — Setup Guide
 
-Once conversions are verified and recording:
+All code for conversion tracking is already deployed. This section covers only what you need to do in the Google Analytics, Google Tag Manager, and Google Ads web interfaces. No code changes needed.
 
-- **Bidding strategy:** Use **Maximize Conversions** or **Target CPA** once you have 15+ conversions in 30 days
-- **Conversion window:** 30 days for subscriptions, 7 days for day passes
-- **Attribution model:** Use "Data-driven" (default) — Google Ads automatically attributes conversions to the best touchpoint
-- **Exclude existing customers:** In GA4, create an audience for users with tier=plus → export to Google Ads → exclude from campaigns
-- **Campaign types:** Search campaigns for high-intent keywords ("stock screener", "stock picks"); Performance Max for broader reach
+The site fires 3 events automatically when users take actions:
 
-### Codebase files involved
+| Event | When it fires | Value |
+|-------|---------------|-------|
+| `purchase` | User completes a Stripe payment (Plus subscription or Day Pass) | Real amount + currency from Stripe (e.g. €9.99 EUR) |
+| `sign_up` | User creates a new account | No monetary value |
+| `begin_checkout` | User clicks a pricing CTA and is redirected to Stripe | Product price in user's currency |
 
-| File | Role |
-|------|------|
-| `src/components/features/analytics.tsx` | Loads gtag.js, configures GA4 + Google Ads, exports `trackEvent()` helper |
-| `src/components/features/payment-toast.tsx` | Fires `purchase` event with dynamic Stripe session data on checkout success |
-| `src/components/features/pricing-cards.tsx` | Fires `begin_checkout` event with product price when user clicks CTA |
-| `src/app/register/page.tsx` | Fires `sign_up` event after successful registration |
-| `src/app/api/stripe/session/route.ts` | Returns checkout session amount/currency for client-side conversion tracking |
-| `src/lib/stripe.ts` | Includes `{CHECKOUT_SESSION_ID}` in Stripe success_url for session lookup |
-| `src/lib/types.ts` | Global `window.gtag` type declaration |
-| `Dockerfile` | `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` + `ARG NEXT_PUBLIC_GOOGLE_ADS_ID` |
+Purchase values are dynamic — they come from the actual Stripe transaction, not hardcoded numbers.
+
+---
+
+### Area 1: Google Analytics (GA4)
+
+#### 1.1 — Create a property (skip if already done)
+
+1. Go to https://analytics.google.com
+2. Click **Admin** (gear icon, bottom-left)
+3. Click **Create** → **Property**
+4. Property name: `Bonistock`
+5. Timezone: `Central European Time` — Currency: `Euro (EUR)`
+6. Business info: Financial Services, Small
+7. Click **Create**
+
+#### 1.2 — Create a web data stream (skip if already done)
+
+1. Still in Admin → your property → **Data Streams**
+2. Click **Add stream** → **Web**
+3. Website URL: `https://bonistock.com`
+4. Stream name: `Bonistock Web`
+5. Click **Create stream**
+6. Copy the **Measurement ID** (starts with `G-`, e.g. `G-4M5V64CQ8S`) — this is already set in the deploy config
+
+#### 1.3 — Mark key events (conversions)
+
+Events only appear after the first real event fires. If you haven't had any purchases or sign-ups yet, you may need to trigger test events first (register an account, complete a test Stripe checkout).
+
+1. Go to **Admin** → **Events** (under your property)
+2. Wait for events to appear in the list — this can take up to 24 hours after first fire
+3. Find **`purchase`** in the list → click the toggle in the **Mark as key event** column (right side). The toggle turns blue.
+4. Find **`sign_up`** → toggle **Mark as key event** on
+5. Find **`begin_checkout`** → toggle **Mark as key event** on
+
+> These were formerly called "conversions" — Google renamed them to "key events" in 2024.
+
+#### 1.4 — Link GA4 to Google Ads
+
+1. Go to **Admin** → **Product Links** → **Google Ads Links**
+2. Click **Link**
+3. Click **Choose Google Ads accounts** → check your Google Ads account (`AW-17983336228`) → **Confirm**
+4. Leave all options enabled (Personalized Advertising, Auto-tagging)
+5. Click **Submit**
+
+This enables:
+- GA4 events (including purchase values) flow to Google Ads automatically
+- Google Ads cost data appears in GA4 reports
+- GA4 audiences can be used for ad targeting
+
+#### 1.5 — Verify GA4 is receiving data
+
+1. Go to **Reports** → **Realtime** (left sidebar)
+2. Open your site in another tab, accept cookies, browse a few pages
+3. In the Realtime report you should see:
+   - Users count incrementing
+   - Pages being viewed
+   - Events firing (`page_view`, and any actions you take)
+4. To verify purchase events specifically: go to **Reports** → **Monetization** → **Ecommerce purchases** — this shows `purchase` events with revenue
+
+---
+
+### Area 2: Google Tag (Tag Assistant)
+
+Google Tag Assistant lets you verify that the GA4 and Google Ads tags are firing correctly on your site.
+
+#### 2.1 — Verify tags are firing
+
+1. Go to https://tagassistant.google.com
+2. Click **Add domain**
+3. Enter `https://bonistock.com` → click **Connect**
+4. A new browser tab opens with your site and a "Tag Assistant Connected" badge in the bottom-right corner
+5. **Accept the analytics cookie banner** on the site
+6. Navigate a few pages, click some buttons
+
+#### 2.2 — Check results in Tag Assistant
+
+1. Go back to the Tag Assistant tab
+2. You should see **two tags** listed at the top:
+   - `G-4M5V64CQ8S` (GA4) — with a green checkmark
+   - `AW-17983336228` (Google Ads) — with a green checkmark
+3. Click each tag to see the events it recorded:
+   - `Consent` — confirms consent mode is working
+   - `Page View` — confirms pageview tracking
+   - Any other events you triggered (sign_up, begin_checkout)
+4. If a tag shows a **red or yellow icon**: click it for error details
+
+#### 2.3 — What each status means
+
+- **Green checkmark** = tag is loading and firing correctly
+- **Yellow warning** = tag loads but something may be misconfigured (click for details)
+- **Red error** = tag is not firing (usually means cookies weren't accepted, or the build arg is missing)
+- **Tag not found** = the tag ID is not present on the page at all
+
+---
+
+### Area 3: Google Ads
+
+#### 3.1 — Import conversions from GA4
+
+1. Go to https://ads.google.com
+2. Click **Goals** (left sidebar) → **Conversions** → **Summary**
+3. Click the **+** (plus) button → **Import**
+4. Select **Google Analytics 4 properties** → click **Continue**
+5. Select the **Bonistock** property
+6. Check these 3 events:
+   - **purchase** — this is your primary conversion (actual revenue)
+   - **sign_up** — secondary conversion (lead generation)
+   - **begin_checkout** — secondary conversion (intent signal)
+7. Click **Import**
+
+#### 3.2 — Configure conversion settings
+
+After importing, configure each conversion:
+
+**For `purchase` (primary):**
+1. Click on **purchase** in the conversions list
+2. Click **Edit settings**
+3. Goal: **Purchase / Sale**
+4. Value: select **Use the value from the Google Analytics event** (this picks up the dynamic Stripe amount — do NOT enter a manual value)
+5. Count: **Every** (count each purchase separately)
+6. Click-through window: **30 days**
+7. View-through window: **1 day**
+8. Attribution model: **Data-driven** (default — Google optimizes automatically)
+9. Click **Save**
+
+**For `sign_up` (secondary):**
+1. Click **sign_up** → **Edit settings**
+2. Goal: **Sign-up**
+3. Value: select **Don't use a value** (or set a fixed value like €2.00 if you want to assign a lead value)
+4. Count: **One** (only count one sign-up per user)
+5. Attribution model: **Data-driven**
+6. Click **Save**
+7. Toggle this to **Secondary** conversion action (click the three dots → **Change to secondary**) — this means it's tracked but not used for bid optimization
+
+**For `begin_checkout` (secondary):**
+1. Click **begin_checkout** → **Edit settings**
+2. Goal: **Begin checkout**
+3. Value: **Use the value from the Google Analytics event**
+4. Count: **Every**
+5. Attribution model: **Data-driven**
+6. Click **Save**
+7. Toggle to **Secondary** conversion action
+
+> **Why primary vs secondary?** Only the `purchase` event should be the primary conversion. Google Ads optimizes bidding to maximize primary conversions. If `sign_up` and `begin_checkout` are also primary, Google may optimize for sign-ups (free) instead of purchases (revenue).
+
+#### 3.3 — Verify conversions are recording
+
+1. Go to **Goals** → **Conversions** → **Summary**
+2. The status column shows:
+   - **No recent conversions** — the event was imported but hasn't fired yet. Make a test purchase to trigger it.
+   - **Recording** — events are flowing. Google Ads is receiving conversion data.
+   - **Inactive** — no events received in 7+ days. Check that the site is deployed with the correct `AW-` build arg.
+
+#### 3.4 — Create campaign: Bonistock Stock & ETF Picks
+
+This campaign combines stock picking and ETF picking into one campaign, targeting both the US (English) and Germany (German).
+
+**Step 1 — Create a new campaign:**
+
+1. Click **Campaigns** (left sidebar) → **+** (plus) → **New campaign**
+2. Campaign objective: **Sales**
+3. Conversion goals: confirm `purchase` is selected (it should be checked by default since it's the primary conversion)
+4. Campaign type: **Search**
+5. Click **Continue**
+
+**Step 2 — Bidding:**
+
+1. Bidding strategy: select **Maximize conversion value**
+   - This tells Google to optimize for the highest total revenue, not just the most conversions. It naturally prioritizes Plus subscriptions (€9.99/month) over Day Passes (€2.99) because they generate more value.
+   - If you want to set a minimum ROAS: check **Set a target return on ad spend** → enter `200%` (meaning you want €2 revenue for every €1 spent). Only set this after you have 15+ conversions in 30 days — otherwise Google won't have enough data to optimize.
+2. Click **Next**
+
+**Step 3 — Campaign settings:**
+
+1. Campaign name: `Bonistock — Stock & ETF Picks`
+2. Networks: **uncheck** Display Network and Search Partners (start with Google Search only for higher intent traffic)
+3. Locations: click **Enter another location**
+   - Search and add: **United States**
+   - Search and add: **Germany**
+4. Location options: select **Presence: People in or regularly in your targeted locations** (not "People interested in")
+5. Languages: add both **English** and **German**
+6. Start date: today — No end date
+7. Click **Next**
+
+**Step 4 — Ad Group 1: US (English)**
+
+1. Ad group name: `US — Stock & ETF Picks (EN)`
+2. **Keywords** — enter these keywords (one per line), using a mix of match types:
+
+   ```
+   "stock picks"
+   "best stocks to buy"
+   "stock screener"
+   "ETF screener"
+   "stock recommendations"
+   "best ETFs to buy"
+   "stock analyst ratings"
+   stock picks today
+   best stocks to invest in
+   ETF recommendations
+   top stock picks
+   investment stock screener
+   ```
+
+   > Keywords in "quotes" are phrase match (your ad shows when someone searches for that phrase or close variations). Keywords without quotes are broad match (Google matches related searches too).
+
+3. **Responsive Search Ad:**
+   - Final URL: `https://bonistock.com`
+   - Display path: `bonistock.com / stock-picks`
+   - Headlines (write up to 15, minimum 3 — Google mixes and matches them):
+     1. `Top Stock Picks for 2026`
+     2. `Analyst-Rated Stock Screener`
+     3. `Best Stocks to Buy Now`
+     4. `ETF & Stock Recommendations`
+     5. `Stock Picks by Wall Street Analysts`
+     6. `Smart Stock Screener Tool`
+     7. `Daily Stock & ETF Picks`
+     8. `Data-Driven Stock Picks`
+     9. `Discover High-Upside Stocks`
+     10. `Expert-Curated ETF Picks`
+   - Descriptions (write up to 4, minimum 2):
+     1. `Get daily stock and ETF picks backed by analyst consensus data. Filter by risk, region, and sector. Start free.`
+     2. `Analyst-rated stock screener with real price targets and upside potential. US, Europe & emerging markets.`
+     3. `Find the best stocks and ETFs to buy today. Data from Wall Street analysts, updated daily.`
+     4. `Smart stock picks with analyst ratings, price targets, and risk levels. Free to start, upgrade for full access.`
+4. Click **Next** (you'll add the second ad group next)
+
+**Step 5 — Ad Group 2: Germany (German)**
+
+1. Click **+ New ad group**
+2. Ad group name: `DE — Aktien- & ETF-Picks (DE)`
+3. **Keywords:**
+
+   ```
+   "Aktien Tipps"
+   "beste Aktien kaufen"
+   "Aktien Screener"
+   "ETF Empfehlungen"
+   "Aktien Empfehlungen"
+   "beste ETFs"
+   "Aktienanalyse"
+   Aktien Tipps heute
+   welche Aktien kaufen
+   ETF Screener
+   Top Aktien
+   Aktien mit Potenzial
+   ```
+
+4. **Responsive Search Ad:**
+   - Final URL: `https://bonistock.com`
+   - Display path: `bonistock.com / aktien-picks`
+   - Headlines:
+     1. `Top Aktien-Picks für 2026`
+     2. `Aktien-Screener mit Analysten`
+     3. `Die besten Aktien kaufen`
+     4. `ETF- & Aktien-Empfehlungen`
+     5. `Aktien-Picks von Analysten`
+     6. `Smarter Aktien-Screener`
+     7. `Tägliche Aktien- & ETF-Picks`
+     8. `Datenbasierte Aktien-Picks`
+     9. `Aktien mit hohem Kurspotenzial`
+     10. `Kuratierte ETF-Empfehlungen`
+   - Descriptions:
+     1. `Tägliche Aktien- und ETF-Picks basierend auf Analystendaten. Nach Risiko, Region und Sektor filtern. Kostenlos starten.`
+     2. `Aktien-Screener mit echten Kurszielen und Upside-Potenzial. USA, Europa und Schwellenländer.`
+     3. `Finden Sie die besten Aktien und ETFs. Daten von Wall-Street-Analysten, täglich aktualisiert.`
+     4. `Smarte Aktien-Picks mit Analysten-Ratings, Kurszielen und Risikolevels. Kostenlos starten, upgraden für Vollzugriff.`
+5. Click **Next**
+
+**Step 6 — Budget:**
+
+1. Set your **daily budget** — recommended starting point:
+   - **$10–20/day (US)** — competitive market, higher CPC but also higher conversion value
+   - **€5–10/day (DE)** — less competition in German, lower CPC
+   - Since this is one campaign covering both regions, set a combined daily budget of **$15–25/day** to start. Google allocates between the ad groups automatically.
+2. Click **Next** → **Publish campaign**
+
+#### 3.5 — Optimization strategy for maximizing purchases
+
+**Week 1–2 (Learning phase):**
+- Let the campaign run without changes. Google needs ~50 conversions to exit the "Learning" phase.
+- Monitor the **Search terms** report: **Campaigns → your campaign → Search terms** — add irrelevant terms as negative keywords (e.g. "free stock images", "stock market crash").
+
+**Week 3–4 (Optimize):**
+- **Check which ad group performs better** (US vs DE) in **Campaigns → Ad groups** — reallocate budget toward the higher-ROAS ad group
+- **Check which keywords convert**: **Keywords** tab → sort by **Conversions** → pause keywords with spend but zero conversions
+- **Add negative keywords**: go to **Keywords → Negative keywords → +** → add terms that get clicks but no conversions
+
+**Month 2+ (Scale):**
+- Once you have 15+ purchases in 30 days: switch bidding from **Maximize conversion value** to **Target ROAS** with a target of 200–300%
+- **Add remarketing**: go to **Audiences** → **+** → add **Website visitors** audience → create a separate ad group targeting people who visited `/pricing` but didn't convert
+- **Ad extensions** — add these to improve click-through rate:
+  1. **Sitelink extensions**: Campaigns → Ads & extensions → Extensions → Sitelinks
+     - "Stock Picks" → `/dashboard`
+     - "ETF Picks" → `/dashboard`
+     - "Pricing" → `/pricing`
+     - "How It Works" → `/about`
+  2. **Callout extensions**: "Daily Updated", "Analyst-Backed", "Free Tier Available", "ETFs & Stocks"
+  3. **Structured snippets**: Type = "Types" → "Stock Picks, ETF Picks, Day Passes, Monthly Plans"
+
+**Ongoing monitoring — weekly checklist:**
+1. Check **Conversions** column in Campaigns — is it trending up?
+2. Check **Cost / conv.** — is your cost per purchase sustainable? (Target: under €5–8 per purchase for subscriptions, under €2 for day passes)
+3. Check **Conv. value / cost** — this is your ROAS. Above 2.0 (200%) is healthy.
+4. Check **Search terms** — add new negative keywords for irrelevant traffic
+5. Check **Quality Score** for keywords: **Keywords** tab → add "Quality Score" column → aim for 6+ on all keywords. Low scores mean your ad/landing page isn't relevant to the keyword.
+
+#### 3.6 — Verify everything end-to-end
+
+Walk through this complete test flow:
+
+1. **Open the site** in a browser → accept analytics cookies
+2. **Open Tag Assistant** (https://tagassistant.google.com) connected to your site in another tab
+3. **Register a new account** → check Tag Assistant: a `sign_up` event should appear
+4. **Go to Pricing** → click a "Buy" or "Subscribe" button → check Tag Assistant: a `begin_checkout` event should appear with a value
+5. **Complete the Stripe checkout** (use a test card if in test mode) → you're redirected to the dashboard
+6. Check Tag Assistant: a `purchase` event should appear with the exact amount and currency you paid
+7. **In GA4:** go to **Reports → Realtime** → confirm all 3 events show up
+8. **In GA4:** go to **Admin → Events** → confirm `purchase`, `sign_up`, `begin_checkout` all appear with the key event toggle on
+9. **In Google Ads:** go to **Goals → Conversions → Summary** → confirm status shows **Recording** for all 3 (may take up to 24h after first event)
+10. **In PostHog:** go to **Events** → confirm `$pageview` and `$autocapture` events are flowing
 
 ---
 
