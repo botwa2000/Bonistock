@@ -37,6 +37,8 @@ services:
       - NEXTAUTH_URL=https://bonistock.com
       - NEXT_PUBLIC_APP_URL=https://bonistock.com
       - NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S
+      - NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz
+      - NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
     deploy:
       replicas: 1
       restart_policy:

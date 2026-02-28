@@ -59,7 +59,7 @@ All work happens on `dev`. When tested and ready, merge to `main` and deploy to 
 Commit your changes first, then run this single block:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git pull origin dev && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 5 && curl -sf http://localhost:3003/api/health"
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git pull origin dev && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 5 && curl -sf http://localhost:3003/api/health"
 ```
 
 **What it does:**
@@ -86,7 +86,7 @@ After deploying to dev:
 Only after testing on dev:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git pull origin main && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 5 && curl -sf http://localhost:3002/api/health" && git checkout dev
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git pull origin main && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 5 && curl -sf http://localhost:3002/api/health" && git checkout dev
 ```
 
 **What it does:**

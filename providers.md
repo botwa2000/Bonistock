@@ -304,8 +304,10 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 | 9 | Apple IAP (Direct StoreKit 2) | 4 | Free (Apple takes 30% commission) | Medium |
 | 10 | yfinance (Stock Data) | 0 | Free | N/A (pip install) |
 | 11 | Apple Sign In (Web OAuth) | 2 | Free | Medium |
+| 12 | PostHog (Product Analytics) | 0 (build args) | Free (1M events/month) | Easy |
+| 13 | Google Analytics & Google Ads | 0 (build args) | Free (GA4) + Ads budget | Medium |
 
-**Total: 18 secrets to replace across 9 services.** All free tier.
+**Total: 18 secrets to replace across 9 services + 4 build-time variables.** All free tier (except Google Ads spend).
 
 ---
 
@@ -591,6 +593,229 @@ $SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.y
 - The client secret JWT expires after 6 months. You must regenerate it and update the Docker secret before expiry, or Apple Sign In will stop working.
 - Apple may hide the user's real email (Private Email Relay). The app handles this — NextAuth links accounts by Apple's stable user ID, not email.
 - This is web-only OAuth. The native iOS app uses Apple's native Sign In with Apple flow separately (handled by Capacitor).
+
+---
+
+## 12. PostHog (Product Analytics) — FREE, 1M events/month
+
+**What you need:** Project API key for event tracking, session replays, and feature flags. PostHog only loads when the user accepts analytics cookies (GDPR-compliant).
+
+**Steps:**
+
+1. Go to https://posthog.com — Sign up (free, 1M events/month)
+2. Create a new project named **Bonistock** (or **Bonistock Dev** for dev)
+3. Choose **EU Cloud** (`eu.i.posthog.com`) — recommended for GDPR. US Cloud (`us.i.posthog.com`) is also available.
+4. Go to **Settings → Project → Project API Key** — copy the key (starts with `phc_`)
+
+**Important:** PostHog uses `NEXT_PUBLIC_*` build-time variables, not Docker Swarm secrets. The key gets baked into the Next.js client bundle at build time via `--build-arg`.
+
+**Build args to set (in your `docker build` command):**
+
+| Build Arg | Dev | Prod |
+|-----------|-----|------|
+| `NEXT_PUBLIC_POSTHOG_KEY` | `phc_...` (dev project key) | `phc_...` (prod project key) |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://eu.i.posthog.com` | `https://eu.i.posthog.com` |
+
+**Update command:**
+
+Add `--build-arg` flags to the `docker build` step in your deploy commands:
+
+```bash
+# Dev deploy
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com \
+  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_DEV_KEY \
+  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
+  -t bonistock:dev .
+
+# Prod deploy
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com \
+  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_PROD_KEY \
+  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
+  -t bonistock:prod .
+```
+
+The `Dockerfile` already has `ARG NEXT_PUBLIC_POSTHOG_KEY` and `ARG NEXT_PUBLIC_POSTHOG_HOST` defined.
+
+**Dashboard setup (recommended):**
+
+After first deploy with events flowing:
+
+1. **Autocapture** — enabled by default, captures clicks and pageviews automatically
+2. **Session Replay** — enable in Settings → Session Replay (records user sessions for debugging UX)
+3. **Custom events** — the app doesn't send custom `posthog.capture()` calls yet; autocapture covers pageviews and clicks
+4. **Data retention** — set to 1 year under Settings → Data Management
+5. **Persons** — PostHog assigns anonymous IDs; no `posthog.identify()` call is made (anonymous analytics only)
+
+**How it works in the codebase:**
+
+- `src/components/features/analytics.tsx` — loads PostHog snippet (+ GA4) only when `consent.analytics === true`
+- `src/components/features/cookie-consent.tsx` — user must accept analytics cookies before any tracking fires
+- If `NEXT_PUBLIC_POSTHOG_KEY` is not set (empty), the PostHog script block is not rendered at all
+
+**Verify it works:**
+
+1. Deploy with the key set
+2. Open the site → accept analytics cookies
+3. Navigate a few pages
+4. Check PostHog dashboard → Events → you should see `$pageview` events within 1–2 minutes
+
+---
+
+## 13. Google Analytics & Google Ads Conversion Tracking — FREE
+
+**What you need:** GA4 property for website analytics and conversion tracking, linked to Google Ads for campaign optimization. GA4 is already supported in the codebase via the `NEXT_PUBLIC_GA_MEASUREMENT_ID` build arg.
+
+### Step 1: Create a GA4 Property
+
+1. Go to https://analytics.google.com — Sign in with your Google account
+2. **Admin** (gear icon, bottom-left) → **Create** → **Property**
+3. Property name: `Bonistock` (or `Bonistock Dev`)
+4. Set your timezone and currency (EUR recommended since most users are EU)
+5. Business description: choose your industry and size
+6. **Data Streams** → **Add stream** → **Web**
+   - URL: `https://bonistock.com` (or `https://dev.bonistock.com` for dev)
+   - Stream name: `Bonistock Web`
+7. Copy the **Measurement ID** (starts with `G-`, e.g. `G-XXXXXXXXXX`) — this is your `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+
+### Step 2: Pass GA4 Measurement ID as Docker build arg
+
+Like PostHog, GA4 is a `NEXT_PUBLIC_*` build-time variable:
+
+| Build Arg | Dev | Prod |
+|-----------|-----|------|
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | `G-...` (dev stream) | `G-...` (prod stream) |
+
+Add to your `docker build` command:
+
+```bash
+# Dev
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com \
+  --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YOUR_DEV_ID \
+  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_DEV_KEY \
+  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
+  -t bonistock:dev .
+
+# Prod
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com \
+  --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YOUR_PROD_ID \
+  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_PROD_KEY \
+  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
+  -t bonistock:prod .
+```
+
+The `Dockerfile` already has `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` defined.
+
+### Step 3: Create a Google Ads account and link to GA4
+
+1. Go to https://ads.google.com — Sign up or sign in
+2. Create a Google Ads account if you don't have one
+3. **Link GA4 to Google Ads:**
+   - In **Google Analytics**: Admin → Property Settings → **Product Links** → **Google Ads Links** → **Link**
+   - Select your Google Ads account → **Confirm** → **Submit**
+   - This enables bidirectional data flow: GA4 audiences in Ads, and Ads cost data in GA4
+
+### Step 4: Set up conversion actions in Google Ads
+
+There are two approaches — **import from GA4** (recommended) or **create directly in Google Ads**:
+
+#### Option A: Import GA4 events as conversions (recommended)
+
+This is the easiest approach — define events in GA4, then import them into Google Ads:
+
+1. **In GA4:** Admin → Events → **Create event** (or use existing events):
+   - `purchase` — fires on successful checkout (Stripe redirect back)
+   - `sign_up` — fires on new account creation
+   - `begin_checkout` — fires when user clicks a pricing CTA
+2. **In GA4:** Admin → Events → find the event → toggle **Mark as conversion** (or Admin → Conversions → **New conversion event**)
+3. **In Google Ads:** Tools & Settings → **Conversions** → **Import** → **Google Analytics 4 properties** → select the linked property → select the conversion events → **Import**
+4. Google Ads now optimizes campaigns toward these conversions
+
+#### Option B: Create Google Ads conversion actions with gtag.js
+
+For more control (e.g. passing revenue values), create conversions directly in Google Ads:
+
+1. **In Google Ads:** Tools & Settings → **Conversions** → **+ New conversion action** → **Website**
+2. Enter your domain, scan it, then choose **Add a conversion action manually**
+3. Fill in:
+   - **Category:** Purchase/Sale (for subscriptions/passes) or Sign-up (for registrations)
+   - **Conversion name:** e.g. `Subscription Purchase`, `Day Pass Purchase`, `Sign Up`
+   - **Value:** Use different values per conversion, or "Don't use a value"
+   - **Count:** "One" for purchases (one per click), "Every" for recurring
+4. Click **Create and continue** — Google Ads shows a code snippet with:
+   - **Conversion ID:** `AW-XXXXXXXXX`
+   - **Conversion Label:** `AbCdEfGhIjKlMn` (unique per action)
+
+5. **Send conversion events from the app** by calling `gtag('event', 'conversion', ...)` at the right moments. The GA4 gtag.js is already loaded by the app — you just need to add the Google Ads config and conversion calls.
+
+**To add Google Ads tracking alongside GA4**, update `src/components/features/analytics.tsx`. The gtag snippet already loads `gtag.js` — you just need to add a second `gtag('config', 'AW-XXXXXXXXX')` call for your Google Ads conversion ID:
+
+```js
+// In the GA4 script block, after gtag('config', gaId):
+gtag('config', 'AW-XXXXXXXXX');  // Google Ads conversion ID
+```
+
+Then fire conversions on your success pages or event handlers:
+
+```js
+// Example: after successful Stripe checkout redirect
+gtag('event', 'conversion', {
+  send_to: 'AW-XXXXXXXXX/AbCdEfGhIjKlMn',  // ID/Label from Google Ads
+  value: 9.99,
+  currency: 'EUR',
+  transaction_id: sessionId,  // Stripe session ID for deduplication
+});
+```
+
+### Step 5: Recommended GA4 events for Bonistock
+
+Set up these events as GA4 conversions for campaign optimization:
+
+| Event Name | When it fires | Conversion value |
+|-----------|---------------|-----------------|
+| `purchase` | After successful Stripe checkout (subscription or pass) | Subscription/pass price |
+| `sign_up` | New account created | No monetary value |
+| `begin_checkout` | User clicks a pricing plan CTA | No monetary value |
+
+**Enhanced e-commerce (optional):** For richer reporting, you can send `purchase` events with item details:
+
+```js
+gtag('event', 'purchase', {
+  transaction_id: stripeSessionId,
+  value: 9.99,
+  currency: 'EUR',
+  items: [{
+    item_id: 'plus_monthly',
+    item_name: 'Bonistock Plus Monthly',
+    price: 9.99,
+    quantity: 1,
+  }],
+});
+```
+
+### Step 6: Verify conversions are tracking
+
+1. **GA4 Realtime:** Analytics → Reports → Realtime → check events appear
+2. **GA4 DebugView:** Enable debug mode by installing the [GA Debugger Chrome extension](https://chrome.google.com/webstore/detail/google-analytics-debugger/jnkmfdileelhofjcijamephohjechhna) → Analytics → Admin → DebugView → events appear in real-time with parameters
+3. **Google Tag Assistant:** https://tagassistant.google.com — connect your domain and verify the tag is firing
+4. **Google Ads conversions:** Tools & Settings → Conversions → status should change from "Unverified" to "Recording" after the first conversion fires (can take up to 24h)
+
+### Step 7: Google Ads campaign best practices
+
+- **Conversion tracking must be verified before launching campaigns** — Google Ads needs conversion data to optimize bidding
+- **Use Target CPA or Maximize Conversions bidding** once you have 15+ conversions in 30 days
+- **Exclude existing customers** — create an audience in GA4 of users who already purchased, then exclude them in Google Ads campaigns
+- **Set a conversion window** — 30 days is default; 7 days is better for day passes, 30 days for subscriptions
+- **Attribution model** — use "Data-driven" (default) or "Last click" for simplicity
+
+**Codebase files involved:**
+
+- `src/components/features/analytics.tsx` — loads gtag.js and GA4 config when analytics consent is given
+- `src/components/features/cookie-consent.tsx` — manages analytics consent (GA4 only loads when accepted)
+- `Dockerfile` — `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` defined as build arg
 
 ---
 
