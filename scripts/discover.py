@@ -15,6 +15,7 @@ Usage:
 """
 
 import argparse
+import json
 import math
 import os
 import re
@@ -24,7 +25,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 import psycopg2
 import psycopg2.extras
@@ -346,6 +347,16 @@ def fetch_stock_data(symbol):
 
         analysts = buys + holds + sells
 
+        # ISIN: yfinance exposes it as a property (not in info dict)
+        try:
+            isin_val = ticker.isin
+            if isin_val and isin_val != "-" and len(isin_val) == 12:
+                isin = isin_val
+            else:
+                isin = None
+        except Exception:
+            isin = None
+
         return {
             "symbol": symbol,
             "name": info.get("shortName") or info.get("longName") or symbol,
@@ -363,7 +374,7 @@ def fetch_stock_data(symbol):
             "dividend_yield": info.get("dividendYield"),
             "two_hundred_day_avg": info.get("twoHundredDayAverage"),
             "description": (info.get("longBusinessSummary") or "")[:500],
-            "isin": info.get("isin") or None,
+            "isin": isin,
         }
     except Exception as e:
         print(f"  [fetch] Error for {symbol}: {e}")
@@ -404,6 +415,54 @@ def supplement_with_finnhub(stocks, api_key):
         time.sleep(1.1)  # 60 calls/min limit
 
     print(f"[phase3] Supplemented {supplemented} stocks with Finnhub data")
+
+
+# ── Phase 3b: FMP ISIN supplement ──
+
+def supplement_isins_with_fmp(items, api_key):
+    """Fetch ISINs from FMP for items where yfinance didn't return one."""
+    if not api_key:
+        print("[phase3b] FMP ISIN supplement skipped (no API key)")
+        return
+
+    missing = [s for s in items if not s.get("isin")]
+    if not missing:
+        print("[phase3b] All items already have ISINs, skipping FMP supplement")
+        return
+
+    print(f"[phase3b] Fetching ISINs from FMP for {len(missing)} items...")
+    filled = 0
+
+    # FMP supports batch profile: /v3/profile/AAPL,MSFT,TSLA (up to ~50 per call)
+    batch_size = 50
+    for i in range(0, len(missing), batch_size):
+        batch = missing[i:i + batch_size]
+        symbols_str = ",".join(quote(s["symbol"], safe="") for s in batch)
+        url = f"https://financialmodelingprep.com/api/v3/profile/{symbols_str}?apikey={api_key}"
+        try:
+            import urllib.request
+            req = urllib.request.Request(url, headers={"User-Agent": "Bonistock/1.0"})
+            resp = urllib.request.urlopen(req, timeout=15)
+            data = json.loads(resp.read())
+
+            # Build a lookup by symbol
+            isin_map = {}
+            for profile in data:
+                sym = profile.get("symbol", "")
+                isin_val = profile.get("isin", "")
+                if isin_val and len(isin_val) == 12:
+                    isin_map[sym] = isin_val
+
+            for s in batch:
+                if s["symbol"] in isin_map:
+                    s["isin"] = isin_map[s["symbol"]]
+                    filled += 1
+        except Exception as e:
+            print(f"  [fmp-isin] Error for batch starting at {i}: {e}")
+
+        time.sleep(0.3)
+
+    print(f"[phase3b] Filled {filled}/{len(missing)} missing ISINs via FMP")
 
 
 # ── Phase 4: Rank and filter ──
@@ -593,8 +652,9 @@ def main():
     print(f"=== Bonistock Discovery{dry_label} ===")
     print(f"Started at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-    # Read Finnhub API key from Docker Swarm secret (optional)
+    # Read API keys from Docker Swarm secrets (optional)
     finnhub_key = read_docker_secret("bonistock-prod", "bonistock_prod_FINNHUB_API_KEY")
+    fmp_key = read_docker_secret("bonistock-prod", "bonistock_prod_FMP_API_KEY")
 
     # Phase 1: Discover candidates
     candidates = discover_candidates()
@@ -614,6 +674,9 @@ def main():
 
     # Phase 3: Finnhub supplement
     supplement_with_finnhub(stocks, finnhub_key)
+
+    # Phase 3b: FMP ISIN supplement
+    supplement_isins_with_fmp(stocks, fmp_key)
 
     # Phase 4: Rank and filter
     ranked = rank_and_filter(stocks)

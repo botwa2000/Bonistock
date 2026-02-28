@@ -27,6 +27,13 @@ export async function GET() {
         sortOrder: true,
         appleProductId: true,
         iosPriceAmount: true,
+        prices: {
+          select: {
+            currencyId: true,
+            amount: true,
+            iosAmount: true,
+          },
+        },
       },
     });
 

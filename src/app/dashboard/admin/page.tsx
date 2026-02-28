@@ -39,6 +39,13 @@ interface AdminStats {
   }[];
 }
 
+interface ProductPriceEntry {
+  currencyId: string;
+  amount: number;
+  iosAmount: number | null;
+  currency: { id: string; name: string; symbol: string };
+}
+
 interface Product {
   id: string;
   name: string;
@@ -61,6 +68,23 @@ interface Product {
   iosPriceAmount: number | null;
   eurPriceAmount: number | null;
   eurIosPriceAmount: number | null;
+  prices: ProductPriceEntry[];
+}
+
+interface CurrencyItem {
+  id: string;
+  name: string;
+  symbol: string;
+  active: boolean;
+  _count: { productPrices: number };
+}
+
+interface RegionCurrencyItem {
+  id: string;
+  region: string;
+  currencyId: string;
+  isDefault: boolean;
+  currency: { id: string; name: string; symbol: string };
 }
 
 interface AdminUser {
@@ -152,6 +176,23 @@ export default function AdminPage() {
   const [formEurPriceAmount, setFormEurPriceAmount] = useState("");
   const [formEurIosPriceAmount, setFormEurIosPriceAmount] = useState("");
 
+  // Currency management state
+  const [currencies, setCurrencies] = useState<CurrencyItem[]>([]);
+  const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyItem[]>([]);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [newCurrencyId, setNewCurrencyId] = useState("");
+  const [newCurrencyName, setNewCurrencyName] = useState("");
+  const [newCurrencySymbol, setNewCurrencySymbol] = useState("");
+  const [creatingCurrency, setCreatingCurrency] = useState(false);
+  const [newRcRegion, setNewRcRegion] = useState<"GLOBAL" | "DE">("GLOBAL");
+  const [newRcCurrency, setNewRcCurrency] = useState("");
+  const [creatingRc, setCreatingRc] = useState(false);
+
+  // Product price management state
+  const [editPriceProductId, setEditPriceProductId] = useState<string | null>(null);
+  const [priceEntries, setPriceEntries] = useState<{ currencyId: string; amount: string; iosAmount: string }[]>([]);
+  const [savingPrices, setSavingPrices] = useState(false);
+
   useEffect(() => {
     if (!loading && user?.role !== "ADMIN") {
       router.push("/dashboard");
@@ -215,14 +256,29 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchCurrencies = useCallback(async () => {
+    setCurrenciesLoading(true);
+    try {
+      const [currRes, rcRes] = await Promise.all([
+        fetch("/api/admin/currencies"),
+        fetch("/api/admin/region-currencies"),
+      ]);
+      if (currRes.ok) setCurrencies(await currRes.json());
+      if (rcRes.ok) setRegionCurrencies(await rcRes.json());
+    } finally {
+      setCurrenciesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user?.role === "ADMIN") {
       fetchStats();
       fetchProducts();
       fetchUsers(1, "");
       fetchEmailTemplates();
+      fetchCurrencies();
     }
-  }, [user, fetchStats, fetchProducts, fetchUsers, fetchEmailTemplates]);
+  }, [user, fetchStats, fetchProducts, fetchUsers, fetchEmailTemplates, fetchCurrencies]);
 
   const handleToggleActive = async (product: Product) => {
     const res = await fetch(`/api/admin/products/${product.id}`, {
@@ -474,6 +530,124 @@ export default function AdminPage() {
       }
     } finally {
       setSavingTemplate(false);
+    }
+  };
+
+  // Currency management handlers
+  const handleCreateCurrency = async () => {
+    if (!newCurrencyId || !newCurrencyName || !newCurrencySymbol) return;
+    setCreatingCurrency(true);
+    try {
+      const res = await fetch("/api/admin/currencies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: newCurrencyId.toUpperCase(), name: newCurrencyName, symbol: newCurrencySymbol }),
+      });
+      if (res.ok) {
+        setNewCurrencyId("");
+        setNewCurrencyName("");
+        setNewCurrencySymbol("");
+        fetchCurrencies();
+      }
+    } finally {
+      setCreatingCurrency(false);
+    }
+  };
+
+  const handleToggleCurrency = async (curr: CurrencyItem) => {
+    await fetch("/api/admin/currencies", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: curr.id, active: !curr.active }),
+    });
+    fetchCurrencies();
+  };
+
+  const handleCreateRegionCurrency = async () => {
+    if (!newRcCurrency) return;
+    setCreatingRc(true);
+    try {
+      const res = await fetch("/api/admin/region-currencies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ region: newRcRegion, currencyId: newRcCurrency }),
+      });
+      if (res.ok) {
+        setNewRcCurrency("");
+        fetchCurrencies();
+      }
+    } finally {
+      setCreatingRc(false);
+    }
+  };
+
+  const handleDeleteRegionCurrency = async (id: string) => {
+    await fetch("/api/admin/region-currencies", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    fetchCurrencies();
+  };
+
+  // Product price management handlers
+  const startEditingPrices = (product: Product) => {
+    setEditPriceProductId(product.id);
+    const entries = product.prices.map((p) => ({
+      currencyId: p.currencyId,
+      amount: (p.amount / 100).toFixed(2),
+      iosAmount: p.iosAmount != null ? (p.iosAmount / 100).toFixed(2) : "",
+    }));
+    setPriceEntries(entries);
+  };
+
+  const addPriceEntry = () => {
+    const usedCurrencies = priceEntries.map((e) => e.currencyId);
+    const available = currencies.filter((c) => c.active && !usedCurrencies.includes(c.id));
+    if (available.length === 0) return;
+    setPriceEntries([...priceEntries, { currencyId: available[0].id, amount: "", iosAmount: "" }]);
+  };
+
+  const removePriceEntry = (idx: number) => {
+    setPriceEntries(priceEntries.filter((_, i) => i !== idx));
+  };
+
+  const handleSavePrices = async (productId: string) => {
+    setSavingPrices(true);
+    try {
+      // Get current product prices from state
+      const product = products.find((p) => p.id === productId);
+      const existingCurrencies = product?.prices.map((p) => p.currencyId) ?? [];
+
+      // Delete removed currencies
+      const newCurrencyIds = priceEntries.map((e) => e.currencyId);
+      for (const currId of existingCurrencies) {
+        if (!newCurrencyIds.includes(currId)) {
+          await fetch("/api/admin/product-prices", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId, currencyId: currId }),
+          });
+        }
+      }
+
+      // Upsert new/updated entries
+      for (const entry of priceEntries) {
+        if (!entry.amount) continue;
+        const amount = Math.round(parseFloat(entry.amount) * 100);
+        if (isNaN(amount) || amount <= 0) continue;
+        const iosAmount = entry.iosAmount ? Math.round(parseFloat(entry.iosAmount) * 100) : null;
+        await fetch("/api/admin/product-prices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId, currencyId: entry.currencyId, amount, iosAmount }),
+        });
+      }
+
+      setEditPriceProductId(null);
+      fetchProducts();
+    } finally {
+      setSavingPrices(false);
     }
   };
 
@@ -918,6 +1092,7 @@ export default function AdminPage() {
                     onChange={(e) => setFormAppleProductId(e.target.value)}
                     placeholder="com.bonifatus.bonistock.plus.monthly"
                   />
+                  <p className="text-[10px] text-text-tertiary mt-1">Must match the Product ID in App Store Connect</p>
                 </div>
                 <div>
                   <label className="block text-xs text-text-secondary mb-1">{t("iosPrice")}</label>
@@ -1016,6 +1191,7 @@ export default function AdminPage() {
                     <th className="pb-2">Usual</th>
                     <th className="pb-2">{t("appleProductId")}</th>
                     <th className="pb-2">{t("iosPrice")}</th>
+                    <th className="pb-2">Multi-Currency</th>
                     <th className="pb-2">{t("status")}</th>
                     <th className="pb-2">{t("actions")}</th>
                   </tr>
@@ -1089,7 +1265,7 @@ export default function AdminPage() {
                             className="w-40 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
                             value={editFields.appleProductId}
                             onChange={(e) => setEditFields((f) => ({ ...f, appleProductId: e.target.value }))}
-                            placeholder="com.bonifatus..."
+                            placeholder="App Store Connect ID"
                           />
                         ) : (
                           <span className="text-xs">{product.appleProductId ?? "\u2014"}</span>
@@ -1108,6 +1284,81 @@ export default function AdminPage() {
                           />
                         ) : (
                           product.iosPriceAmount ? formatCents(product.iosPriceAmount) : "\u2014"
+                        )}
+                      </td>
+                      <td className="py-2">
+                        {editPriceProductId === product.id ? (
+                          <div className="space-y-2 min-w-[200px]">
+                            {priceEntries.map((entry, idx) => (
+                              <div key={idx} className="flex items-center gap-1">
+                                <select
+                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
+                                  value={entry.currencyId}
+                                  onChange={(e) => {
+                                    const updated = [...priceEntries];
+                                    updated[idx] = { ...updated[idx], currencyId: e.target.value };
+                                    setPriceEntries(updated);
+                                  }}
+                                >
+                                  {currencies.filter((c) => c.active).map((c) => (
+                                    <option key={c.id} value={c.id}>{c.id}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
+                                  value={entry.amount}
+                                  onChange={(e) => {
+                                    const updated = [...priceEntries];
+                                    updated[idx] = { ...updated[idx], amount: e.target.value };
+                                    setPriceEntries(updated);
+                                  }}
+                                  placeholder="6.99"
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
+                                  value={entry.iosAmount}
+                                  onChange={(e) => {
+                                    const updated = [...priceEntries];
+                                    updated[idx] = { ...updated[idx], iosAmount: e.target.value };
+                                    setPriceEntries(updated);
+                                  }}
+                                  placeholder="iOS"
+                                />
+                                <button onClick={() => removePriceEntry(idx)} className="text-xs text-danger-fg">&times;</button>
+                              </div>
+                            ))}
+                            <div className="flex gap-1">
+                              <button onClick={addPriceEntry} className="text-xs text-emerald-400 hover:underline">+ Add</button>
+                              <Button variant="primary" size="sm" disabled={savingPrices} onClick={() => handleSavePrices(product.id)}>
+                                {savingPrices ? "..." : "Save"}
+                              </Button>
+                              <button onClick={() => setEditPriceProductId(null)} className="text-xs text-text-tertiary hover:text-text-primary">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            {product.prices.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {product.prices.map((p) => (
+                                  <Badge key={p.currencyId} variant="default" className="text-[10px]">
+                                    {p.currency.symbol}{(p.amount / 100).toFixed(2)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-text-tertiary">&mdash;</span>
+                            )}
+                            <button
+                              onClick={() => startEditingPrices(product)}
+                              className="ml-1 text-xs text-emerald-400 hover:underline whitespace-nowrap"
+                            >
+                              Edit
+                            </button>
+                          </div>
                         )}
                       </td>
                       <td className="py-2">
@@ -1159,6 +1410,150 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Currencies & Regions Section */}
+        <Card variant="glass">
+          <h3 className="mb-4 text-sm font-semibold text-text-primary">Currencies & Region Mapping</h3>
+
+          {currenciesLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Currency list */}
+              <div>
+                <h4 className="text-xs font-medium text-text-secondary mb-2">Currencies</h4>
+                {currencies.length === 0 ? (
+                  <p className="text-xs text-text-tertiary">No currencies configured. Add USD and EUR to get started.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {currencies.map((curr) => (
+                      <div
+                        key={curr.id}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                          curr.active ? "border-border bg-surface-elevated" : "border-border-subtle bg-surface opacity-50"
+                        }`}
+                      >
+                        <span className="font-semibold text-text-primary">{curr.symbol}</span>
+                        <span className="text-text-secondary">{curr.id}</span>
+                        <span className="text-xs text-text-tertiary">{curr.name}</span>
+                        <span className="text-[10px] text-text-tertiary">({curr._count.productPrices} prices)</span>
+                        <button
+                          onClick={() => handleToggleCurrency(curr)}
+                          className="text-xs text-text-tertiary hover:text-text-primary"
+                        >
+                          {curr.active ? "Disable" : "Enable"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add currency form */}
+                <div className="flex items-end gap-2">
+                  <div>
+                    <label className="block text-[10px] text-text-tertiary mb-0.5">Code</label>
+                    <input
+                      className="w-16 rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary uppercase"
+                      value={newCurrencyId}
+                      onChange={(e) => setNewCurrencyId(e.target.value.slice(0, 3))}
+                      placeholder="EUR"
+                      maxLength={3}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-text-tertiary mb-0.5">Name</label>
+                    <input
+                      className="w-28 rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={newCurrencyName}
+                      onChange={(e) => setNewCurrencyName(e.target.value)}
+                      placeholder="Euro"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-text-tertiary mb-0.5">Symbol</label>
+                    <input
+                      className="w-12 rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={newCurrencySymbol}
+                      onChange={(e) => setNewCurrencySymbol(e.target.value)}
+                      placeholder="€"
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={creatingCurrency || !newCurrencyId || !newCurrencyName || !newCurrencySymbol}
+                    onClick={handleCreateCurrency}
+                  >
+                    {creatingCurrency ? "..." : "Add Currency"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Region → Currency mapping */}
+              <div className="border-t border-border-subtle pt-4">
+                <h4 className="text-xs font-medium text-text-secondary mb-2">Region → Currency Mapping</h4>
+                {regionCurrencies.length === 0 ? (
+                  <p className="text-xs text-text-tertiary mb-3">No mappings. Assign a default currency to each region.</p>
+                ) : (
+                  <div className="space-y-1 mb-3">
+                    {regionCurrencies.map((rc) => (
+                      <div key={rc.id} className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2 text-sm">
+                        <Badge variant="default">{rc.region}</Badge>
+                        <span className="text-text-secondary">→</span>
+                        <span className="font-semibold text-text-primary">{rc.currency.symbol} {rc.currency.id}</span>
+                        <span className="text-xs text-text-tertiary">{rc.currency.name}</span>
+                        {rc.isDefault && <Badge variant="accent" className="text-[10px]">Default</Badge>}
+                        <button
+                          onClick={() => handleDeleteRegionCurrency(rc.id)}
+                          className="ml-auto text-xs text-danger-fg hover:text-danger-fg/80"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2">
+                  <div>
+                    <label className="block text-[10px] text-text-tertiary mb-0.5">Region</label>
+                    <select
+                      className="w-28 rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={newRcRegion}
+                      onChange={(e) => setNewRcRegion(e.target.value as "GLOBAL" | "DE")}
+                    >
+                      <option value="GLOBAL">GLOBAL</option>
+                      <option value="DE">DE</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-text-tertiary mb-0.5">Currency</label>
+                    <select
+                      className="w-28 rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={newRcCurrency}
+                      onChange={(e) => setNewRcCurrency(e.target.value)}
+                    >
+                      <option value="">Select...</option>
+                      {currencies.filter((c) => c.active).map((c) => (
+                        <option key={c.id} value={c.id}>{c.symbol} {c.id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={creatingRc || !newRcCurrency}
+                    onClick={handleCreateRegionCurrency}
+                  >
+                    {creatingRc ? "..." : "Set Mapping"}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </Card>

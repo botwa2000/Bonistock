@@ -428,7 +428,7 @@ model Product {
   description     String           // shown on pricing page
   features        Json?            // string[] for subscription feature bullets
   type            ProductType      // SUBSCRIPTION or PASS
-  priceAmount     Int              // cents: 699 = $6.99
+  priceAmount     Int              // cents: 699 = $6.99 (base/USD price)
   usualPrice      Int?             // "usual" price in cents for discount display
   currency        String           @default("usd")
   billingInterval BillingInterval? // MONTH or YEAR (null for passes)
@@ -437,17 +437,59 @@ model Product {
   trialDays       Int?             // e.g. 14 for subscriptions (null for passes)
   stripeProductId String           @unique
   stripePriceId   String           @unique
-  appleProductId  String?
+  appleProductId  String?          @unique
   iosPriceAmount  Int?
-  eurPriceAmount  Int?             // EUR price in cents (display only)
-  eurIosPriceAmount Int?           // EUR iOS price in cents (display only)
+  eurPriceAmount  Int?             // DEPRECATED: use ProductPrice instead
+  eurIosPriceAmount Int?           // DEPRECATED: use ProductPrice instead
   active          Boolean          @default(true)
   highlighted     Boolean          @default(false)
   sortOrder       Int              @default(0)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
+  prices          ProductPrice[]
+
   @@map("products")
+}
+
+// ──── Currency & pricing ────
+
+model Currency {
+  id       String  @id // "USD", "EUR", etc.
+  name     String  // "US Dollar", "Euro"
+  symbol   String  // "$", "€"
+  active   Boolean @default(true)
+
+  productPrices    ProductPrice[]
+  regionCurrencies RegionCurrency[]
+
+  @@map("currencies")
+}
+
+model ProductPrice {
+  id          String @id @default(cuid())
+  productId   String
+  currencyId  String
+  amount      Int    // price in smallest unit (cents)
+  iosAmount   Int?   // iOS price in smallest unit
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, currencyId])
+  @@map("product_prices")
+}
+
+model RegionCurrency {
+  id         String  @id @default(cuid())
+  region     Region
+  currencyId String
+  isDefault  Boolean @default(true)
+
+  currency Currency @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+
+  @@unique([region, currencyId])
+  @@map("region_currencies")
 }
 
 // ──── Email templates ────

@@ -9,12 +9,6 @@ import { notifyAdmins } from "@/lib/admin-notify";
 import { sendPushToUser } from "@/lib/push";
 import { getAppleApiClient, getAppleVerifier, getAppleEnvironments, Environment } from "@/lib/apple-server";
 
-const PASS_MAP: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; count: number }> = {
-  "com.bonifatus.bonistock.pass.1day": { type: "ONE_DAY", count: 1 },
-  "com.bonifatus.bonistock.pass.3day": { type: "THREE_DAY", count: 3 },
-  "com.bonifatus.bonistock.pass.12day": { type: "TWELVE_DAY", count: 12 },
-};
-
 /**
  * Fetch and verify a transaction from Apple, trying both environments.
  * TestFlight / sandbox testers use SANDBOX, real App Store uses PRODUCTION.
@@ -110,10 +104,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const isSubscription = productId.startsWith("com.bonifatus.bonistock.plus.");
-    const passConfig = PASS_MAP[productId];
+    // Look up the product from DB by its Apple Product ID (set in admin panel)
+    const dbProduct = await db.product.findFirst({
+      where: { appleProductId: productId, active: true },
+    });
 
-    if (isSubscription) {
+    if (!dbProduct) {
+      log.warn("apple/verify", `No active product found for appleProductId=${productId}`);
+      return NextResponse.json({ error: "Unknown product" }, { status: 400 });
+    }
+
+    if (dbProduct.type === "SUBSCRIPTION") {
       const expirationDate = txn.expiresDate ? new Date(txn.expiresDate) : undefined;
       const purchaseDate = txn.purchaseDate ? new Date(txn.purchaseDate) : new Date();
 
@@ -149,43 +150,44 @@ export async function POST(req: NextRequest) {
       await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS", source: "APPLE", productId });
       await notifyAdmins(
         "New Plus subscription (Apple)",
-        `<h2>New Plus Subscription (Apple IAP)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
+        `<h2>New Plus Subscription (Apple IAP)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${dbProduct.name} (${productId})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
       );
       sendPushToUser(userId, {
         title: "Welcome to Plus!",
         body: "Your Bonistock Plus subscription is now active. Enjoy full access!",
       }).catch(() => {});
-    } else if (passConfig) {
+    } else if (dbProduct.type === "PASS" && dbProduct.passType && dbProduct.passDays) {
       await db.passPurchase.create({
         data: {
           userId,
-          passType: passConfig.type,
-          activationsTotal: passConfig.count,
+          passType: dbProduct.passType,
+          activationsTotal: dbProduct.passDays,
           activationsUsed: 0,
           appleTransactionId: transactionId,
           paymentSource: "APPLE",
         },
       });
 
-      const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
+      const passNames: Record<string, string> = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
+      const passName = passNames[dbProduct.passType] ?? dbProduct.name;
       const { subject, html } = await renderTemplate("passConfirmation", {
         userName: user.name ?? "there",
-        passType: passNames[passConfig.type],
-        activations: String(passConfig.count),
+        passType: passName,
+        activations: String(dbProduct.passDays),
       });
       await sendEmail(user.email, subject, html);
-      await logAudit(userId, "PASS_PURCHASE", { passType: passConfig.type, activations: passConfig.count, source: "APPLE" });
+      await logAudit(userId, "PASS_PURCHASE", { passType: dbProduct.passType, activations: dbProduct.passDays, source: "APPLE" });
       await notifyAdmins(
-        `Day Pass purchased (Apple): ${passNames[passConfig.type]}`,
-        `<h2>Day Pass Purchased (Apple IAP)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
+        `Day Pass purchased (Apple): ${passName}`,
+        `<h2>Day Pass Purchased (Apple IAP)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Pass:</strong> ${passName} (${dbProduct.passDays} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
       );
       sendPushToUser(userId, {
         title: "Pass Activated!",
-        body: `Your ${passNames[passConfig.type]} is ready. Enjoy full access!`,
+        body: `Your ${passName} is ready. Enjoy full access!`,
       }).catch(() => {});
     } else {
-      log.warn("apple/verify", `Unknown product: ${productId}`);
-      return NextResponse.json({ error: "Unknown product" }, { status: 400 });
+      log.warn("apple/verify", `Product ${productId} has invalid type/config`);
+      return NextResponse.json({ error: "Invalid product configuration" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });

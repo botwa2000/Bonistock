@@ -28,6 +28,12 @@ const createProductSchema = z.object({
 export const GET = adminRoute(async () => {
   const products = await db.product.findMany({
     orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
+    include: {
+      prices: {
+        include: { currency: true },
+        orderBy: { currencyId: "asc" },
+      },
+    },
   });
   return NextResponse.json(products);
 });

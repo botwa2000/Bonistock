@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { brokers } from "@/lib/mock-data";
-import type { StockFilters, EtfFilters, BrokerId, Region, RiskLevel, Horizon, StockSortBy, EtfSortBy, SortDir, ViewMode } from "@/lib/types";
+import type { StockFilters, EtfFilters, BrokerId, Region, RiskLevel, Horizon, StockSortBy, EtfSortBy, SortDir, ViewMode, StatusFilter } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ const defaultStockFilters: StockFilters = {
   broker: "any",
   marketCap: "any",
   dividendOnly: false,
+  status: "any",
   search: "",
   sortBy: "upside",
   sortDir: "desc",
@@ -293,6 +294,18 @@ export function StockFilterBar({
                   {t("dividendOnly")}
                 </label>
               </div>
+
+              <Select
+                label={t("status")}
+                id="filter-status"
+                value={filters.status}
+                onChange={(v) => set("status", v as StatusFilter)}
+                options={[
+                  { value: "any", label: t("statusAny") },
+                  { value: "new", label: t("statusNew") },
+                  { value: "updated", label: t("statusUpdated") },
+                ]}
+              />
             </div>
 
             {filters.broker !== "any" && (
@@ -320,6 +333,7 @@ const defaultEtfFilters: EtfFilters = {
   theme: "all",
   minCagr: 0,
   broker: "any",
+  status: "any",
   search: "",
   sortBy: "cagr5y",
   sortDir: "desc",
@@ -494,6 +508,17 @@ export function EtfFilterBar({
                 options={[
                   { value: "any", label: t("brokerAny") },
                   ...regionBrokers.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
+              <Select
+                label={t("status")}
+                id="etf-filter-status"
+                value={filters.status}
+                onChange={(v) => set("status", v as StatusFilter)}
+                options={[
+                  { value: "any", label: t("statusAny") },
+                  { value: "new", label: t("statusNew") },
+                  { value: "updated", label: t("statusUpdated") },
                 ]}
               />
 

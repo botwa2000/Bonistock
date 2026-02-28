@@ -15,6 +15,7 @@ Usage:
 """
 
 import argparse
+import json
 import math
 import secrets
 import string
@@ -22,7 +23,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 import numpy as np
 import psycopg2
@@ -332,6 +333,16 @@ def fetch_etf_data(symbol):
         region = derive_region(exchange)
         description = (info.get("longBusinessSummary") or "")[:500]
 
+        # ISIN: yfinance exposes it as a property (not in info dict)
+        try:
+            isin_val = ticker.isin
+            if isin_val and isin_val != "-" and len(isin_val) == 12:
+                isin = isin_val
+            else:
+                isin = None
+        except Exception:
+            isin = None
+
         return {
             "symbol": symbol,
             "name": name,
@@ -346,7 +357,7 @@ def fetch_etf_data(symbol):
             "exchange": exchange,
             "currency": currency,
             "description": description,
-            "isin": info.get("isin") or None,
+            "isin": isin,
         }
     except Exception as e:
         print(f"  [fetch] Error for {symbol}: {e}")
@@ -382,6 +393,53 @@ def rank_etfs(etfs):
     print(f"[phase2] Keeping top {len(ranked)} ETFs ({has_5y} with 5Y, {has_3y} with 3Y only, {has_1y} with 1Y only)")
 
     return ranked
+
+
+# -- Phase 2b: FMP ISIN supplement --
+
+def supplement_isins_with_fmp(items, api_key):
+    """Fetch ISINs from FMP for items where yfinance didn't return one."""
+    if not api_key:
+        print("[phase2b] FMP ISIN supplement skipped (no API key)")
+        return
+
+    missing = [s for s in items if not s.get("isin")]
+    if not missing:
+        print("[phase2b] All items already have ISINs, skipping FMP supplement")
+        return
+
+    print(f"[phase2b] Fetching ISINs from FMP for {len(missing)} items...")
+    filled = 0
+
+    # FMP supports batch profile: /v3/profile/AAPL,MSFT (up to ~50 per call)
+    batch_size = 50
+    for i in range(0, len(missing), batch_size):
+        batch = missing[i:i + batch_size]
+        symbols_str = ",".join(quote(s["symbol"], safe="") for s in batch)
+        url = f"https://financialmodelingprep.com/api/v3/profile/{symbols_str}?apikey={api_key}"
+        try:
+            import urllib.request
+            req = urllib.request.Request(url, headers={"User-Agent": "Bonistock/1.0"})
+            resp = urllib.request.urlopen(req, timeout=15)
+            data = json.loads(resp.read())
+
+            isin_map = {}
+            for profile in data:
+                sym = profile.get("symbol", "")
+                isin_val = profile.get("isin", "")
+                if isin_val and len(isin_val) == 12:
+                    isin_map[sym] = isin_val
+
+            for s in batch:
+                if s["symbol"] in isin_map:
+                    s["isin"] = isin_map[s["symbol"]]
+                    filled += 1
+        except Exception as e:
+            print(f"  [fmp-isin] Error for batch starting at {i}: {e}")
+
+        time.sleep(0.3)
+
+    print(f"[phase2b] Filled {filled}/{len(missing)} missing ISINs via FMP")
 
 
 # -- Phase 3: Persist to PostgreSQL --
@@ -488,6 +546,10 @@ def main():
             etfs.append(data)
         time.sleep(0.5)
     print(f"[phase1] Got data for {len(etfs)}/{len(ETF_UNIVERSE)} ETFs")
+
+    # Phase 1b: FMP ISIN supplement
+    fmp_key = read_docker_secret("bonistock-prod", "bonistock_prod_FMP_API_KEY")
+    supplement_isins_with_fmp(etfs, fmp_key)
 
     # Phase 2: Rank by cagr5y descending, keep top 100
     ranked = rank_etfs(etfs)

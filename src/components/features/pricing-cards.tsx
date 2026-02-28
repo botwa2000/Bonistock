@@ -10,6 +10,12 @@ import { useAuth } from "@/lib/auth-context";
 import { openInAppBrowser, isIOS } from "@/lib/native";
 import { getProducts, purchaseProduct, type AppleProduct } from "@/lib/apple-iap";
 
+interface ProductPrice {
+  currencyId: string;
+  amount: number;
+  iosAmount: number | null;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -28,18 +34,19 @@ interface Product {
   usualPrice?: number | null;
   appleProductId?: string | null;
   iosPriceAmount?: number | null;
+  prices?: ProductPrice[];
 }
 
-function formatPrice(cents: number, interval?: "MONTH" | "YEAR" | null): string {
-  const dollars = (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
-  if (interval === "MONTH") return `$${dollars}/mo`;
-  if (interval === "YEAR") return `$${dollars}/yr`;
-  return `$${dollars}`;
+interface RegionCurrencyInfo {
+  region: string;
+  currencyId: string;
+  currency: { id: string; name: string; symbol: string };
 }
 
-function perDayRate(cents: number, days: number): string {
-  const perDay = (cents / 100 / days).toFixed(2);
-  return `$${perDay}/day`;
+function getRegionCookie(): string {
+  if (typeof document === "undefined") return "GLOBAL";
+  const match = document.cookie.match(/(?:^|;\s*)NEXT_REGION=([^;]*)/);
+  return match?.[1] ?? "GLOBAL";
 }
 
 export function PricingCards() {
@@ -51,24 +58,74 @@ export function PricingCards() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [appleProducts, setAppleProducts] = useState<AppleProduct[]>([]);
+  const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyInfo[]>([]);
+  const [userRegion, setUserRegion] = useState("GLOBAL");
 
   useEffect(() => {
-    fetch("/api/stripe/prices")
-      .then((res) => res.json())
-      .then((data: Product[]) => {
-        setProducts(data);
-        // Fetch Apple prices on iOS using product IDs from DB
-        if (isIOS) {
-          const appleIds = data
-            .map((p) => p.appleProductId)
-            .filter((id): id is string => !!id);
-          if (appleIds.length > 0) {
-            getProducts(appleIds).then(setAppleProducts).catch(() => {});
-          }
+    setUserRegion(getRegionCookie());
+
+    // Fetch products and region-currency mappings in parallel
+    Promise.all([
+      fetch("/api/stripe/prices").then((r) => r.json()),
+      fetch("/api/region-currencies").then((r) => r.json()).catch(() => []),
+    ]).then(([productsData, rcData]: [Product[], RegionCurrencyInfo[]]) => {
+      setProducts(productsData);
+      setRegionCurrencies(rcData);
+
+      if (isIOS) {
+        const appleIds = productsData
+          .map((p) => p.appleProductId)
+          .filter((id): id is string => !!id);
+        if (appleIds.length > 0) {
+          getProducts(appleIds).then(setAppleProducts).catch(() => {});
         }
-      })
-      .catch(() => {});
+      }
+    }).catch(() => {});
   }, []);
+
+  // Determine the user's display currency from region mapping
+  const regionMapping = regionCurrencies.find((rc) => rc.region === userRegion);
+  const displayCurrencyId = regionMapping?.currencyId ?? "USD";
+  const displayCurrencySymbol = regionMapping?.currency?.symbol ?? "$";
+
+  // True currency symbols are 1-2 chars (e.g., $, €, £, ¥, ₹)
+  // Multi-char codes like CHF, RUB need a space before the amount
+  function prefixSymbol(sym: string): string {
+    return sym.length <= 2 ? sym : `${sym}\u00A0`;
+  }
+
+  // Format price in the display currency
+  function formatPrice(cents: number, interval?: "MONTH" | "YEAR" | null, symbol?: string): string {
+    const raw = symbol ?? displayCurrencySymbol;
+    const s = prefixSymbol(raw);
+    const dollars = (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
+    if (interval === "MONTH") return `${s}${dollars}/mo`;
+    if (interval === "YEAR") return `${s}${dollars}/yr`;
+    return `${s}${dollars}`;
+  }
+
+  function perDayRate(cents: number, days: number): string {
+    const s = prefixSymbol(displayCurrencySymbol);
+    const perDay = (cents / 100 / days).toFixed(2);
+    return `${s}${perDay}/day`;
+  }
+
+  // Get the price amount for the display currency (from ProductPrice, fallback to base price)
+  function getRegionalPrice(product: Product): number {
+    if (displayCurrencyId === "USD" || displayCurrencyId === product.currency.toUpperCase()) {
+      return product.priceAmount;
+    }
+    const pp = product.prices?.find((p) => p.currencyId === displayCurrencyId);
+    return pp?.amount ?? product.priceAmount;
+  }
+
+  function getRegionalIosPrice(product: Product): number | null {
+    if (displayCurrencyId === "USD" || displayCurrencyId === product.currency.toUpperCase()) {
+      return product.iosPriceAmount ?? null;
+    }
+    const pp = product.prices?.find((p) => p.currencyId === displayCurrencyId);
+    return pp?.iosAmount ?? product.iosPriceAmount ?? null;
+  }
 
   // Helper: find Apple product matching a DB product's appleProductId
   const findAppleProduct = (product: Product): AppleProduct | undefined =>
@@ -80,9 +137,11 @@ export function PricingCards() {
   const getDisplayPrice = (product: Product): number => {
     if (isIOS) {
       const ap = findAppleProduct(product);
-      if (ap) return Math.round(ap.price * 100); // convert to cents
+      if (ap) return Math.round(ap.price * 100);
+      const iosPrice = getRegionalIosPrice(product);
+      if (iosPrice) return iosPrice;
     }
-    return product.priceAmount;
+    return getRegionalPrice(product);
   };
 
   // Helper: get formatted price string from Apple on iOS
@@ -145,7 +204,6 @@ export function PricingCards() {
       try {
         const result = await purchaseProduct((activeProduct as Product).appleProductId!);
         if (result) {
-          // Verify with server and create DB records
           const verifyRes = await fetch("/api/apple/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -273,11 +331,14 @@ export function PricingCards() {
     highlighted: false,
   };
 
-  // Compute savings for passes
-  const passesWithPerDay = passProducts.map((p) => ({
-    product: p,
-    perDay: p.passDays ? p.priceAmount / p.passDays : p.priceAmount,
-  }));
+  // Compute savings for passes (using regional prices)
+  const passesWithPerDay = passProducts.map((p) => {
+    const price = getRegionalPrice(p);
+    return {
+      product: p,
+      perDay: p.passDays ? price / p.passDays : price,
+    };
+  });
   const maxPerDay = passesWithPerDay.length > 0 ? Math.max(...passesWithPerDay.map((w) => w.perDay)) : 0;
   const minPerDay = passesWithPerDay.length > 0 ? Math.min(...passesWithPerDay.map((w) => w.perDay)) : 0;
 
@@ -288,6 +349,9 @@ export function PricingCards() {
   };
 
   const plusDiscount = getDiscountPercent(activeProduct as Product);
+
+  // Free tier price display
+  const freePrice = `${prefixSymbol(displayCurrencySymbol)}0`;
 
   return (
     <div className="space-y-6">
@@ -326,7 +390,7 @@ export function PricingCards() {
             <h3 className="text-lg font-semibold text-text-primary">{freeTier.name}</h3>
             <p className="text-sm text-text-secondary">{freeTier.description}</p>
           </div>
-          <div className="text-3xl font-semibold text-text-primary">$0</div>
+          <div className="text-3xl font-semibold text-text-primary">{freePrice}</div>
           <ul className="flex-1 space-y-2 text-sm text-text-secondary">
             {freeTier.features.map((f) => (
               <li key={f} className="flex items-start gap-2">
@@ -362,7 +426,7 @@ export function PricingCards() {
               <span className="text-3xl font-semibold text-text-primary">
                 {getApplePriceString(activeProduct as Product)
                   ? `${getApplePriceString(activeProduct as Product)}${activeProduct.billingInterval === "MONTH" ? "/mo" : activeProduct.billingInterval === "YEAR" ? "/yr" : ""}`
-                  : formatPrice(activeProduct.priceAmount, activeProduct.billingInterval)}
+                  : formatPrice(getDisplayPrice(activeProduct as Product), activeProduct.billingInterval)}
               </span>
               {!isIOS && plusDiscount && (activeProduct as Product).usualPrice && (
                 <>
@@ -430,7 +494,7 @@ export function PricingCards() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold text-text-primary">
-                          {applePriceStr ?? formatPrice(product.priceAmount)}
+                          {applePriceStr ?? formatPrice(displayPrice)}
                         </span>
                         {!isIOS && product.usualPrice && product.usualPrice > product.priceAmount && (
                           <span className="text-xs text-text-tertiary line-through">

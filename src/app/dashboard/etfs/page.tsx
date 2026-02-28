@@ -59,6 +59,18 @@ export default function EtfsPage() {
         const cagr = e.cagr5y ?? e.cagr1y ?? 0;
         if (cagr < filters.minCagr) return false;
       }
+      if (filters.status !== "any") {
+        const now = Date.now();
+        const createdMs = e.createdAt ? now - new Date(e.createdAt).getTime() : Infinity;
+        const updatedMs = e.updatedAt ? now - new Date(e.updatedAt).getTime() : Infinity;
+        const isNew = createdMs < 7 * 24 * 60 * 60 * 1000
+          && (e.updatedAt && e.createdAt
+            ? Math.abs(new Date(e.createdAt).getTime() - new Date(e.updatedAt).getTime()) < 24 * 60 * 60 * 1000
+            : true);
+        const isUpdated = !isNew && updatedMs < 24 * 60 * 60 * 1000;
+        if (filters.status === "new" && !isNew) return false;
+        if (filters.status === "updated" && !isUpdated) return false;
+      }
       if (filters.search) {
         const q = filters.search.toLowerCase();
         if (
@@ -140,7 +152,6 @@ export default function EtfsPage() {
             <span className="hidden lg:block w-24">Theme</span>
             <span className="hidden sm:block w-12">Type</span>
             <span className="hidden xl:block w-28">ISIN</span>
-            <span className="hidden xl:block w-16">WKN</span>
           </div>
           <div className="space-y-1">
             {filtered.slice(0, visibleCount).map((etf) => (

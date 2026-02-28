@@ -67,6 +67,18 @@ export default function DashboardPage() {
       if (p.upside < filters.minUpside) return false;
       if (p.price > filters.maxPrice) return false;
       if (filters.dividendOnly && p.dividendYield <= 0) return false;
+      if (filters.status !== "any") {
+        const now = Date.now();
+        const createdMs = p.createdAt ? now - new Date(p.createdAt).getTime() : Infinity;
+        const updatedMs = p.updatedAt ? now - new Date(p.updatedAt).getTime() : Infinity;
+        const isNew = createdMs < 7 * 24 * 60 * 60 * 1000
+          && (p.updatedAt && p.createdAt
+            ? Math.abs(new Date(p.createdAt).getTime() - new Date(p.updatedAt).getTime()) < 24 * 60 * 60 * 1000
+            : true);
+        const isUpdated = !isNew && updatedMs < 24 * 60 * 60 * 1000;
+        if (filters.status === "new" && !isNew) return false;
+        if (filters.status === "updated" && !isUpdated) return false;
+      }
       if (filters.search) {
         const q = filters.search.toLowerCase();
         if (
@@ -191,7 +203,6 @@ export default function DashboardPage() {
             <span className="hidden xl:block w-24">Sector</span>
             <span className="hidden sm:block w-14">Risk</span>
             <span className="hidden xl:block w-28">ISIN</span>
-            <span className="hidden xl:block w-16">WKN</span>
           </div>
           <div className="space-y-1">
             {filtered.slice(0, visibleCount).map((pick) => (

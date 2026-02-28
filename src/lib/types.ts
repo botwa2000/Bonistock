@@ -166,6 +166,8 @@ export type EtfSortBy = "cagr5y" | "name" | "fee" | "drawdown" | "sharpe";
 export type SortDir = "asc" | "desc";
 export type ViewMode = "grid" | "list";
 
+export type StatusFilter = "any" | "new" | "updated";
+
 export interface StockFilters {
   region: Region | "all";
   sector: string;
@@ -177,6 +179,7 @@ export interface StockFilters {
   broker: BrokerId | "any";
   marketCap: "small" | "mid" | "large" | "mega" | "any";
   dividendOnly: boolean;
+  status: StatusFilter;
   search: string;
   sortBy: StockSortBy;
   sortDir: SortDir;
@@ -188,6 +191,7 @@ export interface EtfFilters {
   theme: string;
   minCagr: number;
   broker: BrokerId | "any";
+  status: StatusFilter;
   search: string;
   sortBy: EtfSortBy;
   sortDir: SortDir;

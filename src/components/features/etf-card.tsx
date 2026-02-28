@@ -16,6 +16,15 @@ interface EtfCardProps {
 export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) {
   const t = useTranslations("etf");
 
+  const now = Date.now();
+  const createdMs = etf.createdAt ? now - new Date(etf.createdAt).getTime() : Infinity;
+  const updatedMs = etf.updatedAt ? now - new Date(etf.updatedAt).getTime() : Infinity;
+  const isNew = createdMs < 7 * 24 * 60 * 60 * 1000
+    && (etf.updatedAt && etf.createdAt
+      ? Math.abs(new Date(etf.createdAt).getTime() - new Date(etf.updatedAt).getTime()) < 24 * 60 * 60 * 1000
+      : true);
+  const isUpdated = !isNew && updatedMs < 24 * 60 * 60 * 1000;
+
   if (locked) {
     return (
       <div className="relative">
@@ -82,7 +91,11 @@ export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) 
               {etf.symbol} &middot; {etf.name}
             </h3>
           </div>
-          <Badge variant="info">ETF</Badge>
+          <div className="flex items-center gap-1.5">
+            {isNew && <Badge variant="accent" className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">NEW</Badge>}
+            {isUpdated && <Badge variant="info" className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">Updated</Badge>}
+            <Badge variant="info">ETF</Badge>
+          </div>
         </div>
         <div className={`grid gap-2 text-sm text-text-secondary ${compact ? "grid-cols-2" : "grid-cols-4"}`}>
           <div>
@@ -170,8 +183,7 @@ export function EtfRow({ etf, locked = false }: { etf: EtfPick; locked?: boolean
         <span className="hidden lg:block w-16 text-right text-text-secondary">{etf.sharpe.toFixed(2)}</span>
         <span className="hidden lg:block w-24 text-text-tertiary truncate">{etf.theme}</span>
         <span className="hidden sm:block w-12"><Badge variant="info" className="text-[10px] px-1.5 py-0.5">ETF</Badge></span>
-        {etf.isin && <span className="hidden xl:block w-28 text-[10px] text-text-tertiary">{etf.isin}</span>}
-        {etf.wkn && <span className="hidden xl:block w-16 text-[10px] text-text-tertiary">{etf.wkn}</span>}
+        <span className="hidden xl:block w-28 text-[10px] text-text-tertiary truncate">{etf.isin || "\u2014"}</span>
       </div>
     </Link>
   );

@@ -120,7 +120,7 @@ export function TickerCard({ pick, compact = false, locked = false }: TickerCard
         <Card variant="glass" hover className="flex flex-col gap-2 sm:gap-3 overflow-hidden">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1 sm:gap-2 overflow-hidden max-h-12">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                 <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getRegionFlag(pick.region)}</Badge>
                 <span title={getExchangeName(pick.exchange)}><Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{pick.exchange}</Badge></span>
                 <Badge className="text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-3 sm:py-1">{getSectorIcon(pick.sector)} {pick.sector}</Badge>
@@ -230,8 +230,7 @@ export function TickerRow({ pick, locked = false }: { pick: StockPick; locked?: 
         <span className="hidden lg:block w-16 text-right text-text-secondary">{(conviction * 100).toFixed(0)}%</span>
         <span className="hidden xl:block w-24 text-text-tertiary truncate">{pick.sector}</span>
         <span className="hidden sm:block w-14"><Badge variant={riskVariant} className="text-[10px] px-1.5 py-0.5">{pick.risk}</Badge></span>
-        {pick.isin && <span className="hidden xl:block w-28 text-[10px] text-text-tertiary">{pick.isin}</span>}
-        {pick.wkn && <span className="hidden xl:block w-16 text-[10px] text-text-tertiary">{pick.wkn}</span>}
+        <span className="hidden xl:block w-28 text-[10px] text-text-tertiary truncate">{pick.isin || "\u2014"}</span>
       </div>
     </Link>
   );

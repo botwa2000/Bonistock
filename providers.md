@@ -84,12 +84,23 @@ $SSH "cd /home/deploy/bonistock-dev && docker stack deploy -c docker-stack.dev.y
 
 ---
 
-## 3. Financial Modeling Prep (Stock Data) — FREE, 250 req/day
+## 3. Financial Modeling Prep (FMP) — FREE, 250 req/day
+
+**What you need:** API key for ISIN lookup. The discovery scripts use FMP's `/v3/profile/{symbol}` endpoint to fetch ISINs for stocks and ETFs where yfinance doesn't provide one.
+
+**Why FMP for ISINs:** yfinance's built-in `ticker.isin` property is experimental and unreliable — it scrapes Business Insider and only returns valid ISINs for ~30-40% of tickers. FMP's profile endpoint returns ISINs directly from their database with much higher coverage.
 
 **Steps:**
 
-1. Go to https://site.financialmodelingprep.com — Sign up (free)
+1. Go to https://site.financialmodelingprep.com — Sign up (free, no credit card)
 2. **Dashboard** — Copy your **API Key**
+3. The free tier allows 250 requests/day — more than enough for our ~200 stocks + 100 ETFs (batch queries of 50 per request = ~6 API calls total)
+
+**How it's used in the scripts:**
+- `scripts/discover.py` — Phase 3b: after yfinance data fetch, calls FMP for stocks missing ISIN
+- `scripts/etf-discover.py` — Phase 1b: same for ETFs
+- Uses batch profile endpoint: `GET /v3/profile/AAPL,MSFT,TSLA?apikey=KEY` (up to 50 symbols per call)
+- Only calls FMP for items where yfinance returned no ISIN, so API usage is minimal
 
 **Secret to update:**
 
@@ -284,7 +295,7 @@ The `ENCRYPTION_KEY` was auto-generated with `openssl rand -hex 32` when we crea
 |---|---------|---------|------|------------|
 | 1 | Brevo (Email) | 2 | Free (300 emails/day) | Easy |
 | 2 | Sentry (Errors) | 1 | Free (5K errors/month) | Easy |
-| 3 | FMP (Stock Data) | 1 | Free (250 req/day) | Easy |
+| 3 | FMP (ISIN Lookup) | 1 | Free (250 req/day) | Easy |
 | 4 | Google OAuth | 2 | Free | Medium |
 | 5 | Facebook OAuth | 2 | Free | Medium |
 | 6 | Stripe (Payments) | 3 | Free setup (2.9%+30c/tx) | Medium |
@@ -422,7 +433,19 @@ Apple sends JWS-signed Server Notifications V2 to `/api/apple/webhook`. No share
 pip3 install yfinance
 ```
 
-This is the primary data source for the Python discovery script — provides stock screener, price targets, analyst recommendations, and company info globally (US, EU, Asia).
+This is the primary data source for the Python discovery scripts — provides stock screener, price targets, analyst recommendations, and company info globally (US, EU, Asia).
+
+**Sub-unit currency handling:** Some exchanges report prices in sub-units (pence instead of pounds, agorot instead of shekels). The discover scripts normalize these automatically:
+
+| yfinance currency | Actual currency | Divisor | Example |
+|------------------|-----------------|---------|---------|
+| `GBp` / `GBX` | GBP (British Pounds) | 100 | 15542 GBp → £155.42 |
+| `ILA` | ILS (Israeli Shekel) | 100 | 10610 ILA → ₪106.10 |
+| `ZAc` | ZAR (South African Rand) | 100 | 88528 ZAc → R885.28 |
+
+All other currencies (USD, EUR, CHF, JPY, HKD, etc.) pass through unchanged. Tested with 20+ exchanges worldwide — no other sub-unit currencies exist in yfinance.
+
+**ISIN limitations:** yfinance's `ticker.isin` property is experimental — it scrapes Business Insider and returns valid ISINs for only ~30-40% of tickers. FMP is used as a supplement (see section 3). WKN (German security ID) is not available from yfinance at all.
 
 ---
 
