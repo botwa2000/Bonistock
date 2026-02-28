@@ -82,8 +82,52 @@ async function syncFromProdInline(source: string): Promise<boolean> {
   }
 }
 
+async function seedCurrencies() {
+  const currencies = [
+    { id: "USD", name: "US Dollar", symbol: "$" },
+    { id: "EUR", name: "Euro", symbol: "\u20AC" },
+    { id: "GBP", name: "British Pound", symbol: "\u00A3" },
+    { id: "CHF", name: "Swiss Franc", symbol: "CHF" },
+    { id: "CAD", name: "Canadian Dollar", symbol: "CA$" },
+    { id: "AUD", name: "Australian Dollar", symbol: "A$" },
+    { id: "SEK", name: "Swedish Krona", symbol: "kr" },
+    { id: "DKK", name: "Danish Krone", symbol: "kr" },
+    { id: "NOK", name: "Norwegian Krone", symbol: "kr" },
+    { id: "PLN", name: "Polish Zloty", symbol: "z\u0142" },
+    { id: "CZK", name: "Czech Koruna", symbol: "K\u010D" },
+    { id: "JPY", name: "Japanese Yen", symbol: "\u00A5" },
+  ];
+
+  for (const c of currencies) {
+    await db.currency.upsert({
+      where: { id: c.id },
+      update: { name: c.name, symbol: c.symbol },
+      create: c,
+    });
+  }
+  console.log(`Seeded ${currencies.length} currencies`);
+
+  // Default region → currency mappings
+  const regionMappings = [
+    { region: "GLOBAL" as const, currencyId: "USD" },
+    { region: "DE" as const, currencyId: "EUR" },
+  ];
+
+  for (const rm of regionMappings) {
+    await db.regionCurrency.upsert({
+      where: { region_currencyId: { region: rm.region, currencyId: rm.currencyId } },
+      update: {},
+      create: { region: rm.region, currencyId: rm.currencyId, isDefault: true },
+    });
+  }
+  console.log(`Seeded ${regionMappings.length} region-currency mappings`);
+}
+
 async function main() {
   console.log("Seeding database...");
+
+  // ── Currencies (before products) ──
+  await seedCurrencies();
 
   // ── Brokers ──
   const brokerData = [

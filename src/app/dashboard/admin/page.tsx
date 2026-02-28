@@ -43,6 +43,8 @@ interface ProductPriceEntry {
   currencyId: string;
   amount: number;
   iosAmount: number | null;
+  stripePriceId: string | null;
+  usualAmount: number | null;
   currency: { id: string; name: string; symbol: string };
 }
 
@@ -66,8 +68,6 @@ interface Product {
   sortOrder: number;
   appleProductId: string | null;
   iosPriceAmount: number | null;
-  eurPriceAmount: number | null;
-  eurIosPriceAmount: number | null;
   prices: ProductPriceEntry[];
 }
 
@@ -173,8 +173,6 @@ export default function AdminPage() {
   const [formHighlighted, setFormHighlighted] = useState(false);
   const [formAppleProductId, setFormAppleProductId] = useState("");
   const [formIosPriceAmount, setFormIosPriceAmount] = useState("");
-  const [formEurPriceAmount, setFormEurPriceAmount] = useState("");
-  const [formEurIosPriceAmount, setFormEurIosPriceAmount] = useState("");
 
   // Currency management state
   const [currencies, setCurrencies] = useState<CurrencyItem[]>([]);
@@ -190,7 +188,7 @@ export default function AdminPage() {
 
   // Product price management state
   const [editPriceProductId, setEditPriceProductId] = useState<string | null>(null);
-  const [priceEntries, setPriceEntries] = useState<{ currencyId: string; amount: string; iosAmount: string }[]>([]);
+  const [priceEntries, setPriceEntries] = useState<{ currencyId: string; amount: string; iosAmount: string; usualAmount: string }[]>([]);
   const [savingPrices, setSavingPrices] = useState(false);
 
   useEffect(() => {
@@ -404,8 +402,6 @@ export default function AdminPage() {
       ...(formUsualPrice && { usualPrice: Math.round(parseFloat(formUsualPrice) * 100) }),
       ...(formAppleProductId && { appleProductId: formAppleProductId }),
       ...(formIosPriceAmount && { iosPriceAmount: Math.round(parseFloat(formIosPriceAmount) * 100) }),
-      ...(formEurPriceAmount && { eurPriceAmount: Math.round(parseFloat(formEurPriceAmount) * 100) }),
-      ...(formEurIosPriceAmount && { eurIosPriceAmount: Math.round(parseFloat(formEurIosPriceAmount) * 100) }),
     };
 
     if (formType === "SUBSCRIPTION") {
@@ -597,6 +593,7 @@ export default function AdminPage() {
       currencyId: p.currencyId,
       amount: (p.amount / 100).toFixed(2),
       iosAmount: p.iosAmount != null ? (p.iosAmount / 100).toFixed(2) : "",
+      usualAmount: p.usualAmount != null ? (p.usualAmount / 100).toFixed(2) : "",
     }));
     setPriceEntries(entries);
   };
@@ -605,7 +602,7 @@ export default function AdminPage() {
     const usedCurrencies = priceEntries.map((e) => e.currencyId);
     const available = currencies.filter((c) => c.active && !usedCurrencies.includes(c.id));
     if (available.length === 0) return;
-    setPriceEntries([...priceEntries, { currencyId: available[0].id, amount: "", iosAmount: "" }]);
+    setPriceEntries([...priceEntries, { currencyId: available[0].id, amount: "", iosAmount: "", usualAmount: "" }]);
   };
 
   const removePriceEntry = (idx: number) => {
@@ -637,10 +634,11 @@ export default function AdminPage() {
         const amount = Math.round(parseFloat(entry.amount) * 100);
         if (isNaN(amount) || amount <= 0) continue;
         const iosAmount = entry.iosAmount ? Math.round(parseFloat(entry.iosAmount) * 100) : null;
+        const usualAmount = entry.usualAmount ? Math.round(parseFloat(entry.usualAmount) * 100) : null;
         await fetch("/api/admin/product-prices", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productId, currencyId: entry.currencyId, amount, iosAmount }),
+          body: JSON.stringify({ productId, currencyId: entry.currencyId, amount, iosAmount, usualAmount }),
         });
       }
 
@@ -1018,15 +1016,6 @@ export default function AdminPage() {
                     placeholder="9.99"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs text-text-secondary mb-1">{t("currency")}</label>
-                  <input
-                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-                    value={formCurrency}
-                    onChange={(e) => setFormCurrency(e.target.value)}
-                    placeholder="usd"
-                  />
-                </div>
                 {formType === "SUBSCRIPTION" ? (
                   <div>
                     <label className="block text-xs text-text-secondary mb-1">{t("billingInterval")}</label>
@@ -1104,33 +1093,6 @@ export default function AdminPage() {
                     value={formIosPriceAmount}
                     onChange={(e) => setFormIosPriceAmount(e.target.value)}
                     placeholder="9.99"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-text-secondary mb-1">{t("eurPrice")}</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-                    value={formEurPriceAmount}
-                    onChange={(e) => setFormEurPriceAmount(e.target.value)}
-                    placeholder="6.49"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-text-secondary mb-1">{t("eurIosPrice")}</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-                    value={formEurIosPriceAmount}
-                    onChange={(e) => setFormEurIosPriceAmount(e.target.value)}
-                    placeholder="9.49"
                   />
                 </div>
               </div>
@@ -1328,6 +1290,18 @@ export default function AdminPage() {
                                   }}
                                   placeholder="iOS"
                                 />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
+                                  value={entry.usualAmount}
+                                  onChange={(e) => {
+                                    const updated = [...priceEntries];
+                                    updated[idx] = { ...updated[idx], usualAmount: e.target.value };
+                                    setPriceEntries(updated);
+                                  }}
+                                  placeholder="Usual"
+                                />
                                 <button onClick={() => removePriceEntry(idx)} className="text-xs text-danger-fg">&times;</button>
                               </div>
                             ))}
@@ -1344,8 +1318,8 @@ export default function AdminPage() {
                             {product.prices.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
                                 {product.prices.map((p) => (
-                                  <Badge key={p.currencyId} variant="default" className="text-[10px]">
-                                    {p.currency.symbol}{(p.amount / 100).toFixed(2)}
+                                  <Badge key={p.currencyId} variant={p.stripePriceId ? "success" : "warning"} className="text-[10px]">
+                                    {p.stripePriceId ? "\u2713 " : "\u26A0 "}{p.currency.symbol}{(p.amount / 100).toFixed(2)}
                                   </Badge>
                                 ))}
                               </div>

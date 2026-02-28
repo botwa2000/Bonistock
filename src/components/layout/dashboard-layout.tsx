@@ -8,8 +8,6 @@ import { useAuth } from "@/lib/auth-context";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LanguageSwitcher } from "@/components/ui/language-switcher";
-import { RegionSwitcher } from "@/components/ui/region-switcher";
 
 interface SidebarLink {
   href: string;
@@ -150,8 +148,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </Badge>
           </div>
           <div className="flex items-center gap-1">
-            <RegionSwitcher />
-            <LanguageSwitcher />
             <Button
               variant="ghost"
               size="sm"

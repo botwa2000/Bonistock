@@ -106,23 +106,40 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoggedIn) return;
 
+    let loggingOut = false;
+    const doLogout = () => {
+      if (loggingOut) return;
+      loggingOut = true;
+      signOut({ redirect: false }).then(() => {
+        window.location.href = "/login?reason=inactive";
+      });
+    };
+
+    const checkInactivity = () => {
+      if (Date.now() - lastActivityRef.current >= INACTIVITY_TIMEOUT_MS) {
+        doLogout();
+      }
+    };
+
     const resetTimer = () => {
-      lastActivityRef.current = Date.now();
+      // Check BEFORE resetting — catches returning from sleep/background
+      checkInactivity();
+      if (!loggingOut) lastActivityRef.current = Date.now();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") checkInactivity();
     };
 
     const events = ["mousedown", "keydown", "touchstart", "scroll"] as const;
     for (const e of events) window.addEventListener(e, resetTimer, { passive: true });
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
-    const interval = setInterval(() => {
-      if (Date.now() - lastActivityRef.current >= INACTIVITY_TIMEOUT_MS) {
-        signOut({ redirect: false }).then(() => {
-          window.location.href = "/login?reason=inactive";
-        });
-      }
-    }, 60_000); // check every minute
+    const interval = setInterval(checkInactivity, 60_000);
 
     return () => {
       for (const e of events) window.removeEventListener(e, resetTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       clearInterval(interval);
     };
   }, [isLoggedIn]);

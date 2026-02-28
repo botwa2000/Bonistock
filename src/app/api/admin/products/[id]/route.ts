@@ -17,8 +17,6 @@ const updateProductSchema = z.object({
   trialDays: z.number().int().min(0).nullable().optional(),
   appleProductId: z.string().nullable().optional(),
   iosPriceAmount: z.number().int().positive().nullable().optional(),
-  eurPriceAmount: z.number().int().positive().nullable().optional(),
-  eurIosPriceAmount: z.number().int().positive().nullable().optional(),
 });
 
 export const PATCH = adminRoute(async (req: NextRequest) => {
@@ -85,8 +83,6 @@ export const PATCH = adminRoute(async (req: NextRequest) => {
       ...(data.trialDays !== undefined && { trialDays: data.trialDays }),
       ...(data.appleProductId !== undefined && { appleProductId: data.appleProductId }),
       ...(data.iosPriceAmount !== undefined && { iosPriceAmount: data.iosPriceAmount }),
-      ...(data.eurPriceAmount !== undefined && { eurPriceAmount: data.eurPriceAmount }),
-      ...(data.eurIosPriceAmount !== undefined && { eurIosPriceAmount: data.eurIosPriceAmount }),
       ...(newStripePriceId !== existing.stripePriceId && { stripePriceId: newStripePriceId }),
     },
   });

@@ -14,6 +14,8 @@ interface ProductPrice {
   currencyId: string;
   amount: number;
   iosAmount: number | null;
+  stripePriceId: string | null;
+  usualAmount: number | null;
 }
 
 interface Product {
@@ -117,6 +119,24 @@ export function PricingCards() {
     }
     const pp = product.prices?.find((p) => p.currencyId === displayCurrencyId);
     return pp?.amount ?? product.priceAmount;
+  }
+
+  // Get the Stripe Price ID for the user's display currency (for checkout)
+  function getRegionalStripePriceId(product: Product): string {
+    if (displayCurrencyId !== "USD" && displayCurrencyId !== product.currency.toUpperCase()) {
+      const pp = product.prices?.find((p) => p.currencyId === displayCurrencyId);
+      if (pp?.stripePriceId) return pp.stripePriceId;
+    }
+    return product.stripePriceId;
+  }
+
+  // Get the per-currency "usual" price for discount display
+  function getRegionalUsualPrice(product: Product): number | null {
+    if (displayCurrencyId !== "USD" && displayCurrencyId !== product.currency.toUpperCase()) {
+      const pp = product.prices?.find((p) => p.currencyId === displayCurrencyId);
+      if (pp) return pp.usualAmount ?? null;
+    }
+    return product.usualPrice ?? null;
   }
 
   function getRegionalIosPrice(product: Product): number | null {
@@ -226,7 +246,8 @@ export function PricingCards() {
     }
 
     // Web: use Stripe checkout
-    if (!activeProduct?.stripePriceId) {
+    const subPriceId = getRegionalStripePriceId(activeProduct as Product);
+    if (!subPriceId) {
       setError("Products are not configured yet. Please contact support.");
       setCheckingOut(false);
       return;
@@ -237,7 +258,7 @@ export function PricingCards() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          priceId: activeProduct.stripePriceId,
+          priceId: subPriceId,
         }),
       });
       const data = await res.json();
@@ -289,7 +310,8 @@ export function PricingCards() {
     }
 
     // Web: use Stripe checkout
-    if (!product.stripePriceId) {
+    const passPriceId = getRegionalStripePriceId(product);
+    if (!passPriceId) {
       setError("Products are not configured yet. Please contact support.");
       setBuying(null);
       return;
@@ -300,7 +322,7 @@ export function PricingCards() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          priceId: product.stripePriceId,
+          priceId: passPriceId,
           passType: product.passType,
         }),
       });
@@ -342,10 +364,12 @@ export function PricingCards() {
   const maxPerDay = passesWithPerDay.length > 0 ? Math.max(...passesWithPerDay.map((w) => w.perDay)) : 0;
   const minPerDay = passesWithPerDay.length > 0 ? Math.min(...passesWithPerDay.map((w) => w.perDay)) : 0;
 
-  // Discount calculation helper
+  // Discount calculation helper (uses regional usual price)
   const getDiscountPercent = (product: Product) => {
-    if (!product.usualPrice || product.usualPrice <= product.priceAmount) return null;
-    return Math.round((1 - product.priceAmount / product.usualPrice) * 100);
+    const usualPrice = getRegionalUsualPrice(product);
+    const price = getRegionalPrice(product);
+    if (!usualPrice || usualPrice <= price) return null;
+    return Math.round((1 - price / usualPrice) * 100);
   };
 
   const plusDiscount = getDiscountPercent(activeProduct as Product);
@@ -428,10 +452,10 @@ export function PricingCards() {
                   ? `${getApplePriceString(activeProduct as Product)}${activeProduct.billingInterval === "MONTH" ? "/mo" : activeProduct.billingInterval === "YEAR" ? "/yr" : ""}`
                   : formatPrice(getDisplayPrice(activeProduct as Product), activeProduct.billingInterval)}
               </span>
-              {!isIOS && plusDiscount && (activeProduct as Product).usualPrice && (
+              {!isIOS && plusDiscount && getRegionalUsualPrice(activeProduct as Product) && (
                 <>
                   <span className="text-lg text-text-tertiary line-through">
-                    {formatPrice((activeProduct as Product).usualPrice!, activeProduct.billingInterval)}
+                    {formatPrice(getRegionalUsualPrice(activeProduct as Product)!, activeProduct.billingInterval)}
                   </span>
                   <Badge variant="accent">{t("discount", { percent: plusDiscount })}</Badge>
                 </>
@@ -496,9 +520,9 @@ export function PricingCards() {
                         <span className="text-base font-bold text-text-primary">
                           {applePriceStr ?? formatPrice(displayPrice)}
                         </span>
-                        {!isIOS && product.usualPrice && product.usualPrice > product.priceAmount && (
+                        {!isIOS && getRegionalUsualPrice(product) && getRegionalUsualPrice(product)! > getRegionalPrice(product) && (
                           <span className="text-xs text-text-tertiary line-through">
-                            {formatPrice(product.usualPrice)}
+                            {formatPrice(getRegionalUsualPrice(product)!)}
                           </span>
                         )}
                         {passDiscount && (

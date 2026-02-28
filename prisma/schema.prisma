@@ -467,11 +467,13 @@ model Currency {
 }
 
 model ProductPrice {
-  id          String @id @default(cuid())
-  productId   String
-  currencyId  String
-  amount      Int    // price in smallest unit (cents)
-  iosAmount   Int?   // iOS price in smallest unit
+  id            String  @id @default(cuid())
+  productId     String
+  currencyId    String
+  amount        Int     // price in smallest unit (cents)
+  iosAmount     Int?    // iOS price in smallest unit
+  stripePriceId String? @unique // Stripe Price ID for this currency
+  usualAmount   Int?    // per-currency "was" price for discount display
 
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   currency Currency @relation(fields: [currencyId], references: [id], onDelete: Cascade)

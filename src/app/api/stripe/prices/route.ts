@@ -32,6 +32,8 @@ export async function GET() {
             currencyId: true,
             amount: true,
             iosAmount: true,
+            stripePriceId: true,
+            usualAmount: true,
           },
         },
       },

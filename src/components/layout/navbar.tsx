@@ -29,8 +29,8 @@ export function Navbar() {
               {t("nav.about")}
             </Link>
           </div>
-          <RegionSwitcher />
-          <LanguageSwitcher />
+          {!isLoggedIn && <RegionSwitcher />}
+          {!isLoggedIn && <LanguageSwitcher />}
           {isLoggedIn ? (
             <Link href="/dashboard">
               <Button size="sm">{t("nav.dashboard")}</Button>

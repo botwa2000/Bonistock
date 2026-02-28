@@ -30,6 +30,12 @@ import psycopg2
 import psycopg2.extras
 import yfinance as yf
 
+# Optional: Finnhub
+try:
+    import finnhub
+except ImportError:
+    finnhub = None
+
 
 def to_float(val):
     """Convert numpy/pandas numeric types to Python float for psycopg2."""
@@ -442,6 +448,47 @@ def supplement_isins_with_fmp(items, api_key):
     print(f"[phase2b] Filled {filled}/{len(missing)} missing ISINs via FMP")
 
 
+# -- Phase 2c: Finnhub ISIN supplement --
+
+def supplement_isins_with_finnhub(items, api_key):
+    """Fetch ISINs from Finnhub for items where yfinance and FMP didn't return one."""
+    if not api_key or finnhub is None:
+        print("[phase2c] Finnhub ISIN supplement skipped (no API key or package not installed)")
+        return
+
+    missing = [s for s in items if not s.get("isin")]
+    if not missing:
+        print("[phase2c] All items already have ISINs, skipping Finnhub ISIN supplement")
+        return
+
+    print(f"[phase2c] Fetching ISINs from Finnhub for {len(missing)} items...")
+    client = finnhub.Client(api_key=api_key)
+    filled = 0
+
+    for s in missing:
+        sym = s["symbol"]
+        try:
+            profile = client.company_profile2(symbol=sym)
+            isin_val = (profile or {}).get("isin", "")
+
+            # For .DE/.L symbols: try stripped symbol if full didn't work
+            if (not isin_val or len(isin_val) != 12) and ("." in sym):
+                stripped = sym.split(".")[0]
+                profile = client.company_profile2(symbol=stripped)
+                isin_val = (profile or {}).get("isin", "")
+                time.sleep(1.1)
+
+            if isin_val and len(isin_val) == 12:
+                s["isin"] = isin_val
+                filled += 1
+        except Exception as e:
+            print(f"  [finnhub-isin] Error for {sym}: {e}")
+
+        time.sleep(1.1)  # 60 calls/min limit
+
+    print(f"[phase2c] Filled {filled}/{len(missing)} missing ISINs via Finnhub")
+
+
 # -- Phase 3: Persist to PostgreSQL --
 
 def persist_etfs(etfs, conn, label=""):
@@ -550,6 +597,16 @@ def main():
     # Phase 1b: FMP ISIN supplement
     fmp_key = read_docker_secret("bonistock-prod", "bonistock_prod_FMP_API_KEY")
     supplement_isins_with_fmp(etfs, fmp_key)
+
+    # Phase 1c: Finnhub ISIN supplement
+    finnhub_key = read_docker_secret("bonistock-prod", "bonistock_prod_FINNHUB_API_KEY")
+    supplement_isins_with_finnhub(etfs, finnhub_key)
+
+    # ISIN coverage summary
+    with_isin = sum(1 for e in etfs if e.get("isin"))
+    total_etfs = len(etfs)
+    pct = (with_isin / total_etfs * 100) if total_etfs > 0 else 0
+    print(f"[isin] Coverage: {with_isin}/{total_etfs} ({pct:.0f}%)")
 
     # Phase 2: Rank by cagr5y descending, keep top 100
     ranked = rank_etfs(etfs)

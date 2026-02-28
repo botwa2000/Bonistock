@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import Stripe from "stripe";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
 
 const upsertSchema = z.object({
   productId: z.string(),
   currencyId: z.string().min(3).max(3),
   amount: z.number().int().positive(),
   iosAmount: z.number().int().positive().nullable().optional(),
+  usualAmount: z.number().int().positive().nullable().optional(),
 });
 
 const deleteSchema = z.object({
@@ -68,6 +71,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Currency not found" }, { status: 404 });
   }
 
+  // Check if there's an existing ProductPrice (to get old stripePriceId)
+  const existing = await db.productPrice.findUnique({
+    where: {
+      productId_currencyId: {
+        productId: parsed.data.productId,
+        currencyId: parsed.data.currencyId,
+      },
+    },
+  });
+
+  // Create a new Stripe Price for this currency
+  let stripePriceId = existing?.stripePriceId ?? null;
+  const amountChanged = !existing || existing.amount !== parsed.data.amount;
+
+  if (amountChanged) {
+    try {
+      const priceParams: Stripe.PriceCreateParams = {
+        product: product.stripeProductId,
+        unit_amount: parsed.data.amount,
+        currency: parsed.data.currencyId.toLowerCase(),
+      };
+
+      if (product.type === "SUBSCRIPTION" && product.billingInterval) {
+        priceParams.recurring = {
+          interval: product.billingInterval === "MONTH" ? "month" : "year",
+        };
+      }
+
+      const newStripePrice = await stripe.prices.create(priceParams);
+
+      // Archive old Stripe Price if it exists
+      if (stripePriceId) {
+        try {
+          await stripe.prices.update(stripePriceId, { active: false });
+        } catch {
+          // Best-effort archive
+        }
+      }
+
+      stripePriceId = newStripePrice.id;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return NextResponse.json(
+        { error: "Failed to create Stripe Price", details: message },
+        { status: 500 }
+      );
+    }
+  }
+
   const price = await db.productPrice.upsert({
     where: {
       productId_currencyId: {
@@ -78,12 +130,16 @@ export async function POST(req: NextRequest) {
     update: {
       amount: parsed.data.amount,
       iosAmount: parsed.data.iosAmount ?? null,
+      usualAmount: parsed.data.usualAmount ?? null,
+      stripePriceId,
     },
     create: {
       productId: parsed.data.productId,
       currencyId: parsed.data.currencyId,
       amount: parsed.data.amount,
       iosAmount: parsed.data.iosAmount ?? null,
+      usualAmount: parsed.data.usualAmount ?? null,
+      stripePriceId,
     },
     include: { currency: true },
   });
@@ -100,6 +156,24 @@ export async function DELETE(req: NextRequest) {
   const parsed = deleteSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+
+  // Get the existing record to archive its Stripe Price
+  const existing = await db.productPrice.findUnique({
+    where: {
+      productId_currencyId: {
+        productId: parsed.data.productId,
+        currencyId: parsed.data.currencyId,
+      },
+    },
+  });
+
+  if (existing?.stripePriceId) {
+    try {
+      await stripe.prices.update(existing.stripePriceId, { active: false });
+    } catch {
+      // Best-effort archive
+    }
   }
 
   await db.productPrice.delete({

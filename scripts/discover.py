@@ -465,6 +465,48 @@ def supplement_isins_with_fmp(items, api_key):
     print(f"[phase3b] Filled {filled}/{len(missing)} missing ISINs via FMP")
 
 
+# ── Phase 3c: Finnhub ISIN supplement ──
+
+def supplement_isins_with_finnhub(items, api_key):
+    """Fetch ISINs from Finnhub for items where yfinance and FMP didn't return one."""
+    if not api_key or finnhub is None:
+        print("[phase3c] Finnhub ISIN supplement skipped (no API key or package not installed)")
+        return
+
+    missing = [s for s in items if not s.get("isin")]
+    if not missing:
+        print("[phase3c] All items already have ISINs, skipping Finnhub ISIN supplement")
+        return
+
+    print(f"[phase3c] Fetching ISINs from Finnhub for {len(missing)} items...")
+    client = finnhub.Client(api_key=api_key)
+    filled = 0
+
+    for s in missing:
+        sym = s["symbol"]
+        try:
+            # Try the full symbol first (e.g. SAP.DE)
+            profile = client.company_profile2(symbol=sym)
+            isin_val = (profile or {}).get("isin", "")
+
+            # For .DE/.L symbols: try stripped symbol if full didn't work
+            if (not isin_val or len(isin_val) != 12) and ("." in sym):
+                stripped = sym.split(".")[0]
+                profile = client.company_profile2(symbol=stripped)
+                isin_val = (profile or {}).get("isin", "")
+                time.sleep(1.1)  # extra call counts toward rate limit
+
+            if isin_val and len(isin_val) == 12:
+                s["isin"] = isin_val
+                filled += 1
+        except Exception as e:
+            print(f"  [finnhub-isin] Error for {sym}: {e}")
+
+        time.sleep(1.1)  # 60 calls/min limit
+
+    print(f"[phase3c] Filled {filled}/{len(missing)} missing ISINs via Finnhub")
+
+
 # ── Phase 4: Rank and filter ──
 
 def rank_and_filter(stocks):
@@ -677,6 +719,15 @@ def main():
 
     # Phase 3b: FMP ISIN supplement
     supplement_isins_with_fmp(stocks, fmp_key)
+
+    # Phase 3c: Finnhub ISIN supplement
+    supplement_isins_with_finnhub(stocks, finnhub_key)
+
+    # ISIN coverage summary
+    with_isin = sum(1 for s in stocks if s.get("isin"))
+    total = len(stocks)
+    pct = (with_isin / total * 100) if total > 0 else 0
+    print(f"[isin] Coverage: {with_isin}/{total} ({pct:.0f}%)")
 
     # Phase 4: Rank and filter
     ranked = rank_and_filter(stocks)

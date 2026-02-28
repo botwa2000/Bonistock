@@ -147,7 +147,6 @@ export default function EtfsPage() {
             <span className="flex-1">Name</span>
             <span className="w-16 text-right">5Y CAGR</span>
             <span className="hidden md:block w-16 text-right">Drawdown</span>
-            <span className="hidden md:block w-16 text-right">Fee</span>
             <span className="hidden lg:block w-16 text-right">Sharpe</span>
             <span className="hidden lg:block w-24">Theme</span>
             <span className="hidden sm:block w-12">Type</span>

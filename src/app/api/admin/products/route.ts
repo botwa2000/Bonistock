@@ -21,8 +21,6 @@ const createProductSchema = z.object({
   sortOrder: z.number().int().default(0),
   appleProductId: z.string().optional(),
   iosPriceAmount: z.number().int().positive().optional(),
-  eurPriceAmount: z.number().int().positive().optional(),
-  eurIosPriceAmount: z.number().int().positive().optional(),
 });
 
 export const GET = adminRoute(async () => {
@@ -107,8 +105,6 @@ export const POST = adminRoute(async (req) => {
         sortOrder: data.sortOrder,
         appleProductId: data.appleProductId ?? null,
         iosPriceAmount: data.iosPriceAmount ?? null,
-        eurPriceAmount: data.eurPriceAmount ?? null,
-        eurIosPriceAmount: data.eurIosPriceAmount ?? null,
       },
     });
 
