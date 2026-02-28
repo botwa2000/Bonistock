@@ -2,11 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-
-const REGION_META: Record<string, { label: string; flag: string }> = {
-  GLOBAL: { label: "Global", flag: "\u{1F30D}" },
-  DE: { label: "Germany", flag: "\u{1F1E9}\u{1F1EA}" },
-};
+import { getRegionMeta } from "@/lib/region-meta";
 
 interface RegionCurrencyInfo {
   region: string;
@@ -69,11 +65,15 @@ export function RegionSwitcher() {
     return rc?.currencyId ?? "USD";
   };
 
-  const currentMeta = REGION_META[current] ?? REGION_META.GLOBAL;
+  const currentMeta = getRegionMeta(current);
   const currentCurrency = getCurrency(current);
 
-  // Build the list of regions from REGION_META
-  const regionList = Object.entries(REGION_META);
+  // Build the list of regions from DB data (unique region codes)
+  const regionList = regionCurrencies.length > 0
+    ? [...new Set(regionCurrencies.map((rc) => rc.region))].map(
+        (code) => [code, getRegionMeta(code)] as const,
+      )
+    : [["GLOBAL", getRegionMeta("GLOBAL")] as const];
 
   return (
     <div ref={ref} className="relative">

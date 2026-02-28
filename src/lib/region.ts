@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 
-export type AppRegion = "GLOBAL" | "DE";
+export type AppRegion = string;
 
 const REGION_COOKIE = "NEXT_REGION";
 
@@ -8,10 +8,10 @@ const REGION_COOKIE = "NEXT_REGION";
  * Detect the user's region from cookie or Accept-Language header.
  * Works for both logged-in and anonymous users.
  */
-export async function getServerRegion(): Promise<AppRegion> {
+export async function getServerRegion(): Promise<string> {
   const cookieStore = await cookies();
   const regionCookie = cookieStore.get(REGION_COOKIE)?.value;
-  if (regionCookie === "DE" || regionCookie === "GLOBAL") {
+  if (regionCookie) {
     return regionCookie;
   }
 

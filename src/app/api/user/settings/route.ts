@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/logger";
 
 const updateSchema = z.object({
-  region: z.enum(["GLOBAL", "DE"]).optional(),
+  region: z.string().optional(),
   language: z.enum(["EN", "DE", "ES", "FR"]).optional(),
   theme: z.enum(["DARK", "LIGHT"]).optional(),
   goal: z.enum(["GROWTH", "INCOME", "BALANCED"]).optional(),
@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest) {
 
   const user = await db.user.update({
     where: { id: session.user.id },
-    data: parsed.data,
+    data: parsed.data as Parameters<typeof db.user.update>[0]["data"],
     select: { id: true, region: true, language: true, theme: true, goal: true, name: true },
   });
 

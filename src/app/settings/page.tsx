@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/input";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { getRegionMeta } from "@/lib/region-meta";
+
+interface RegionCurrencyInfo {
+  region: string;
+  currencyId: string;
+  currency: { id: string; name: string; symbol: string };
+}
 
 function Toggle({
   checked,
@@ -36,10 +43,18 @@ export default function SettingsPage() {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyInfo[]>([]);
 
   useEffect(() => {
     if (!loading && !isLoggedIn) router.push("/login");
   }, [isLoggedIn, loading, router]);
+
+  useEffect(() => {
+    fetch("/api/region-currencies")
+      .then((r) => r.json())
+      .then((data: RegionCurrencyInfo[]) => setRegionCurrencies(data))
+      .catch(() => {});
+  }, []);
 
   if (loading) {
     return (
@@ -63,6 +78,10 @@ export default function SettingsPage() {
       });
       if (field === "language") {
         document.cookie = `NEXT_LOCALE=${value.toLowerCase()}; path=/; max-age=31536000; SameSite=Lax`;
+        router.refresh();
+      }
+      if (field === "region") {
+        document.cookie = `NEXT_REGION=${value}; path=/; max-age=31536000; SameSite=Lax`;
         router.refresh();
       }
       await refreshUser();
@@ -90,10 +109,22 @@ export default function SettingsPage() {
                 id="region"
                 value={user.region}
                 onChange={(v) => updateSetting("region", v)}
-                options={[
-                  { value: "GLOBAL", label: t("regionUs") },
-                  { value: "DE", label: t("regionDe") },
-                ]}
+                options={
+                  regionCurrencies.length > 0
+                    ? [...new Set(regionCurrencies.map((rc) => rc.region))].map((code) => {
+                        const meta = getRegionMeta(code);
+                        const rc = regionCurrencies.find((r) => r.region === code);
+                        const curr = rc?.currency?.symbol ?? "";
+                        return {
+                          value: code,
+                          label: `${meta.flag} ${meta.label}${curr ? ` (${rc?.currencyId})` : ""}`,
+                        };
+                      })
+                    : [
+                        { value: "GLOBAL", label: t("regionUs") },
+                        { value: "DE", label: t("regionDe") },
+                      ]
+                }
               />
             </div>
             <p className="mt-3 text-xs text-text-tertiary">

@@ -20,7 +20,7 @@ interface UserData {
   name: string | null;
   role: string;
   tier: "free" | "pass" | "plus";
-  region: "GLOBAL" | "DE";
+  region: string;
   theme: "DARK" | "LIGHT";
   language: "EN" | "DE" | "ES" | "FR";
   goal: "GROWTH" | "INCOME" | "BALANCED";
