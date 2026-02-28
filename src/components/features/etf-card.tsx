@@ -102,7 +102,7 @@ export function EtfCard({ etf, compact = false, locked = false }: EtfCardProps) 
             <div className="text-[11px] uppercase text-text-secondary">
               {t("cagr5y")}
             </div>
-            <div className="text-base font-semibold text-accent-fg">
+            <div className={`text-base font-semibold ${etf.cagr5y != null && etf.cagr5y < 0 ? "text-danger-fg" : "text-accent-fg"}`}>
               {etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A"}
             </div>
           </div>
@@ -177,7 +177,7 @@ export function EtfRow({ etf, locked = false }: { etf: EtfPick; locked?: boolean
       <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-l-2 border-border border-l-blue-400/40 bg-surface hover:bg-surface-elevated transition-colors px-2 sm:px-3 py-2 text-xs sm:text-sm">
         <span className="w-14 sm:w-20 font-semibold text-text-primary truncate">{etf.symbol}</span>
         <span className="flex-1 min-w-0 text-text-secondary truncate">{etf.name}</span>
-        <span className="w-16 text-right font-semibold text-accent-fg">{etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A"}</span>
+        <span className={`w-16 text-right font-semibold ${etf.cagr5y != null && etf.cagr5y < 0 ? "text-danger-fg" : "text-accent-fg"}`}>{etf.cagr5y != null ? `${etf.cagr5y}%` : "N/A"}</span>
         <span className="hidden md:block w-16 text-right text-danger-fg">{etf.drawdown}%</span>
         <span className="hidden lg:block w-16 text-right text-text-secondary">{etf.sharpe.toFixed(2)}</span>
         <span className="hidden lg:block w-24 text-text-tertiary truncate">{etf.theme}</span>
