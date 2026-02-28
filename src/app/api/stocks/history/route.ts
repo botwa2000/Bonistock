@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticatedRoute } from "@/lib/api-utils";
-import { getUserTier } from "@/lib/tier";
+import { getUserTier, hasActivePassWindow } from "@/lib/tier";
 import { db } from "@/lib/db";
 
 const ITEMS_PER_PAGE = 25;
@@ -12,6 +12,15 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
       { error: "Pick History requires Plus or Pass", code: "TIER_REQUIRED" },
       { status: 401 }
     );
+  }
+  if (tier === "pass") {
+    const active = await hasActivePassWindow(userId);
+    if (!active) {
+      return NextResponse.json(
+        { error: "Activate your Day Pass to access Pick History", code: "PASS_NOT_ACTIVE" },
+        { status: 401 }
+      );
+    }
   }
 
   const { searchParams } = req.nextUrl;

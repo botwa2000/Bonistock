@@ -29,6 +29,9 @@ interface UserData {
   hasPassword: boolean;
   passActivationsRemaining: number;
   passExpiry: string | null;
+  passWindowActive: boolean;
+  emailAlerts: boolean;
+  weeklyDigest: boolean;
 }
 
 interface AuthContextType {

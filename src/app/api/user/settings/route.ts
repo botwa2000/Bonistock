@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getUserTier, getPassInfo } from "@/lib/tier";
+import { getUserTier, getPassInfo, hasActivePassWindow } from "@/lib/tier";
 import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/logger";
 
@@ -12,6 +12,8 @@ const updateSchema = z.object({
   theme: z.enum(["DARK", "LIGHT"]).optional(),
   goal: z.enum(["GROWTH", "INCOME", "BALANCED"]).optional(),
   name: z.string().min(1).max(100).optional(),
+  emailAlerts: z.boolean().optional(),
+  weeklyDigest: z.boolean().optional(),
 }).strict();
 
 export async function GET() {
@@ -34,6 +36,8 @@ export async function GET() {
       twoFactorEnabled: true,
       emailVerified: true,
       passwordHash: true,
+      emailAlerts: true,
+      weeklyDigest: true,
       createdAt: true,
     },
   });
@@ -42,8 +46,11 @@ export async function GET() {
     return NextResponse.json({ error: "User not found", code: "NOT_FOUND" }, { status: 404 });
   }
 
-  const tier = await getUserTier(user.id);
-  const passInfo = await getPassInfo(user.id);
+  const [tier, passInfo, passWindowActive] = await Promise.all([
+    getUserTier(user.id),
+    getPassInfo(user.id),
+    hasActivePassWindow(user.id),
+  ]);
 
   const { passwordHash, ...safeUser } = user;
 
@@ -56,6 +63,7 @@ export async function GET() {
     tier,
     passActivationsRemaining: passInfo?.activationsRemaining ?? 0,
     passExpiry: passInfo?.expiry ?? null,
+    passWindowActive,
   });
 }
 

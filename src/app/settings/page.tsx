@@ -40,14 +40,21 @@ export default function SettingsPage() {
   const t = useTranslations("settings");
   const router = useRouter();
   const { isLoggedIn, user, refreshUser, loading } = useAuth();
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
+  const [emailAlerts, setEmailAlerts] = useState(user?.emailAlerts ?? true);
+  const [weeklyDigest, setWeeklyDigest] = useState(user?.weeklyDigest ?? true);
   const [saving, setSaving] = useState(false);
   const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyInfo[]>([]);
 
   useEffect(() => {
     if (!loading && !isLoggedIn) router.push("/login");
   }, [isLoggedIn, loading, router]);
+
+  useEffect(() => {
+    if (user) {
+      setEmailAlerts(user.emailAlerts);
+      setWeeklyDigest(user.weeklyDigest);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetch("/api/region-currencies")
@@ -67,6 +74,20 @@ export default function SettingsPage() {
   }
 
   if (!isLoggedIn || !user) return null;
+
+  const updateBoolSetting = async (field: string, value: boolean) => {
+    setSaving(true);
+    try {
+      await fetch("/api/user/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      await refreshUser();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const updateSetting = async (field: string, value: string) => {
     setSaving(true);
@@ -185,7 +206,7 @@ export default function SettingsPage() {
                     {t("emailAlertsDescription")}
                   </div>
                 </div>
-                <Toggle checked={emailAlerts} onChange={setEmailAlerts} />
+                <Toggle checked={emailAlerts} onChange={(v) => { setEmailAlerts(v); updateBoolSetting("emailAlerts", v); }} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -194,7 +215,7 @@ export default function SettingsPage() {
                     {t("weeklyDigestDescription")}
                   </div>
                 </div>
-                <Toggle checked={weeklyDigest} onChange={setWeeklyDigest} />
+                <Toggle checked={weeklyDigest} onChange={(v) => { setWeeklyDigest(v); updateBoolSetting("weeklyDigest", v); }} />
               </div>
             </div>
           </Card>

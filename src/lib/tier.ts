@@ -36,6 +36,17 @@ export async function getUserTier(userId: string): Promise<"free" | "pass" | "pl
   return "free";
 }
 
+export async function hasActivePassWindow(userId: string): Promise<boolean> {
+  const activation = await db.passActivation.findFirst({
+    where: {
+      passPurchase: { userId },
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true },
+  });
+  return !!activation;
+}
+
 export async function getPassInfo(userId: string): Promise<{
   activationsRemaining: number;
   expiry: string | null;

@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { db } from "./db";
 import { syncFromProd } from "./stock-discovery";
 import { sendPushToUser } from "./push";
+import { sendEmail } from "./email";
 
 export function initCronJobs(): void {
   if (process.env.STOCK_SYNC_SOURCE) {
@@ -112,7 +113,7 @@ async function updateDemoPortfolioSnapshots(): Promise<void> {
 async function evaluateAlerts(): Promise<void> {
   const alerts = await db.alert.findMany({
     where: { triggered: false },
-    include: { user: { select: { id: true } } },
+    include: { user: { select: { id: true, email: true, emailAlerts: true } } },
   });
 
   if (alerts.length === 0) return;
@@ -142,11 +143,21 @@ async function evaluateAlerts(): Promise<void> {
         data: { triggered: true, triggeredAt: new Date() },
       });
 
+      const alertBody = alert.message ?? `${alert.symbol} hit $${currentPrice.toFixed(2)}`;
+
       await sendPushToUser(alert.user.id, {
         title: `${alert.symbol} Alert`,
-        body: alert.message ?? `${alert.symbol} hit $${currentPrice.toFixed(2)}`,
+        body: alertBody,
         data: { symbol: alert.symbol, alertId: alert.id },
       });
+
+      if (alert.user.emailAlerts) {
+        await sendEmail(
+          alert.user.email,
+          `${alert.symbol} Alert Triggered`,
+          `<p>${alertBody}</p>`
+        ).catch((err) => console.error("[cron] Alert email failed:", err));
+      }
     }
   }
 }

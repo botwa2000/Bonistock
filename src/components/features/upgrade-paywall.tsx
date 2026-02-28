@@ -43,12 +43,35 @@ interface UpgradePaywallProps {
 export function UpgradePaywall({ feature }: UpgradePaywallProps) {
   const t = useTranslations("paywall");
   const router = useRouter();
-  const { isLoggedIn, refreshUser } = useAuth();
+  const { isLoggedIn, user, refreshUser } = useAuth();
+  const tier = user?.tier ?? "free";
+  const passActivationsRemaining = user?.passActivationsRemaining ?? 0;
+  const passWindowActive = user?.passWindowActive ?? false;
   const [products, setProducts] = useState<Product[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [annual, setAnnual] = useState(true);
   const [appleProducts, setAppleProducts] = useState<AppleProduct[]>([]);
+  const [activating, setActivating] = useState(false);
+
+  const handleActivatePass = async () => {
+    setActivating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/user/pass/activate", { method: "POST" });
+      if (res.ok) {
+        await refreshUser();
+        router.refresh();
+      } else {
+        const data = await res.json();
+        setError(data.error ?? "Failed to activate pass");
+      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setActivating(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/stripe/prices")
@@ -232,8 +255,34 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
       )}
 
       <div className="mt-6 space-y-3">
-        {/* Pass products */}
-        {passProducts.map((product) => {
+        {/* Pass activation — for pass holders with remaining activations */}
+        {tier === "pass" && passActivationsRemaining > 0 && !passWindowActive && (
+          <>
+            <div className="rounded-xl border border-accent-fg/30 bg-accent-fg/10 p-4 text-center space-y-3">
+              <p className="text-sm font-semibold text-text-primary">
+                You have {passActivationsRemaining} activation{passActivationsRemaining !== 1 ? "s" : ""} remaining
+              </p>
+              <p className="text-xs text-text-secondary">
+                Activate now for 24h full access to all features.
+              </p>
+              <Button
+                onClick={handleActivatePass}
+                disabled={activating}
+              >
+                {activating ? "Activating..." : "Activate a Day Pass"}
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs text-text-tertiary">
+              <div className="h-px flex-1 bg-surface" />
+              {t("or")}
+              <div className="h-px flex-1 bg-surface" />
+            </div>
+          </>
+        )}
+
+        {/* Pass products — only show for free users or pass users with no remaining */}
+        {(tier === "free" || (tier === "pass" && passActivationsRemaining <= 0)) && passProducts.map((product) => {
           const appleProd = findAppleProduct(product);
           const priceDisplay = isIOS && appleProd ? appleProd.priceString : formatPrice(product.priceAmount);
           return (
@@ -261,11 +310,13 @@ export function UpgradePaywall({ feature }: UpgradePaywallProps) {
           );
         })}
 
-        <div className="flex items-center gap-3 text-xs text-text-tertiary">
-          <div className="h-px flex-1 bg-surface" />
-          {t("or")}
-          <div className="h-px flex-1 bg-surface" />
-        </div>
+        {(tier !== "pass" || passActivationsRemaining <= 0 || passWindowActive) && (
+          <div className="flex items-center gap-3 text-xs text-text-tertiary">
+            <div className="h-px flex-1 bg-surface" />
+            {t("or")}
+            <div className="h-px flex-1 bg-surface" />
+          </div>
+        )}
 
         {/* Subscription section */}
         <div className="rounded-xl border border-emerald-300/30 bg-emerald-400/10 p-4">

@@ -97,6 +97,8 @@ export async function createPassCheckoutSession(
     success_url: `${appUrl}/dashboard?pass=success`,
     cancel_url: `${appUrl}/pricing?canceled=true`,
     metadata: { userId, passType },
+    invoice_creation: { enabled: true },
+    payment_intent_data: { receipt_email: email },
   });
 
   if (!session.url) throw new Error("Stripe did not return a checkout URL");

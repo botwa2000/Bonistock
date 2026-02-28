@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { UpgradePaywall } from "@/components/features/upgrade-paywall";
 import { formatPrice } from "@/lib/currency";
 
 export default function WatchlistPage() {
@@ -22,6 +23,18 @@ export default function WatchlistPage() {
         <Card variant="glass" className="py-12 text-center">
           <p className="text-text-secondary">Please log in to use your watchlist.</p>
         </Card>
+      </div>
+    );
+  }
+
+  const tier = user.tier;
+  const blocked = tier === "free" || (tier === "pass" && !user.passWindowActive);
+
+  if (blocked) {
+    return (
+      <div className="space-y-6">
+        <SectionHeader title={t("title")} subtitle={t("subtitle")} />
+        <UpgradePaywall feature={t("title")} />
       </div>
     );
   }

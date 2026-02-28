@@ -29,6 +29,10 @@ model User {
   twoFactorEnabled    Boolean   @default(false)
   twoFactorSecret     String?   // AES-256 encrypted
 
+  // Notifications
+  emailAlerts         Boolean   @default(true)
+  weeklyDigest        Boolean   @default(true)
+
   // Legal
   tosAcceptedAt       DateTime?
   tosVersion          String?

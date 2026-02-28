@@ -30,6 +30,7 @@ export default function HistoryPage() {
   const t = useTranslations("history");
   const { user } = useAuth();
   const tier = user?.tier ?? "free";
+  const passWindowActive = user?.passWindowActive ?? false;
 
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [stocks, setStocks] = useState<StockHistoryItem[]>([]);
@@ -72,16 +73,18 @@ export default function HistoryPage() {
     setHasMore(p < result.totalPages);
   }, [buildUrl]);
 
+  const blocked = tier === "free" || (tier === "pass" && !passWindowActive);
+
   // Initial load + filter changes
   useEffect(() => {
-    if (tier === "free") {
+    if (blocked) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setExpandedSymbol(null);
     fetchPage(1).finally(() => setLoading(false));
-  }, [tier, fetchPage]);
+  }, [blocked, fetchPage]);
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -115,7 +118,7 @@ export default function HistoryPage() {
     );
   }
 
-  if (tier === "free") {
+  if (blocked) {
     return (
       <div className="space-y-8">
         <div>
