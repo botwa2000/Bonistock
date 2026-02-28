@@ -54,47 +54,17 @@ All work happens on `dev`. When tested and ready, merge to `main` and deploy to 
 
 ---
 
-## Build-Time Variables (.env.build)
-
-Analytics keys (`NEXT_PUBLIC_*`) are baked into the Next.js client bundle at build time. They are **not** Docker Swarm secrets — they are passed as `--build-arg` during `docker build`.
-
-To keep these out of git, create a `.env.build` file on the server (one-time setup):
-
-```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183"
-
-# Dev
-$SSH 'cat > /home/deploy/bonistock-dev/.env.build << "EOF"
-NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S
-NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz
-NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
-NEXT_PUBLIC_GOOGLE_ADS_ID=AW-17983336228
-EOF'
-
-# Prod (same values — create separate file for future divergence)
-$SSH 'cat > /home/deploy/bonistock/.env.build << "EOF"
-NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S
-NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz
-NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
-NEXT_PUBLIC_GOOGLE_ADS_ID=AW-17983336228
-EOF'
-```
-
-These files live on the server only and are sourced during build. They are gitignored.
-
----
-
 ## Deploy to Dev (one command)
 
 Commit your changes first, then run this single block:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git pull origin dev && source .env.build && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID --build-arg NEXT_PUBLIC_POSTHOG_KEY --build-arg NEXT_PUBLIC_POSTHOG_HOST --build-arg NEXT_PUBLIC_GOOGLE_ADS_ID -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 5 && curl -sf http://localhost:3003/api/health"
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git push origin dev && $SSH "cd /home/deploy/bonistock-dev && git pull origin dev && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com --build-arg NEXT_PUBLIC_GOOGLE_ADS_ID=AW-17983336228 -t bonistock:dev . && docker stack deploy -c docker-stack.dev.yml bonistock-dev && docker service update --force --image bonistock:dev bonistock-dev_app && sleep 5 && curl -sf http://localhost:3003/api/health"
 ```
 
 **What it does:**
 1. Pushes `dev` branch to GitHub
-2. SSHs to server: pulls code, sources `.env.build`, builds Docker image with analytics keys as build args, deploys stack, forces service update
+2. SSHs to server: pulls code, builds Docker image (BuildKit caches npm packages) with analytics build args, deploys stack, forces service update
 3. Waits 5s for convergence, then health-checks
 
 **Optional:** Run `npm run build` locally first to catch errors before pushing.
@@ -116,12 +86,12 @@ After deploying to dev:
 Only after testing on dev:
 
 ```bash
-SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git pull origin main && source .env.build && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID --build-arg NEXT_PUBLIC_POSTHOG_KEY --build-arg NEXT_PUBLIC_POSTHOG_HOST --build-arg NEXT_PUBLIC_GOOGLE_ADS_ID -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 5 && curl -sf http://localhost:3002/api/health" && git checkout dev
+SSH="/c/Windows/System32/OpenSSH/ssh.exe root@159.69.180.183" && git checkout main && git merge dev && git push origin main && $SSH "cd /home/deploy/bonistock && git pull origin main && DOCKER_BUILDKIT=1 docker build --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4M5V64CQ8S --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_kTGblQCrgQv32TKjarB2zra7cptawRBUq8WfSH3kMAz --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com --build-arg NEXT_PUBLIC_GOOGLE_ADS_ID=AW-17983336228 -t bonistock:prod . && docker stack deploy -c docker-stack.prod.yml bonistock-prod && docker service update --force --image bonistock:prod bonistock-prod_app && sleep 5 && curl -sf http://localhost:3002/api/health" && git checkout dev
 ```
 
 **What it does:**
 1. Merges `dev` → `main` locally, pushes to GitHub
-2. SSHs to server: pulls code, sources `.env.build`, builds Docker image with analytics keys, deploys stack, forces service update
+2. SSHs to server: pulls code, builds Docker image (BuildKit caches npm packages) with analytics build args, deploys stack, forces service update
 3. Waits 5s for convergence, then health-checks
 4. Switches back to `dev` branch locally
 
@@ -288,17 +258,17 @@ All analytics keys are stored in `.env.build` on the server (see "Build-Time Var
 
 ---
 
-## Build-Time Variables Reference
+## Build-Time Variables
 
-Baked into the Next.js client bundle at build time. Stored in `.env.build` on the server, passed as `--build-arg` during `docker build`. Real values are in `.secrets` (local, gitignored).
+Baked into the Next.js client bundle at build time. Passed as `--build-arg` during `docker build` and also set as environment variables in docker-stack files.
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_APP_URL` | App URL (set directly in deploy command, not in .env.build) |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics 4 measurement ID (`G-...`) |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project API key (`phc_...`) |
-| `NEXT_PUBLIC_POSTHOG_HOST` | PostHog ingest host (`https://eu.i.posthog.com`) |
-| `NEXT_PUBLIC_GOOGLE_ADS_ID` | Google Ads conversion ID (`AW-...`) |
+| Variable                          | Dev                          | Prod                     |
+|-----------------------------------|------------------------------|--------------------------|
+| `NEXT_PUBLIC_APP_URL`             | `https://dev.bonistock.com`  | `https://bonistock.com`  |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID`   | `G-4M5V64CQ8S`              | `G-4M5V64CQ8S`          |
+| `NEXT_PUBLIC_POSTHOG_KEY`         | `phc_...`                    | `phc_...`                |
+| `NEXT_PUBLIC_POSTHOG_HOST`        | `https://eu.i.posthog.com`   | `https://eu.i.posthog.com` |
+| `NEXT_PUBLIC_GOOGLE_ADS_ID`       | `AW-17983336228`             | `AW-17983336228`         |
 
 ## Logs
 
