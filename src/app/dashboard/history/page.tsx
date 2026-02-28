@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/ui/section-header";
-import { UpgradePaywall } from "@/components/features/upgrade-paywall";
 import type { StockHistoryItem, StockHistoryTimeline } from "@/lib/types";
 
 interface RecurringStock {
@@ -120,12 +120,14 @@ export default function HistoryPage() {
 
   if (blocked) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-semibold text-text-primary">{t("title")}</h1>
-          <p className="mt-1 text-sm text-text-secondary">{t("subtitle")}</p>
-        </div>
-        <UpgradePaywall feature={t("title")} />
+      <div className="space-y-6">
+        <SectionHeader title={t("title")} subtitle={t("subtitle")} />
+        <Card variant="glass" className="py-12 text-center space-y-3">
+          <p className="text-text-secondary">{t("plusRequired")}</p>
+          <Link href="/pricing">
+            <Button>{t("upgradeCta")}</Button>
+          </Link>
+        </Card>
       </div>
     );
   }

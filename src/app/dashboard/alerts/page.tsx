@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Select } from "@/components/ui/input";
-import { UpgradePaywall } from "@/components/features/upgrade-paywall";
 
 interface Alert {
   id: string;
@@ -120,7 +120,12 @@ export default function AlertsPage() {
     return (
       <div className="space-y-6">
         <SectionHeader title={t("title")} subtitle={t("subtitle")} />
-        <UpgradePaywall feature={t("title")} />
+        <Card variant="glass" className="py-12 text-center space-y-3">
+          <p className="text-text-secondary">{t("plusRequired")}</p>
+          <Link href="/pricing">
+            <Button>{t("upgradeCta")}</Button>
+          </Link>
+        </Card>
       </div>
     );
   }

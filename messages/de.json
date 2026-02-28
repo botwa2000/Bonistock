@@ -259,7 +259,8 @@
     "triggered": "Ausgel\u00f6st",
     "watching": "Beobachtend",
     "empty": "Keine Benachrichtigungen gesetzt. F\u00fcgen Sie Kursziele auf den Aktien-Detailseiten hinzu.",
-    "plusRequired": "Benachrichtigungen erfordern ein Plus-Abonnement.",
+    "plusRequired": "Benachrichtigungen erfordern ein Plus- oder Pass-Abonnement.",
+    "upgradeCta": "Auf Plus upgraden",
     "createAlert": "Benachrichtigung erstellen"
   },
   "profile": {
@@ -755,6 +756,8 @@
     "target": "Ziel",
     "upside": "Potenzial",
     "analysts": "Analysten",
-    "risk": "Risiko"
+    "risk": "Risiko",
+    "plusRequired": "Der Pick-Verlauf ist für Plus- und Pass-Abonnenten verfügbar.",
+    "upgradeCta": "Auf Plus upgraden"
   }
 }

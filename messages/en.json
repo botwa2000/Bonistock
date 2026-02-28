@@ -259,7 +259,8 @@
     "triggered": "Triggered",
     "watching": "Watching",
     "empty": "No alerts set. Add price targets from stock detail pages.",
-    "plusRequired": "Alerts require a Plus subscription.",
+    "plusRequired": "Alerts require a Plus or Pass subscription.",
+    "upgradeCta": "Upgrade to Plus",
     "createAlert": "Create Alert"
   },
   "profile": {
@@ -755,6 +756,8 @@
     "target": "Target",
     "upside": "Upside",
     "analysts": "Analysts",
-    "risk": "Risk"
+    "risk": "Risk",
+    "plusRequired": "Pick history is available for Plus and Pass subscribers.",
+    "upgradeCta": "Upgrade to Plus"
   }
 }
