@@ -14,6 +14,10 @@ const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   emailAlerts: z.boolean().optional(),
   weeklyDigest: z.boolean().optional(),
+  cookieConsent: z.object({
+    analytics: z.boolean(),
+    marketing: z.boolean(),
+  }).optional(),
 }).strict();
 
 export async function GET() {

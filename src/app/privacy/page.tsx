@@ -13,7 +13,7 @@ export default function PrivacyPage() {
       <Navbar />
       <Container className="pb-24 pt-16" size="md">
         <h1 className="text-3xl font-bold text-text-primary">{t("title")}</h1>
-        <p className="mt-2 text-sm text-text-secondary">Last updated: February 20, 2026</p>
+        <p className="mt-2 text-sm text-text-secondary">Last updated: February 28, 2026</p>
 
         <div className="mt-10 space-y-8 text-sm leading-relaxed text-text-secondary">
           <section>
@@ -56,6 +56,7 @@ export default function PrivacyPage() {
             <ul className="mt-1 list-disc pl-5 space-y-1">
               <li><strong>Google:</strong> name, email address, profile picture</li>
               <li><strong>Facebook:</strong> name, email address, profile picture. We do NOT access your friends list, posts, or any other Facebook data.</li>
+              <li><strong>Apple:</strong> name and email address (via Sign in with Apple). Apple may provide a private relay email address at your discretion.</li>
             </ul>
           </section>
 
@@ -97,8 +98,10 @@ export default function PrivacyPage() {
               <li><strong>Stripe</strong> &mdash; payment processing on web (name, email, billing info)</li>
               <li><strong>Apple</strong> &mdash; in-app payment processing on iOS (transaction IDs, purchase verification via App Store Server API)</li>
               <li><strong>Brevo</strong> &mdash; transactional email delivery (email address, name)</li>
-              <li><strong>Sentry</strong> &mdash; error tracking (anonymized technical data, no PII by default)</li>
-              <li><strong>Google / Facebook</strong> &mdash; authentication only; we receive data from them but do not share your Bonistock data back</li>
+              <li><strong>Sentry</strong> &mdash; error tracking and performance monitoring (anonymized technical data; PII is not sent)</li>
+              <li><strong>PostHog</strong> &mdash; product analytics (anonymous pageviews and click events, only if you accept analytics cookies). Data processed in the US or EU depending on configuration.</li>
+              <li><strong>Google Analytics</strong> &mdash; usage analytics (anonymous pageviews, only if you accept analytics cookies). Data processed by Google LLC.</li>
+              <li><strong>Google / Facebook / Apple</strong> &mdash; authentication only; we receive data from them but do not share your Bonistock data back</li>
               <li><strong>Broker partners</strong> &mdash; affiliate click attribution only (no PII is shared)</li>
             </ul>
           </section>
@@ -165,7 +168,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="mt-2 list-disc pl-5 space-y-1">
               <li><strong>Necessary</strong> (always active) &mdash; authentication session, CSRF protection, cookie consent preference</li>
-              <li><strong>Analytics</strong> (opt-in) &mdash; anonymous usage statistics to improve the service</li>
+              <li><strong>Analytics</strong> (opt-in) &mdash; anonymous usage statistics via PostHog and Google Analytics to improve the service</li>
               <li><strong>Marketing</strong> (opt-in) &mdash; affiliate attribution tracking</li>
             </ul>
             <p className="mt-2">

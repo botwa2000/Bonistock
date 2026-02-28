@@ -13,7 +13,7 @@ export default function TermsPage() {
       <Navbar />
       <Container className="pb-24 pt-16" size="md">
         <h1 className="text-3xl font-bold text-text-primary">{t("title")}</h1>
-        <p className="mt-2 text-sm text-text-secondary">Last updated: February 20, 2026</p>
+        <p className="mt-2 text-sm text-text-secondary">Last updated: February 28, 2026</p>
 
         <div className="mt-10 space-y-8 text-sm leading-relaxed text-text-secondary">
           <section>
@@ -47,7 +47,7 @@ export default function TermsPage() {
               3. Account Registration
             </h2>
             <p className="mt-2">
-              You may create an account using email/password, Google, or Facebook.
+              You may create an account using email/password, Google, Facebook, or Apple.
               You are responsible for maintaining the confidentiality of your
               account credentials and for all activity under your account.
               You must be at least 18 years old to use the Service.
@@ -97,7 +97,7 @@ export default function TermsPage() {
             </h2>
             <p className="mt-2">
               We source data from third-party providers (Financial Modeling Prep,
-              Yahoo Finance) and make reasonable efforts to ensure accuracy.
+              Yahoo Finance, Finnhub) and make reasonable efforts to ensure accuracy.
               However, we do not guarantee the accuracy, completeness, or
               timeliness of any data displayed. Stock prices are delayed
               (end-of-day). Analyst ratings and price targets are aggregated

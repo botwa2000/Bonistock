@@ -23,14 +23,24 @@ export function Analytics() {
   useEffect(() => {
     setEnabled(getAnalyticsConsent());
 
+    // Cross-tab sync
     const handleStorage = (e: StorageEvent) => {
       if (e.key === CONSENT_KEY) {
         setEnabled(getAnalyticsConsent());
       }
     };
 
+    // Same-tab sync (fired by cookie consent banner)
+    const handleConsentUpdate = () => {
+      setEnabled(getAnalyticsConsent());
+    };
+
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("cookie-consent-update", handleConsentUpdate);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("cookie-consent-update", handleConsentUpdate);
+    };
   }, []);
 
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;

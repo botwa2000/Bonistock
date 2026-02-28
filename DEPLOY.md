@@ -252,13 +252,74 @@ $SSH 'docker exec $(docker ps -q --filter name=bonistock-prod_app) cat /run/secr
 $SSH 'docker exec $(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL'
 ```
 
+## PostHog (Product Analytics)
+
+PostHog provides event tracking, session replays, and feature flags. It only loads when the user accepts analytics cookies.
+
+### 1. Create PostHog project
+
+1. Sign up at [posthog.com](https://posthog.com) (free tier: 1M events/month)
+2. Create a new project named **Bonistock** (or **Bonistock Dev** for dev)
+3. Choose **US Cloud** (`us.i.posthog.com`) or **EU Cloud** (`eu.i.posthog.com`) — EU recommended for GDPR
+4. Copy the **Project API Key** from Settings → Project → Project API Key (starts with `phc_`)
+
+### 2. Pass the key as a Docker build arg
+
+PostHog key is a `NEXT_PUBLIC_*` variable — it gets baked into the client bundle at build time (not a runtime secret). Add it to the deploy command's `docker build` step:
+
+```bash
+# Dev deploy (add --build-arg to existing command)
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg NEXT_PUBLIC_APP_URL=https://dev.bonistock.com \
+  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_DEV_KEY \
+  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
+  -t bonistock:dev .
+
+# Prod deploy (add --build-arg to existing command)
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg NEXT_PUBLIC_APP_URL=https://bonistock.com \
+  --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_PROD_KEY \
+  --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com \
+  -t bonistock:prod .
+```
+
+The `Dockerfile` already has `ARG NEXT_PUBLIC_POSTHOG_KEY` and `ARG NEXT_PUBLIC_POSTHOG_HOST` defined.
+
+### 3. PostHog dashboard setup (recommended)
+
+After first deploy with events flowing:
+
+1. **Autocapture** — enabled by default, captures clicks/pageviews automatically
+2. **Session Replay** — enable in PostHog Settings → Session Replay (records user sessions for debugging UX)
+3. **Custom events** — the app doesn't send custom `posthog.capture()` calls yet; autocapture covers pageviews and clicks
+4. **Data retention** — set to 1 year under Settings → Data Management
+5. **Persons** — PostHog assigns anonymous IDs; no `posthog.identify()` call is made (anonymous analytics only)
+
+### 4. How it works in the codebase
+
+- `src/components/features/analytics.tsx` — loads PostHog snippet (+ GA4) only when `consent.analytics === true`
+- `src/components/features/cookie-consent.tsx` — user must accept analytics cookies before any tracking fires
+- If `NEXT_PUBLIC_POSTHOG_KEY` is not set (empty), the PostHog script block is not rendered at all
+
+### 5. Verify it works
+
+1. Deploy with the key set
+2. Open the site → accept analytics cookies
+3. Navigate a few pages
+4. Check PostHog dashboard → Events → you should see `$pageview` events within 1–2 minutes
+
+---
+
 ## Build-Time Variables
 
 Baked into the Next.js client bundle at build time. Not secrets — passed as `--build-arg` during `docker build`.
 
-| Variable               | Dev                          | Prod                     |
-|------------------------|------------------------------|--------------------------|
-| `NEXT_PUBLIC_APP_URL`  | `https://dev.bonistock.com`  | `https://bonistock.com`  |
+| Variable                     | Dev                          | Prod                     |
+|------------------------------|------------------------------|--------------------------|
+| `NEXT_PUBLIC_APP_URL`        | `https://dev.bonistock.com`  | `https://bonistock.com`  |
+| `NEXT_PUBLIC_POSTHOG_KEY`    | `phc_...` (dev project)      | `phc_...` (prod project) |
+| `NEXT_PUBLIC_POSTHOG_HOST`   | `https://eu.i.posthog.com`   | `https://eu.i.posthog.com` |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | (optional)                | (optional)               |
 
 ## Logs
 
