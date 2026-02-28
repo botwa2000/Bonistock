@@ -12,6 +12,7 @@ Usage:
     python3 scripts/etf-discover.py              # full run: fetch -> prod -> dev
     python3 scripts/etf-discover.py --dry-run    # print results, no DB writes
     python3 scripts/etf-discover.py --prod-only  # write to prod only, skip dev copy
+    python3 scripts/etf-discover.py --isin-only  # backfill ISINs for existing ETFs (fast)
 """
 
 import argparse
@@ -24,6 +25,8 @@ import sys
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlparse, quote
+
+import psycopg2.extras
 
 import numpy as np
 import psycopg2
@@ -574,9 +577,85 @@ def main():
     parser = argparse.ArgumentParser(description="Bonistock ETF Discovery")
     parser.add_argument("--dry-run", action="store_true", help="Print results without writing to DB")
     parser.add_argument("--prod-only", action="store_true", help="Write to prod only, skip dev copy")
+    parser.add_argument("--isin-only", action="store_true", help="Backfill ISINs for existing ETFs (skips yfinance fetch)")
     args = parser.parse_args()
 
     start = time.time()
+
+    # Read API keys from Docker Swarm secrets (optional)
+    fmp_key = read_docker_secret("bonistock-prod", "bonistock_prod_FMP_API_KEY")
+    finnhub_key = read_docker_secret("bonistock-prod", "bonistock_prod_FINNHUB_API_KEY")
+
+    # ── ISIN-only mode: read existing ETFs, run supplements, update DB ──
+    if args.isin_only:
+        print("=== Bonistock ETF ISIN Backfill ===")
+        print(f"Started at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+        prod_conn = get_db_connection("bonistock-prod", "bonistock_prod_DATABASE_URL")
+        cur = prod_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT symbol, isin FROM etfs")
+        rows = cur.fetchall()
+        cur.close()
+
+        total = len(rows)
+        already = sum(1 for r in rows if r["isin"])
+        missing_rows = [r for r in rows if not r["isin"]]
+        print(f"[isin] {total} ETFs total, {already} already have ISINs, {len(missing_rows)} to backfill")
+
+        items = [{"symbol": r["symbol"], "isin": None} for r in missing_rows]
+
+        fmp_before = sum(1 for s in items if s.get("isin"))
+        supplement_isins_with_fmp(items, fmp_key)
+        fmp_filled = sum(1 for s in items if s.get("isin")) - fmp_before
+
+        fh_before = sum(1 for s in items if s.get("isin"))
+        supplement_isins_with_finnhub(items, finnhub_key)
+        fh_filled = sum(1 for s in items if s.get("isin")) - fh_before
+
+        new_total = sum(1 for s in items if s.get("isin"))
+        grand_total = already + new_total
+
+        if not args.dry_run:
+            cur = prod_conn.cursor()
+            updated = 0
+            for s in items:
+                if s.get("isin"):
+                    cur.execute(
+                        'UPDATE etfs SET isin = %s, "updatedAt" = NOW() WHERE symbol = %s AND isin IS NULL',
+                        (s["isin"], s["symbol"]),
+                    )
+                    updated += cur.rowcount
+            prod_conn.commit()
+            cur.close()
+
+            if not args.prod_only:
+                try:
+                    dev_conn = get_db_connection("bonistock-dev", "bonistock_dev_DATABASE_URL")
+                    cur = dev_conn.cursor()
+                    for s in items:
+                        if s.get("isin"):
+                            cur.execute(
+                                'UPDATE etfs SET isin = %s, "updatedAt" = NOW() WHERE symbol = %s AND isin IS NULL',
+                                (s["isin"], s["symbol"]),
+                            )
+                    dev_conn.commit()
+                    cur.close()
+                    dev_conn.close()
+                except Exception as e:
+                    print(f"  [dev] Could not copy ISINs to dev (non-fatal): {e}")
+
+            print(f"[isin] Updated {updated} rows in prod DB")
+
+        prod_conn.close()
+
+        pct = (grand_total / total * 100) if total > 0 else 0
+        print(f"[isin] FMP: +{fmp_filled}, Finnhub: +{fh_filled}, total: {grand_total}/{total} ({pct:.0f}%)")
+
+        elapsed = time.time() - start
+        print(f"\n=== Done in {elapsed:.0f}s ===")
+        return
+
+    # ── Full discovery mode ──
     dry_label = " [DRY RUN]" if args.dry_run else ""
     print(f"=== Bonistock ETF Discovery{dry_label} ===")
     print(f"Started at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
@@ -595,11 +674,9 @@ def main():
     print(f"[phase1] Got data for {len(etfs)}/{len(ETF_UNIVERSE)} ETFs")
 
     # Phase 1b: FMP ISIN supplement
-    fmp_key = read_docker_secret("bonistock-prod", "bonistock_prod_FMP_API_KEY")
     supplement_isins_with_fmp(etfs, fmp_key)
 
     # Phase 1c: Finnhub ISIN supplement
-    finnhub_key = read_docker_secret("bonistock-prod", "bonistock_prod_FINNHUB_API_KEY")
     supplement_isins_with_finnhub(etfs, finnhub_key)
 
     # ISIN coverage summary

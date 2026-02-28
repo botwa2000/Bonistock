@@ -12,6 +12,7 @@ Usage:
     python3 scripts/discover.py              # full run: fetch → prod → dev
     python3 scripts/discover.py --dry-run    # print results, no DB writes
     python3 scripts/discover.py --prod-only  # write to prod only, skip dev copy
+    python3 scripts/discover.py --isin-only  # backfill ISINs for existing stocks (fast)
 """
 
 import argparse
@@ -687,16 +688,93 @@ def main():
     parser = argparse.ArgumentParser(description="Bonistock Multi-Provider Stock Discovery")
     parser.add_argument("--dry-run", action="store_true", help="Print results without writing to DB")
     parser.add_argument("--prod-only", action="store_true", help="Write to prod only, skip dev copy")
+    parser.add_argument("--isin-only", action="store_true", help="Backfill ISINs for existing stocks (skips yfinance fetch)")
     args = parser.parse_args()
 
     start = time.time()
-    dry_label = " [DRY RUN]" if args.dry_run else ""
-    print(f"=== Bonistock Discovery{dry_label} ===")
-    print(f"Started at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
     # Read API keys from Docker Swarm secrets (optional)
     finnhub_key = read_docker_secret("bonistock-prod", "bonistock_prod_FINNHUB_API_KEY")
     fmp_key = read_docker_secret("bonistock-prod", "bonistock_prod_FMP_API_KEY")
+
+    # ── ISIN-only mode: read existing symbols, run supplements, update DB ──
+    if args.isin_only:
+        print("=== Bonistock ISIN Backfill ===")
+        print(f"Started at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+        prod_conn = get_db_connection("bonistock-prod", "bonistock_prod_DATABASE_URL")
+        cur = prod_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT symbol, isin FROM stocks")
+        rows = cur.fetchall()
+        cur.close()
+
+        total = len(rows)
+        already = sum(1 for r in rows if r["isin"])
+        missing_rows = [r for r in rows if not r["isin"]]
+        print(f"[isin] {total} stocks total, {already} already have ISINs, {len(missing_rows)} to backfill")
+
+        # Build lightweight items for supplement functions
+        items = [{"symbol": r["symbol"], "isin": None} for r in missing_rows]
+
+        # FMP supplement
+        fmp_before = sum(1 for s in items if s.get("isin"))
+        supplement_isins_with_fmp(items, fmp_key)
+        fmp_filled = sum(1 for s in items if s.get("isin")) - fmp_before
+
+        # Finnhub supplement
+        fh_before = sum(1 for s in items if s.get("isin"))
+        supplement_isins_with_finnhub(items, finnhub_key)
+        fh_filled = sum(1 for s in items if s.get("isin")) - fh_before
+
+        new_total = sum(1 for s in items if s.get("isin"))
+        grand_total = already + new_total
+
+        if not args.dry_run:
+            # Write ISINs back to prod DB
+            cur = prod_conn.cursor()
+            updated = 0
+            for s in items:
+                if s.get("isin"):
+                    cur.execute(
+                        'UPDATE stocks SET isin = %s, "updatedAt" = NOW() WHERE symbol = %s AND isin IS NULL',
+                        (s["isin"], s["symbol"]),
+                    )
+                    updated += cur.rowcount
+            prod_conn.commit()
+            cur.close()
+
+            # Copy to dev if not --prod-only
+            if not args.prod_only:
+                try:
+                    dev_conn = get_db_connection("bonistock-dev", "bonistock_dev_DATABASE_URL")
+                    cur = dev_conn.cursor()
+                    for s in items:
+                        if s.get("isin"):
+                            cur.execute(
+                                'UPDATE stocks SET isin = %s, "updatedAt" = NOW() WHERE symbol = %s AND isin IS NULL',
+                                (s["isin"], s["symbol"]),
+                            )
+                    dev_conn.commit()
+                    cur.close()
+                    dev_conn.close()
+                except Exception as e:
+                    print(f"  [dev] Could not copy ISINs to dev (non-fatal): {e}")
+
+            print(f"[isin] Updated {updated} rows in prod DB")
+
+        prod_conn.close()
+
+        pct = (grand_total / total * 100) if total > 0 else 0
+        print(f"[isin] FMP: +{fmp_filled}, Finnhub: +{fh_filled}, total: {grand_total}/{total} ({pct:.0f}%)")
+
+        elapsed = time.time() - start
+        print(f"\n=== Done in {elapsed:.0f}s ===")
+        return
+
+    # ── Full discovery mode ──
+    dry_label = " [DRY RUN]" if args.dry_run else ""
+    print(f"=== Bonistock Discovery{dry_label} ===")
+    print(f"Started at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
     # Phase 1: Discover candidates
     candidates = discover_candidates()

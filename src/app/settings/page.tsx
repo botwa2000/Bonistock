@@ -23,7 +23,7 @@ function Toggle({
       className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-emerald-400" : "bg-surface"}`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${checked ? "left-[22px]" : "left-0.5"}`}
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-text-primary transition-transform ${checked ? "left-[22px]" : "left-0.5"}`}
       />
     </button>
   );
@@ -45,7 +45,7 @@ export default function SettingsPage() {
     return (
       <DashboardLayout>
         <div className="flex min-h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
         </div>
       </DashboardLayout>
     );

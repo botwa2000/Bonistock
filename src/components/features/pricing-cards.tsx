@@ -392,7 +392,7 @@ export function PricingCards() {
             className={`relative h-6 w-11 rounded-full transition-colors ${annual ? "bg-emerald-400" : "bg-surface"}`}
           >
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${annual ? "left-[22px]" : "left-0.5"}`}
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-text-primary transition-transform ${annual ? "left-[22px]" : "left-0.5"}`}
             />
           </button>
           <button

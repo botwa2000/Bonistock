@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
@@ -135,13 +135,11 @@ export default function AdminPage() {
   const [editFields, setEditFields] = useState<{
     name: string;
     description: string;
-    priceAmount: string;
-    usualPrice: string;
     trialDays: string;
     highlighted: boolean;
     appleProductId: string;
     iosPriceAmount: string;
-  }>({ name: "", description: "", priceAmount: "", usualPrice: "", trialDays: "", highlighted: false, appleProductId: "", iosPriceAmount: "" });
+  }>({ name: "", description: "", trialDays: "", highlighted: false, appleProductId: "", iosPriceAmount: "" });
   const [saving, setSaving] = useState(false);
 
   // Users state
@@ -296,8 +294,6 @@ export default function AdminPage() {
     setEditFields({
       name: product.name,
       description: product.description,
-      priceAmount: (product.priceAmount / 100).toFixed(2),
-      usualPrice: product.usualPrice != null ? (product.usualPrice / 100).toFixed(2) : "",
       trialDays: product.trialDays != null ? String(product.trialDays) : "",
       highlighted: product.highlighted,
       appleProductId: product.appleProductId ?? "",
@@ -307,30 +303,12 @@ export default function AdminPage() {
 
   const handleSaveProduct = async (product: Product) => {
     setSaving(true);
-    const priceInCents = Math.round(parseFloat(editFields.priceAmount) * 100);
-    if (isNaN(priceInCents) || priceInCents <= 0) {
-      setSaving(false);
-      return;
-    }
 
     const body: Record<string, unknown> = {
       name: editFields.name,
       description: editFields.description,
       highlighted: editFields.highlighted,
     };
-
-    if (priceInCents !== product.priceAmount) {
-      body.priceAmount = priceInCents;
-    }
-
-    if (editFields.usualPrice) {
-      const usualInCents = Math.round(parseFloat(editFields.usualPrice) * 100);
-      if (!isNaN(usualInCents) && usualInCents > 0) {
-        body.usualPrice = usualInCents;
-      }
-    } else {
-      body.usualPrice = null;
-    }
 
     if (product.type === "SUBSCRIPTION") {
       body.trialDays = editFields.trialDays ? parseInt(editFields.trialDays, 10) : null;
@@ -588,14 +566,30 @@ export default function AdminPage() {
 
   // Product price management handlers
   const startEditingPrices = (product: Product) => {
-    setEditPriceProductId(product.id);
-    const entries = product.prices.map((p) => ({
-      currencyId: p.currencyId,
-      amount: (p.amount / 100).toFixed(2),
-      iosAmount: p.iosAmount != null ? (p.iosAmount / 100).toFixed(2) : "",
-      usualAmount: p.usualAmount != null ? (p.usualAmount / 100).toFixed(2) : "",
-    }));
-    setPriceEntries(entries);
+    setEditPriceProductId(product.id === editPriceProductId ? null : product.id);
+    // Build entries: USD (base) first, then other currencies
+    const usdEntry = {
+      currencyId: "USD",
+      amount: (product.priceAmount / 100).toFixed(2),
+      iosAmount: product.iosPriceAmount != null ? (product.iosPriceAmount / 100).toFixed(2) : "",
+      usualAmount: product.usualPrice != null ? (product.usualPrice / 100).toFixed(2) : "",
+    };
+    // Override with ProductPrice USD if it exists
+    const usdPrice = product.prices.find((p) => p.currencyId === "USD");
+    if (usdPrice) {
+      usdEntry.amount = (usdPrice.amount / 100).toFixed(2);
+      usdEntry.iosAmount = usdPrice.iosAmount != null ? (usdPrice.iosAmount / 100).toFixed(2) : "";
+      usdEntry.usualAmount = usdPrice.usualAmount != null ? (usdPrice.usualAmount / 100).toFixed(2) : "";
+    }
+    const otherEntries = product.prices
+      .filter((p) => p.currencyId !== "USD")
+      .map((p) => ({
+        currencyId: p.currencyId,
+        amount: (p.amount / 100).toFixed(2),
+        iosAmount: p.iosAmount != null ? (p.iosAmount / 100).toFixed(2) : "",
+        usualAmount: p.usualAmount != null ? (p.usualAmount / 100).toFixed(2) : "",
+      }));
+    setPriceEntries([usdEntry, ...otherEntries]);
   };
 
   const addPriceEntry = () => {
@@ -612,11 +606,10 @@ export default function AdminPage() {
   const handleSavePrices = async (productId: string) => {
     setSavingPrices(true);
     try {
-      // Get current product prices from state
       const product = products.find((p) => p.id === productId);
       const existingCurrencies = product?.prices.map((p) => p.currencyId) ?? [];
 
-      // Delete removed currencies
+      // Delete removed currencies (never delete USD — it's the base)
       const newCurrencyIds = priceEntries.map((e) => e.currencyId);
       for (const currId of existingCurrencies) {
         if (!newCurrencyIds.includes(currId)) {
@@ -628,7 +621,7 @@ export default function AdminPage() {
         }
       }
 
-      // Upsert new/updated entries
+      // Upsert all entries (including USD)
       for (const entry of priceEntries) {
         if (!entry.amount) continue;
         const amount = Math.round(parseFloat(entry.amount) * 100);
@@ -640,6 +633,17 @@ export default function AdminPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ productId, currencyId: entry.currencyId, amount, iosAmount, usualAmount }),
         });
+
+        // Sync USD base price on product record
+        if (entry.currencyId === "USD" && product && amount !== product.priceAmount) {
+          const syncBody: Record<string, unknown> = { priceAmount: amount };
+          if (usualAmount !== product.usualPrice) syncBody.usualPrice = usualAmount;
+          await fetch(`/api/admin/products/${productId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(syncBody),
+          });
+        }
       }
 
       setEditPriceProductId(null);
@@ -668,6 +672,10 @@ export default function AdminPage() {
   const [discovering, setDiscovering] = useState(false);
   const [discoverResult, setDiscoverResult] = useState<{ candidates: number; populated: number; errors: number } | null>(null);
 
+  // ISIN backfill state
+  const [backfillingIsins, setBackfillingIsins] = useState(false);
+  const [isinResult, setIsinResult] = useState<{ total: number; filled: number; remaining: number; message?: string } | null>(null);
+
   const handleDiscoverStocks = async () => {
     setDiscovering(true);
     setDiscoverResult(null);
@@ -682,6 +690,22 @@ export default function AdminPage() {
       // network error
     } finally {
       setDiscovering(false);
+    }
+  };
+
+  const handleBackfillIsins = async () => {
+    setBackfillingIsins(true);
+    setIsinResult(null);
+    try {
+      const res = await fetch("/api/admin/backfill-isins", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setIsinResult(data);
+      }
+    } catch {
+      // network error
+    } finally {
+      setBackfillingIsins(false);
     }
   };
 
@@ -716,7 +740,7 @@ export default function AdminPage() {
   if (loading || user?.role !== "ADMIN") {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
       </div>
     );
   }
@@ -733,6 +757,9 @@ export default function AdminPage() {
             <Button variant="primary" size="sm" onClick={handleDiscoverStocks} disabled={discovering}>
               {discovering ? t("refreshingStocks") : t("discoverStocks")}
             </Button>
+            <Button variant="secondary" size="sm" onClick={handleBackfillIsins} disabled={backfillingIsins}>
+              {backfillingIsins ? "Backfilling..." : "Backfill ISINs"}
+            </Button>
             <Button variant="secondary" size="sm" onClick={fetchStats} disabled={fetching}>
               {fetching ? t("refreshing") : t("refresh")}
             </Button>
@@ -741,7 +768,7 @@ export default function AdminPage() {
 
         {discoverResult && (
           <Card variant="glass">
-            <p className="text-sm text-emerald-400">
+            <p className="text-sm text-accent-fg">
               {t("stocksDiscovered", {
                 candidates: discoverResult.candidates,
                 populated: discoverResult.populated,
@@ -751,10 +778,18 @@ export default function AdminPage() {
           </Card>
         )}
 
+        {isinResult && (
+          <Card variant="glass">
+            <p className="text-sm text-accent-fg">
+              {isinResult.message ?? `Filled ${isinResult.filled} ISINs (${isinResult.remaining} remaining without ISIN)`}
+            </p>
+          </Card>
+        )}
+
         {/* Stat Cards */}
         {fetching && !stats ? (
           <div className="flex justify-center py-6">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
           </div>
         ) : statsError && !stats ? (
           <Card variant="glass" className="text-center py-4">
@@ -768,7 +803,7 @@ export default function AdminPage() {
             <Card variant="glass">
               <div className="text-sm text-text-secondary">{t("totalUsers")}</div>
               <div className="mt-1 text-3xl font-semibold text-text-primary">{stats.users.total}</div>
-              <div className="mt-1 text-xs text-emerald-400">+{stats.users.newThisWeek} {t("thisWeek")}</div>
+              <div className="mt-1 text-xs text-accent-fg">+{stats.users.newThisWeek} {t("thisWeek")}</div>
             </Card>
             <Card variant="glass">
               <div className="text-sm text-text-secondary">{t("activeSubscriptions")}</div>
@@ -815,7 +850,7 @@ export default function AdminPage() {
 
           {usersLoading ? (
             <div className="flex justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
             </div>
           ) : users.length === 0 ? (
             <p className="text-sm text-text-tertiary">{t("noUsers")}</p>
@@ -846,8 +881,8 @@ export default function AdminPage() {
                               value={editUserFields.role}
                               onChange={(e) => setEditUserFields((f) => ({ ...f, role: e.target.value }))}
                             >
-                              <option value="USER">USER</option>
-                              <option value="ADMIN">ADMIN</option>
+                              <option value="USER" className="bg-surface-elevated text-text-primary">USER</option>
+                              <option value="ADMIN" className="bg-surface-elevated text-text-primary">ADMIN</option>
                             </select>
                           ) : (
                             <Badge variant={u.role === "ADMIN" ? "warning" : "default"}>
@@ -862,9 +897,9 @@ export default function AdminPage() {
                               value={editUserFields.tier}
                               onChange={(e) => setEditUserFields((f) => ({ ...f, tier: e.target.value }))}
                             >
-                              <option value="FREE">FREE</option>
-                              <option value="PLUS">PLUS</option>
-                              <option value="PASS">PASS</option>
+                              <option value="FREE" className="bg-surface-elevated text-text-primary">FREE</option>
+                              <option value="PLUS" className="bg-surface-elevated text-text-primary">PLUS</option>
+                              <option value="PASS" className="bg-surface-elevated text-text-primary">PASS</option>
                             </select>
                           ) : (
                             <Badge variant={u.tier === "PLUS" ? "accent" : u.tier === "PASS" ? "info" : "default"}>
@@ -975,8 +1010,8 @@ export default function AdminPage() {
                     value={formType}
                     onChange={(e) => setFormType(e.target.value as "SUBSCRIPTION" | "PASS")}
                   >
-                    <option value="SUBSCRIPTION">{t("subscription")}</option>
-                    <option value="PASS">{t("pass")}</option>
+                    <option value="SUBSCRIPTION" className="bg-surface-elevated text-text-primary">{t("subscription")}</option>
+                    <option value="PASS" className="bg-surface-elevated text-text-primary">{t("pass")}</option>
                   </select>
                 </div>
               </div>
@@ -1024,8 +1059,8 @@ export default function AdminPage() {
                       value={formBillingInterval}
                       onChange={(e) => setFormBillingInterval(e.target.value as "MONTH" | "YEAR")}
                     >
-                      <option value="MONTH">{t("monthly")}</option>
-                      <option value="YEAR">{t("yearly")}</option>
+                      <option value="MONTH" className="bg-surface-elevated text-text-primary">{t("monthly")}</option>
+                      <option value="YEAR" className="bg-surface-elevated text-text-primary">{t("yearly")}</option>
                     </select>
                   </div>
                 ) : (
@@ -1036,9 +1071,9 @@ export default function AdminPage() {
                       value={formPassType}
                       onChange={(e) => setFormPassType(e.target.value as "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY")}
                     >
-                      <option value="ONE_DAY">ONE_DAY</option>
-                      <option value="THREE_DAY">THREE_DAY</option>
-                      <option value="TWELVE_DAY">TWELVE_DAY</option>
+                      <option value="ONE_DAY" className="bg-surface-elevated text-text-primary">ONE_DAY</option>
+                      <option value="THREE_DAY" className="bg-surface-elevated text-text-primary">THREE_DAY</option>
+                      <option value="TWELVE_DAY" className="bg-surface-elevated text-text-primary">TWELVE_DAY</option>
                     </select>
                   </div>
                 )}
@@ -1122,7 +1157,7 @@ export default function AdminPage() {
               </div>
 
               {createError && (
-                <p className="text-sm text-red-400">{createError}</p>
+                <p className="text-sm text-danger-fg">{createError}</p>
               )}
 
               <Button
@@ -1138,7 +1173,7 @@ export default function AdminPage() {
 
           {productsLoading ? (
             <div className="flex justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
             </div>
           ) : products.length === 0 ? (
             <p className="text-sm text-text-tertiary">{t("noProducts")}</p>
@@ -1149,239 +1184,232 @@ export default function AdminPage() {
                   <tr className="border-b border-border-subtle text-left text-text-tertiary">
                     <th className="pb-2">{t("productName")}</th>
                     <th className="pb-2">{t("productType")}</th>
-                    <th className="pb-2">{t("price")}</th>
-                    <th className="pb-2">Usual</th>
                     <th className="pb-2">{t("appleProductId")}</th>
-                    <th className="pb-2">{t("iosPrice")}</th>
-                    <th className="pb-2">Multi-Currency</th>
+                    <th className="pb-2">Prices</th>
                     <th className="pb-2">{t("status")}</th>
                     <th className="pb-2">{t("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((product) => (
-                    <tr key={product.id} className="border-b border-border-subtle/50">
-                      <td className="py-2 text-text-primary">
-                        {editingProduct === product.id ? (
-                          <input
-                            className="w-full rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                            value={editFields.name}
-                            onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))}
-                          />
-                        ) : (
-                          <>
-                            {product.name}
-                            {product.highlighted && (
-                              <Badge variant="accent" className="ml-2">{t("highlighted")}</Badge>
-                            )}
-                          </>
-                        )}
-                      </td>
-                      <td className="py-2 text-text-secondary">
-                        <Badge variant={product.type === "SUBSCRIPTION" ? "info" : "default"}>
-                          {product.type === "SUBSCRIPTION" ? t("subscription") : t("pass")}
-                        </Badge>
-                        {product.billingInterval && (
-                          <span className="ml-1 text-xs text-text-tertiary">
-                            ({product.billingInterval === "MONTH" ? t("monthly") : t("yearly")})
-                          </span>
-                        )}
-                        {product.passType && (
-                          <span className="ml-1 text-xs text-text-tertiary">
-                            ({product.passDays}d)
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 text-text-secondary">
-                        {editingProduct === product.id ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                            value={editFields.priceAmount}
-                            onChange={(e) => setEditFields((f) => ({ ...f, priceAmount: e.target.value }))}
-                          />
-                        ) : (
-                          formatCents(product.priceAmount)
-                        )}
-                      </td>
-                      <td className="py-2 text-text-secondary">
-                        {editingProduct === product.id ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                            value={editFields.usualPrice}
-                            onChange={(e) => setEditFields((f) => ({ ...f, usualPrice: e.target.value }))}
-                            placeholder="0.00"
-                          />
-                        ) : (
-                          product.usualPrice ? formatCents(product.usualPrice) : "\u2014"
-                        )}
-                      </td>
-                      <td className="py-2 text-text-secondary">
-                        {editingProduct === product.id ? (
-                          <input
-                            className="w-40 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                            value={editFields.appleProductId}
-                            onChange={(e) => setEditFields((f) => ({ ...f, appleProductId: e.target.value }))}
-                            placeholder="App Store Connect ID"
-                          />
-                        ) : (
-                          <span className="text-xs">{product.appleProductId ?? "\u2014"}</span>
-                        )}
-                      </td>
-                      <td className="py-2 text-text-secondary">
-                        {editingProduct === product.id ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                            value={editFields.iosPriceAmount}
-                            onChange={(e) => setEditFields((f) => ({ ...f, iosPriceAmount: e.target.value }))}
-                            placeholder="0.00"
-                          />
-                        ) : (
-                          product.iosPriceAmount ? formatCents(product.iosPriceAmount) : "\u2014"
-                        )}
-                      </td>
-                      <td className="py-2">
-                        {editPriceProductId === product.id ? (
-                          <div className="space-y-2 min-w-[200px]">
-                            {priceEntries.map((entry, idx) => (
-                              <div key={idx} className="flex items-center gap-1">
-                                <select
-                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
-                                  value={entry.currencyId}
-                                  onChange={(e) => {
-                                    const updated = [...priceEntries];
-                                    updated[idx] = { ...updated[idx], currencyId: e.target.value };
-                                    setPriceEntries(updated);
-                                  }}
-                                >
-                                  {currencies.filter((c) => c.active).map((c) => (
-                                    <option key={c.id} value={c.id}>{c.id}</option>
-                                  ))}
-                                </select>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
-                                  value={entry.amount}
-                                  onChange={(e) => {
-                                    const updated = [...priceEntries];
-                                    updated[idx] = { ...updated[idx], amount: e.target.value };
-                                    setPriceEntries(updated);
-                                  }}
-                                  placeholder="6.99"
-                                />
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
-                                  value={entry.iosAmount}
-                                  onChange={(e) => {
-                                    const updated = [...priceEntries];
-                                    updated[idx] = { ...updated[idx], iosAmount: e.target.value };
-                                    setPriceEntries(updated);
-                                  }}
-                                  placeholder="iOS"
-                                />
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="w-16 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
-                                  value={entry.usualAmount}
-                                  onChange={(e) => {
-                                    const updated = [...priceEntries];
-                                    updated[idx] = { ...updated[idx], usualAmount: e.target.value };
-                                    setPriceEntries(updated);
-                                  }}
-                                  placeholder="Usual"
-                                />
-                                <button onClick={() => removePriceEntry(idx)} className="text-xs text-danger-fg">&times;</button>
-                              </div>
-                            ))}
-                            <div className="flex gap-1">
-                              <button onClick={addPriceEntry} className="text-xs text-emerald-400 hover:underline">+ Add</button>
-                              <Button variant="primary" size="sm" disabled={savingPrices} onClick={() => handleSavePrices(product.id)}>
-                                {savingPrices ? "..." : "Save"}
-                              </Button>
-                              <button onClick={() => setEditPriceProductId(null)} className="text-xs text-text-tertiary hover:text-text-primary">Cancel</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            {product.prices.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {product.prices.map((p) => (
-                                  <Badge key={p.currencyId} variant={p.stripePriceId ? "success" : "warning"} className="text-[10px]">
-                                    {p.stripePriceId ? "\u2713 " : "\u26A0 "}{p.currency.symbol}{(p.amount / 100).toFixed(2)}
-                                  </Badge>
-                                ))}
-                              </div>
+                  {products.map((product) => {
+                    const priceCount = product.prices.length + (product.prices.some((p) => p.currencyId === "USD") ? 0 : 1);
+                    const priceSummary = priceCount === 1 ? "USD only" : `${priceCount} currencies`;
+                    return (
+                      <React.Fragment key={product.id}>
+                        <tr className="border-b border-border-subtle/50">
+                          <td className="py-2 text-text-primary">
+                            {editingProduct === product.id ? (
+                              <input
+                                className="w-full rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                                value={editFields.name}
+                                onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))}
+                              />
                             ) : (
-                              <span className="text-xs text-text-tertiary">&mdash;</span>
+                              <>
+                                {product.name}
+                                {product.highlighted && (
+                                  <Badge variant="accent" className="ml-2">{t("highlighted")}</Badge>
+                                )}
+                              </>
                             )}
+                          </td>
+                          <td className="py-2 text-text-secondary">
+                            <Badge variant={product.type === "SUBSCRIPTION" ? "info" : "default"}>
+                              {product.type === "SUBSCRIPTION" ? t("subscription") : t("pass")}
+                            </Badge>
+                            {product.billingInterval && (
+                              <span className="ml-1 text-xs text-text-tertiary">
+                                ({product.billingInterval === "MONTH" ? t("monthly") : t("yearly")})
+                              </span>
+                            )}
+                            {product.passType && (
+                              <span className="ml-1 text-xs text-text-tertiary">
+                                ({product.passDays}d)
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 text-text-secondary">
+                            {editingProduct === product.id ? (
+                              <input
+                                className="w-40 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                                value={editFields.appleProductId}
+                                onChange={(e) => setEditFields((f) => ({ ...f, appleProductId: e.target.value }))}
+                                placeholder="App Store Connect ID"
+                              />
+                            ) : (
+                              <span className="text-xs">{product.appleProductId ?? "\u2014"}</span>
+                            )}
+                          </td>
+                          <td className="py-2">
                             <button
                               onClick={() => startEditingPrices(product)}
-                              className="ml-1 text-xs text-emerald-400 hover:underline whitespace-nowrap"
+                              className="flex items-center gap-1 text-xs text-accent-fg hover:underline whitespace-nowrap"
                             >
-                              Edit
+                              <span className="font-medium">{formatCents(product.priceAmount)}</span>
+                              <span className="text-text-tertiary">({priceSummary})</span>
+                              <span>{editPriceProductId === product.id ? "\u25B2" : "\u25BC"}</span>
                             </button>
-                          </div>
+                          </td>
+                          <td className="py-2">
+                            <Badge variant={product.active ? "success" : "danger"}>
+                              {product.active ? t("active") : t("inactive")}
+                            </Badge>
+                          </td>
+                          <td className="py-2">
+                            <div className="flex gap-1">
+                              {editingProduct === product.id ? (
+                                <>
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    disabled={saving}
+                                    onClick={() => handleSaveProduct(product)}
+                                  >
+                                    {saving ? t("saving") : t("saveProduct")}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setEditingProduct(null)}
+                                  >
+                                    {t("cancel")}
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => startEditing(product)}
+                                  >
+                                    {t("editProduct")}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleToggleActive(product)}
+                                  >
+                                    {product.active ? t("deactivate") : t("activate")}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {/* Expandable unified pricing panel */}
+                        {editPriceProductId === product.id && (
+                          <tr>
+                            <td colSpan={6} className="p-0">
+                              <div className="border-b border-border bg-surface-elevated p-4 space-y-3">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border-subtle text-left text-text-tertiary">
+                                      <th className="pb-1 pr-2">Currency</th>
+                                      <th className="pb-1 pr-2">Price</th>
+                                      <th className="pb-1 pr-2">Usual Price</th>
+                                      <th className="pb-1 pr-2">iOS Price</th>
+                                      <th className="pb-1 pr-2">Stripe</th>
+                                      <th className="pb-1"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {priceEntries.map((entry, idx) => {
+                                      const isUsd = entry.currencyId === "USD";
+                                      const existingPrice = product.prices.find((p) => p.currencyId === entry.currencyId);
+                                      return (
+                                        <tr key={idx} className="border-b border-border-subtle/30">
+                                          <td className="py-1.5 pr-2">
+                                            {isUsd ? (
+                                              <span className="font-semibold text-text-primary">USD</span>
+                                            ) : (
+                                              <select
+                                                className="w-20 rounded border border-border bg-surface px-1 py-1 text-xs text-text-primary"
+                                                value={entry.currencyId}
+                                                onChange={(e) => {
+                                                  const updated = [...priceEntries];
+                                                  updated[idx] = { ...updated[idx], currencyId: e.target.value };
+                                                  setPriceEntries(updated);
+                                                }}
+                                              >
+                                                {currencies.filter((c) => c.active).map((c) => (
+                                                  <option key={c.id} value={c.id} className="bg-surface-elevated text-text-primary">{c.symbol} {c.id}</option>
+                                                ))}
+                                              </select>
+                                            )}
+                                          </td>
+                                          <td className="py-1.5 pr-2">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              className="w-20 rounded border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                                              value={entry.amount}
+                                              onChange={(e) => {
+                                                const updated = [...priceEntries];
+                                                updated[idx] = { ...updated[idx], amount: e.target.value };
+                                                setPriceEntries(updated);
+                                              }}
+                                              placeholder="0.00"
+                                            />
+                                          </td>
+                                          <td className="py-1.5 pr-2">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              className="w-20 rounded border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                                              value={entry.usualAmount}
+                                              onChange={(e) => {
+                                                const updated = [...priceEntries];
+                                                updated[idx] = { ...updated[idx], usualAmount: e.target.value };
+                                                setPriceEntries(updated);
+                                              }}
+                                              placeholder="0.00"
+                                            />
+                                          </td>
+                                          <td className="py-1.5 pr-2">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              className="w-20 rounded border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                                              value={entry.iosAmount}
+                                              onChange={(e) => {
+                                                const updated = [...priceEntries];
+                                                updated[idx] = { ...updated[idx], iosAmount: e.target.value };
+                                                setPriceEntries(updated);
+                                              }}
+                                              placeholder="0.00"
+                                            />
+                                          </td>
+                                          <td className="py-1.5 pr-2">
+                                            {existingPrice?.stripePriceId ? (
+                                              <span className="text-success-fg" title={existingPrice.stripePriceId}>{"\u2713"} Synced</span>
+                                            ) : (
+                                              <span className="text-text-tertiary">{"\u2014"}</span>
+                                            )}
+                                          </td>
+                                          <td className="py-1.5">
+                                            {!isUsd && (
+                                              <button onClick={() => removePriceEntry(idx)} className="text-xs text-danger-fg hover:underline">&times;</button>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={addPriceEntry} className="text-xs text-accent-fg hover:underline">+ Add Currency</button>
+                                  <Button variant="primary" size="sm" disabled={savingPrices} onClick={() => handleSavePrices(product.id)}>
+                                    {savingPrices ? "Saving..." : "Save All"}
+                                  </Button>
+                                  <button onClick={() => setEditPriceProductId(null)} className="text-xs text-text-tertiary hover:text-text-primary">Cancel</button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="py-2">
-                        <Badge variant={product.active ? "success" : "danger"}>
-                          {product.active ? t("active") : t("inactive")}
-                        </Badge>
-                      </td>
-                      <td className="py-2">
-                        <div className="flex gap-1">
-                          {editingProduct === product.id ? (
-                            <>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                disabled={saving}
-                                onClick={() => handleSaveProduct(product)}
-                              >
-                                {saving ? t("saving") : t("saveProduct")}
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setEditingProduct(null)}
-                              >
-                                {t("cancel")}
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => startEditing(product)}
-                              >
-                                {t("editProduct")}
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleToggleActive(product)}
-                              >
-                                {product.active ? t("deactivate") : t("activate")}
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1394,7 +1422,7 @@ export default function AdminPage() {
 
           {currenciesLoading ? (
             <div className="flex justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-emerald-400" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
             </div>
           ) : (
             <div className="space-y-4">
@@ -1501,8 +1529,8 @@ export default function AdminPage() {
                       value={newRcRegion}
                       onChange={(e) => setNewRcRegion(e.target.value as "GLOBAL" | "DE")}
                     >
-                      <option value="GLOBAL">GLOBAL</option>
-                      <option value="DE">DE</option>
+                      <option value="GLOBAL" className="bg-surface-elevated text-text-primary">GLOBAL</option>
+                      <option value="DE" className="bg-surface-elevated text-text-primary">DE</option>
                     </select>
                   </div>
                   <div>
@@ -1512,9 +1540,9 @@ export default function AdminPage() {
                       value={newRcCurrency}
                       onChange={(e) => setNewRcCurrency(e.target.value)}
                     >
-                      <option value="">Select...</option>
+                      <option value="" className="bg-surface-elevated text-text-primary">Select...</option>
                       {currencies.filter((c) => c.active).map((c) => (
-                        <option key={c.id} value={c.id}>{c.symbol} {c.id}</option>
+                        <option key={c.id} value={c.id} className="bg-surface-elevated text-text-primary">{c.symbol} {c.id}</option>
                       ))}
                     </select>
                   </div>
@@ -1579,7 +1607,7 @@ export default function AdminPage() {
 
                   {/* Inline editor */}
                   {editingTemplate === tmpl.slug && (
-                    <div className="mt-2 rounded-lg border border-emerald-300/30 bg-surface-elevated p-4 space-y-3">
+                    <div className="mt-2 rounded-lg border border-accent-fg/30 bg-surface-elevated p-4 space-y-3">
                       <div>
                         <label className="block text-xs font-medium text-text-secondary mb-1">Subject</label>
                         <input
@@ -1623,16 +1651,16 @@ export default function AdminPage() {
                         >
                           Link
                         </button>
-                        <button type="button" onClick={insertCtaButton} className="rounded px-2 py-1 text-xs text-emerald-400 hover:bg-surface-elevated" title="Insert CTA button">CTA</button>
+                        <button type="button" onClick={insertCtaButton} className="rounded px-2 py-1 text-xs text-accent-fg hover:bg-surface-elevated" title="Insert CTA button">CTA</button>
                         <span className="mx-1 h-4 w-px bg-border" />
                         <select
                           onChange={(e) => { if (e.target.value) { insertPlaceholder(e.target.value); e.target.value = ""; } }}
                           className="rounded border border-border bg-input-bg px-2 py-1 text-xs text-text-primary"
                           defaultValue=""
                         >
-                          <option value="" disabled>Placeholder...</option>
+                          <option value="" disabled className="bg-surface-elevated text-text-primary">Placeholder...</option>
                           {(templatePlaceholders[tmpl.slug] ?? []).map((p) => (
-                            <option key={p} value={p}>{`{{${p}}}`}</option>
+                            <option key={p} value={p} className="bg-surface-elevated text-text-primary">{`{{${p}}}`}</option>
                           ))}
                         </select>
                       </div>
@@ -1643,7 +1671,7 @@ export default function AdminPage() {
                         suppressContentEditableWarning
                         dangerouslySetInnerHTML={{ __html: editBody }}
                         onBlur={(e) => setEditBody(e.currentTarget.innerHTML)}
-                        className="min-h-[200px] rounded-lg border border-border bg-white p-4 text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                        className="min-h-[200px] rounded-lg border border-border bg-input-bg p-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-fg/50"
                         style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
                       />
 

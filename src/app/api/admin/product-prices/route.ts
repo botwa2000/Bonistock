@@ -144,6 +144,22 @@ export async function POST(req: NextRequest) {
     include: { currency: true },
   });
 
+  // Sync base price: when saving USD entry, keep product.priceAmount in sync
+  if (
+    parsed.data.currencyId.toUpperCase() === "USD" &&
+    parsed.data.amount !== product.priceAmount
+  ) {
+    await db.product.update({
+      where: { id: parsed.data.productId },
+      data: {
+        priceAmount: parsed.data.amount,
+        ...(parsed.data.usualAmount !== undefined
+          ? { usualPrice: parsed.data.usualAmount ?? null }
+          : {}),
+      },
+    });
+  }
+
   return NextResponse.json(price, { status: 201 });
 }
 
