@@ -25,7 +25,9 @@ export type BrokerId =
   | "traderepublic"
   | "scalable"
   | "ing"
-  | "comdirect";
+  | "comdirect"
+  | "consorsbank"
+  | "finanzenzero";
 
 export interface StockPick {
   symbol: string;
@@ -181,7 +183,6 @@ export interface StockFilters {
   region: Region | "all";
   sector: string;
   risk: RiskLevel | "any";
-  horizon: Horizon | "any";
   minUpside: number;
   minAnalysts: number;
   maxPrice: number;

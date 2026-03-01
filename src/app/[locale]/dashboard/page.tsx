@@ -58,8 +58,6 @@ export default function DashboardPage() {
       if (filters.region !== "all" && p.region !== filters.region) return false;
       if (filters.sector !== "all" && p.sector !== filters.sector) return false;
       if (filters.risk !== "any" && p.risk !== filters.risk) return false;
-      if (filters.horizon !== "any" && p.horizon !== filters.horizon)
-        return false;
       if (filters.broker !== "any" && !p.brokerAvailability.includes(filters.broker as any))
         return false;
       if (filters.marketCap !== "any" && p.marketCap !== filters.marketCap)

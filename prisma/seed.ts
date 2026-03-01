@@ -142,6 +142,8 @@ async function main() {
     { id: "scalable", name: "Scalable Capital", logo: "SC", fractional: true, commission: "€0.99 or flat", minDeposit: "€0", features: ["Sparplan from €1/month", "PRIME+ flat-rate trading", "7,800+ stocks & ETFs", "German BaFin regulated"], cta: "Open Scalable Capital", regions: ["de"], sparplan: true, sparplanMin: "€1" },
     { id: "ing", name: "ING", logo: "ING", fractional: false, commission: "€4.90 + 0.25%", minDeposit: "€0", features: ["Full-service banking + brokerage", "Sparplan from €1/month", "Trusted German bank", "Wide ETF selection"], cta: "Open ING Depot", regions: ["de"], sparplan: true, sparplanMin: "€1" },
     { id: "comdirect", name: "comdirect", logo: "CD", fractional: false, commission: "€3.90 + 0.25%", minDeposit: "€0", features: ["Commerzbank subsidiary", "Sparplan from €25/month", "Comprehensive research", "comdirect community"], cta: "Open comdirect Depot", regions: ["de"], sparplan: true, sparplanMin: "€25" },
+    { id: "consorsbank", name: "Consorsbank", logo: "CB", fractional: false, commission: "€4.95 + 0.25%", minDeposit: "€0", features: ["BNP Paribas subsidiary", "Sparplan from €10/month", "Wide selection of stocks & ETFs", "German BaFin regulated"], cta: "Open Consorsbank Depot", regions: ["de"], sparplan: true, sparplanMin: "€10" },
+    { id: "finanzenzero", name: "finanzen.net zero", logo: "FZ", fractional: true, commission: "€0", minDeposit: "€0", features: ["Commission-free trading", "Sparplan from €1/month", "Over 6,000 stocks & ETFs", "German BaFin regulated"], cta: "Open finanzen.net zero", regions: ["de"], sparplan: true, sparplanMin: "€1" },
   ];
 
   for (const b of brokerData) {

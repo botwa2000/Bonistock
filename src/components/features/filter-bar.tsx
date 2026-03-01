@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { brokers } from "@/lib/mock-data";
-import type { StockFilters, EtfFilters, BrokerId, Region, RiskLevel, Horizon, StockSortBy, EtfSortBy, SortDir, ViewMode, StatusFilter } from "@/lib/types";
+import type { StockFilters, EtfFilters, BrokerId, Region, RiskLevel, StockSortBy, EtfSortBy, SortDir, ViewMode, StatusFilter } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,6 @@ const defaultStockFilters: StockFilters = {
   region: "all",
   sector: "all",
   risk: "any",
-  horizon: "any",
   minUpside: 0,
   minAnalysts: 0,
   maxPrice: 10000,
@@ -221,15 +220,14 @@ export function StockFilterBar({
                 ]}
               />
               <Select
-                label={t("horizon")}
-                id="filter-horizon"
-                value={filters.horizon}
-                onChange={(v) => set("horizon", v as Horizon | "any")}
+                label={t("status")}
+                id="filter-status"
+                value={filters.status}
+                onChange={(v) => set("status", v as StatusFilter)}
                 options={[
-                  { value: "any", label: t("horizonAny") },
-                  { value: "6M", label: "6 months" },
-                  { value: "12M", label: "12 months" },
-                  { value: "24M", label: "24 months" },
+                  { value: "any", label: t("statusAny") },
+                  { value: "new", label: t("statusNew") },
+                  { value: "updated", label: t("statusUpdated") },
                 ]}
               />
             </div>
@@ -294,18 +292,6 @@ export function StockFilterBar({
                   {t("dividendOnly")}
                 </label>
               </div>
-
-              <Select
-                label={t("status")}
-                id="filter-status"
-                value={filters.status}
-                onChange={(v) => set("status", v as StatusFilter)}
-                options={[
-                  { value: "any", label: t("statusAny") },
-                  { value: "new", label: t("statusNew") },
-                  { value: "updated", label: t("statusUpdated") },
-                ]}
-              />
             </div>
 
             {filters.broker !== "any" && (
