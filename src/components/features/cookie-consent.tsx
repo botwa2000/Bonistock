@@ -16,8 +16,10 @@ interface CookieConsent {
   timestamp: string;
 }
 
-function hasConsentCookie(): boolean {
-  return document.cookie.split(";").some((c) => c.trim().startsWith(`${CONSENT_COOKIE}=`));
+function getConsentCookieVersion(): string | null {
+  const match = document.cookie.split(";").find((c) => c.trim().startsWith(`${CONSENT_COOKIE}=`));
+  if (!match) return null;
+  return match.split("=")[1]?.trim() ?? null;
 }
 
 export function CookieConsentBanner() {
@@ -27,9 +29,23 @@ export function CookieConsentBanner() {
   const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
-    if (hasConsentCookie()) return;
-
+    const cookieVersion = getConsentCookieVersion();
     const stored = localStorage.getItem(CONSENT_KEY);
+
+    // Show banner if: no cookie, wrong version, no localStorage data, or version mismatch
+    if (!cookieVersion || cookieVersion !== CONSENT_VERSION) {
+      // Clear stale data so user re-consents
+      if (stored) {
+        try {
+          const consent = JSON.parse(stored) as CookieConsent;
+          if (consent.version === CONSENT_VERSION) return; // localStorage is current, just re-set cookie
+        } catch { /* show banner */ }
+      }
+      setVisible(true);
+      return;
+    }
+
+    // Cookie version matches — verify localStorage exists and is valid
     if (!stored) {
       setVisible(true);
       return;

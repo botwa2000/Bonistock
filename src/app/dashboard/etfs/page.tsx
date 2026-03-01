@@ -157,7 +157,7 @@ export default function EtfsPage() {
               <EtfRow
                 key={etf.symbol}
                 etf={etf}
-                locked={tier === "free" && !freeSymbols.has(etf.symbol)}
+                locked={(tier === "free" || (tier === "pass" && !user?.passWindowActive)) && !freeSymbols.has(etf.symbol)}
               />
             ))}
           </div>
@@ -179,7 +179,7 @@ export default function EtfsPage() {
               <EtfCard
                 key={etf.symbol}
                 etf={etf}
-                locked={tier === "free" && !freeSymbols.has(etf.symbol)}
+                locked={(tier === "free" || (tier === "pass" && !user?.passWindowActive)) && !freeSymbols.has(etf.symbol)}
               />
             ))}
           </div>

@@ -172,11 +172,11 @@ export default function DashboardPage() {
         overline={t("topPicks")}
         title={t("upsideList")}
         action={
-          tier === "free" ? (
+          tier === "free" || (tier === "pass" && !user?.passWindowActive) ? (
             <Badge variant="warning">
               Free tier: {filtered.filter((p) => freeSymbols.has(p.symbol)).length} live of {filtered.length}
             </Badge>
-          ) : tier === "pass" ? (
+          ) : tier === "pass" && user?.passWindowActive ? (
             <Badge variant="accent">
               Pass active &mdash; full list unlocked
             </Badge>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
               <TickerRow
                 key={pick.symbol}
                 pick={pick}
-                locked={tier === "free" && !freeSymbols.has(pick.symbol)}
+                locked={(tier === "free" || (tier === "pass" && !user?.passWindowActive)) && !freeSymbols.has(pick.symbol)}
               />
             ))}
           </div>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
               <TickerCard
                 key={pick.symbol}
                 pick={pick}
-                locked={tier === "free" && !freeSymbols.has(pick.symbol)}
+                locked={(tier === "free" || (tier === "pass" && !user?.passWindowActive)) && !freeSymbols.has(pick.symbol)}
               />
             ))}
           </div>

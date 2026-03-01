@@ -17,7 +17,7 @@ const registerSchema = z.object({
   cookieConsent: z.object({
     analytics: z.boolean(),
     marketing: z.boolean(),
-  }),
+  }).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { password, name, cookieConsent } = parsed.data;
+  const { password, name } = parsed.data;
   const email = parsed.data.email.toLowerCase();
 
   const strength = validatePasswordStrength(password);
@@ -66,7 +66,6 @@ export async function POST(req: NextRequest) {
       tosAcceptedAt: new Date(),
       tosVersion: "1.0",
       privacyAcceptedAt: new Date(),
-      cookieConsent,
     },
   });
 

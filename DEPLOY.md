@@ -125,14 +125,14 @@ Re-run after major Prisma version upgrades.
 
 ### Schema changes (db push)
 
-After modifying `prisma/schema.prisma`, push changes to the database:
+After modifying `prisma/schema.prisma`, push changes to the database. Get the `DATABASE_URL` from `.secrets` or read it from a running container (see below).
 
 ```bash
 # Dev
-$SSH "cd /home/deploy/bonistock-dev && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_dev' npx prisma db push"
+$SSH "cd /home/deploy/bonistock-dev && DATABASE_URL='\$( docker exec \$(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL )' npx prisma db push"
 
 # Prod
-$SSH "cd /home/deploy/bonistock && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_prod' npx prisma db push"
+$SSH "cd /home/deploy/bonistock && DATABASE_URL='\$( docker exec \$(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL )' npx prisma db push"
 ```
 
 This runs on the **server** (not from Docker) so it uses `localhost` to reach PostgreSQL.
@@ -143,22 +143,22 @@ Seed stocks, ETFs, brokers, and demo portfolios:
 
 ```bash
 # Dev
-$SSH "cd /home/deploy/bonistock-dev && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_dev' npx tsx prisma/seed.ts"
+$SSH "cd /home/deploy/bonistock-dev && DATABASE_URL='\$( docker exec \$(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL )' npx tsx prisma/seed.ts"
 
 # Prod
-$SSH "cd /home/deploy/bonistock && DATABASE_URL='postgresql://bonifatus:Bon1fatusPr0d2026@localhost:5432/bonistock_prod' npx tsx prisma/seed.ts"
+$SSH "cd /home/deploy/bonistock && DATABASE_URL='\$( docker exec \$(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL )' npx tsx prisma/seed.ts"
 ```
 
 ### Run psql
 
 ```bash
-# Direct psql connection
-$SSH "PGPASSWORD=Bon1fatusPr0d2026 psql -h localhost -U bonifatus -d bonistock_dev"
-$SSH "PGPASSWORD=Bon1fatusPr0d2026 psql -h localhost -U bonifatus -d bonistock_prod"
-
 # Read DATABASE_URL from running container
 $SSH 'docker exec $(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL'
 $SSH 'docker exec $(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL'
+
+# Connect via psql (paste the password from .secrets or the DATABASE_URL above)
+$SSH "psql '\$( docker exec \$(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL )'"
+$SSH "psql '\$( docker exec \$(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL )'"
 ```
 
 ### Full database workflow
@@ -252,23 +252,11 @@ $SSH 'docker exec $(docker ps -q --filter name=bonistock-prod_app) cat /run/secr
 $SSH 'docker exec $(docker ps -q --filter name=bonistock-dev_app) cat /run/secrets/bonistock_dev_DATABASE_URL'
 ```
 
-## Analytics Setup (PostHog, GA4, Google Ads)
-
-All analytics keys are stored in `.env.build` on the server (see "Build-Time Variables" section above). Setup guides for each provider are in `providers.md` (sections 12 and 13).
-
----
-
 ## Build-Time Variables
 
-Baked into the Next.js client bundle at build time. Passed as `--build-arg` during `docker build` and also set as environment variables in docker-stack files.
+`NEXT_PUBLIC_*` variables are baked into the Next.js client bundle at build time. They are passed as `--build-arg` in the deploy commands above and also set as inline environment variables in the docker-stack files. Actual values are in `.secrets` (git-ignored). **Do not create `.env` files or `.env.build` files on the server** — all config flows through Docker Swarm secrets and inline build args.
 
-| Variable                          | Dev                          | Prod                     |
-|-----------------------------------|------------------------------|--------------------------|
-| `NEXT_PUBLIC_APP_URL`             | `https://dev.bonistock.com`  | `https://bonistock.com`  |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID`   | `G-4M5V64CQ8S`              | `G-4M5V64CQ8S`          |
-| `NEXT_PUBLIC_POSTHOG_KEY`         | `phc_...`                    | `phc_...`                |
-| `NEXT_PUBLIC_POSTHOG_HOST`        | `https://eu.i.posthog.com`   | `https://eu.i.posthog.com` |
-| `NEXT_PUBLIC_GOOGLE_ADS_ID`       | `AW-17983336228`             | `AW-17983336228`         |
+Setup guides for analytics providers: see `providers.md` (sections 12 and 13).
 
 ## Logs
 

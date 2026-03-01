@@ -19,8 +19,6 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [tosAccepted, setTosAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [analyticsConsent, setAnalyticsConsent] = useState(false);
-  const [marketingConsent, setMarketingConsent] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +40,6 @@ export default function RegisterPage() {
           password,
           tosAccepted,
           privacyAccepted,
-          cookieConsent: { analytics: analyticsConsent, marketing: marketingConsent },
         }),
       });
 
@@ -206,24 +203,6 @@ export default function RegisterPage() {
                   <Link href="/privacy" className="text-text-primary underline">Privacy Policy</Link>
                   {" "}(required)
                 </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={analyticsConsent}
-                  onChange={(e) => setAnalyticsConsent(e.target.checked)}
-                  className="mt-0.5 accent-emerald-400"
-                />
-                <span className="text-text-tertiary">Analytics cookies (optional)</span>
-              </label>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={marketingConsent}
-                  onChange={(e) => setMarketingConsent(e.target.checked)}
-                  className="mt-0.5 accent-emerald-400"
-                />
-                <span className="text-text-tertiary">Marketing cookies (optional)</span>
               </label>
             </div>
 

@@ -48,6 +48,11 @@ export function Analytics() {
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
 
+  // Debug: log analytics state to help diagnose tracking issues (check browser console)
+  useEffect(() => {
+    console.log("[Analytics]", { enabled, gaId: gaId ?? "(empty)", adsId: adsId ?? "(empty)", posthogKey: posthogKey ? "set" : "(empty)" });
+  }, [enabled]);
+
   if (!enabled) return null;
 
   // Build gtag config calls: GA4 + Google Ads (if set)
