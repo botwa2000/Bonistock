@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { getRegionMeta } from "@/lib/region-meta";
+import { useRegion } from "@/lib/region-context";
 
 interface RegionCurrencyInfo {
   region: string;
@@ -9,23 +10,13 @@ interface RegionCurrencyInfo {
   currency: { id: string; symbol: string };
 }
 
-function getRegionCookie(): string {
-  const match = document.cookie.match(/(?:^|;\s*)NEXT_REGION=([^;]*)/);
-  return match?.[1] ?? "GLOBAL";
-}
-
-function setRegionCookie(region: string) {
-  document.cookie = `NEXT_REGION=${region}; path=/; max-age=31536000; SameSite=Lax`;
-}
-
 export function RegionSwitcher() {
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState("GLOBAL");
+  const { region: current, setRegion } = useRegion();
   const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyInfo[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCurrent(getRegionCookie());
     fetch("/api/region-currencies")
       .then((r) => r.json())
       .then((data: RegionCurrencyInfo[]) => setRegionCurrencies(data))
@@ -43,8 +34,7 @@ export function RegionSwitcher() {
   }, []);
 
   const handleSelect = async (region: string) => {
-    setRegionCookie(region);
-    setCurrent(region);
+    setRegion(region);
     setOpen(false);
 
     // Try to persist to user settings if logged in
@@ -53,9 +43,6 @@ export function RegionSwitcher() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ region }),
     }).catch(() => {});
-
-    // Hard reload so all client components re-read the cookie on mount
-    window.location.reload();
   };
 
   // Get currency for a region from DB mappings, fallback to USD

@@ -2,6 +2,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { setRequestLocale, getMessages } from "next-intl/server";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
+import { RegionProvider } from "@/lib/region-context";
 import { CookieConsentBanner } from "@/components/features/cookie-consent";
 import { Analytics } from "@/components/features/analytics";
 import { InstallPrompt } from "@/components/features/install-prompt";
@@ -26,13 +27,15 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <AuthProvider>
-        <ThemeProvider>
-          {children}
-          <CookieConsentBanner />
-          <InstallPrompt />
-          <NativeInit />
-          <Analytics />
-        </ThemeProvider>
+        <RegionProvider>
+          <ThemeProvider>
+            {children}
+            <CookieConsentBanner />
+            <InstallPrompt />
+            <NativeInit />
+            <Analytics />
+          </ThemeProvider>
+        </RegionProvider>
       </AuthProvider>
     </NextIntlClientProvider>
   );

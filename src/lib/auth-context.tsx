@@ -11,6 +11,7 @@ import {
 } from "react";
 import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
 import { isNative, registerPushNotifications } from "@/lib/native";
+import { dispatchRegionChange } from "@/lib/region-context";
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -81,6 +82,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         // Sync region cookie with user's saved region preference
         if (data.region) {
           document.cookie = `NEXT_REGION=${data.region}; path=/; max-age=31536000; SameSite=Lax`;
+          dispatchRegionChange();
         }
 
         // Native platform setup

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import { useRegion } from "@/lib/region-context";
 import { openInAppBrowser, isIOS } from "@/lib/native";
 import { getProducts, purchaseProduct, type AppleProduct } from "@/lib/apple-iap";
 import { trackEvent } from "@/components/features/analytics";
@@ -46,27 +47,19 @@ interface RegionCurrencyInfo {
   currency: { id: string; name: string; symbol: string };
 }
 
-function getRegionCookie(): string {
-  if (typeof document === "undefined") return "GLOBAL";
-  const match = document.cookie.match(/(?:^|;\s*)NEXT_REGION=([^;]*)/);
-  return match?.[1] ?? "GLOBAL";
-}
-
 export function PricingCards() {
   const t = useTranslations("pricing");
   const router = useRouter();
   const { isLoggedIn, refreshUser } = useAuth();
+  const { region: userRegion } = useRegion();
   const [annual, setAnnual] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [appleProducts, setAppleProducts] = useState<AppleProduct[]>([]);
   const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyInfo[]>([]);
-  const [userRegion, setUserRegion] = useState("GLOBAL");
 
   useEffect(() => {
-    setUserRegion(getRegionCookie());
-
     // Fetch products and region-currency mappings in parallel
     Promise.all([
       fetch("/api/stripe/prices").then((r) => r.json()),

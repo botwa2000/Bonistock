@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
+import { useRegion } from "@/lib/region-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   const t = useTranslations("settings");
   const router = useRouter();
   const { isLoggedIn, user, refreshUser, loading } = useAuth();
+  const { setRegion } = useRegion();
   const [emailAlerts, setEmailAlerts] = useState(user?.emailAlerts ?? true);
   const [weeklyDigest, setWeeklyDigest] = useState(user?.weeklyDigest ?? true);
   const [saving, setSaving] = useState(false);
@@ -102,8 +104,7 @@ export default function SettingsPage() {
         router.refresh();
       }
       if (field === "region") {
-        document.cookie = `NEXT_REGION=${value}; path=/; max-age=31536000; SameSite=Lax`;
-        router.refresh();
+        setRegion(value);
       }
       await refreshUser();
     } finally {
