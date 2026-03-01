@@ -24,9 +24,28 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bonistock — Stock Picks & ETF Rankings",
+  metadataBase: new URL("https://bonistock.com"),
+  title: {
+    default: "Bonistock — Stock Picks & ETF Rankings",
+    template: "%s — Bonistock",
+  },
   description:
     "200+ stocks scored nightly by analyst consensus. 100+ ETFs ranked by actual 1/3/5-year returns. Free to start.",
+  openGraph: {
+    type: "website",
+    siteName: "Bonistock",
+    locale: "en_US",
+    images: ["/og-image.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  alternates: {
+    languages: {
+      en: "https://bonistock.com",
+      de: "https://bonistock.com",
+    },
+  },
   icons: {
     icon: "/favicon.ico",
     apple: "/icons/icon-192.png",

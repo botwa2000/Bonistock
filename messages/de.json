@@ -537,6 +537,56 @@
         "question": "Wie l\u00f6sche ich mein Konto oder meine Daten?",
         "answer": "Gehen Sie zu Ihrer Profilseite und scrollen Sie zum Bereich 'Konto'. Sie k\u00f6nnen alle Ihre Daten als JSON exportieren (GDPR-Export) oder Ihr Konto dauerhaft l\u00f6schen. Die L\u00f6schung entfernt alle pers\u00f6nlichen Daten, Watchlists, Benachrichtigungen und Abonnementinformationen.",
         "category": "account"
+      },
+      {
+        "question": "Welche Auto-Mix-Strategien gibt es?",
+        "answer": "Für Aktien: Max. Kurspotenzial (höchstes Analystenpotenzial), Ausgewogenes Risiko (diversifizierte Risikostufen), Dividendeneinkommen (nur dividendenzahlende Aktien) und Branchendiversifiziert (Verteilung auf Sektoren). Für ETFs: Beste Sharpe Ratio (risikoadjustierte Rendite), Niedrigste Gebühr (minimiert Kostenquoten), Höchste Rendite (Top-CAGR) und Themendiversifiziert (Verteilung auf Themen).",
+        "category": "features"
+      },
+      {
+        "question": "Was ist die Pick-Historie?",
+        "answer": "Die Pick-Historie verfolgt, wie sich unsere Aktienauswahl im Laufe der Zeit entwickelt. Sie können sehen, welche Aktien wiederholt in unseren Top-Picks erscheinen — wiederkehrende Auswahlen signalisieren anhaltende Analystenüberzeugung. Diese Funktion ist mit Plus oder einem Tagespass verfügbar.",
+        "category": "features"
+      },
+      {
+        "question": "Was ist Performance-Tracking?",
+        "answer": "Performance-Tracking ermöglicht es Ihnen, die Entwicklung Ihres Portfolios und Ihrer Watchlist über die Zeit zu verfolgen. Sehen Sie Gewinne, Verluste und Trends auf einen Blick. Diese Funktion ist mit Plus oder einem Tagespass verfügbar.",
+        "category": "features"
+      },
+      {
+        "question": "Was sind Watchlists und Benachrichtigungen?",
+        "answer": "Mit Watchlists können Sie Aktien speichern und verfolgen, die Sie interessieren. Benachrichtigungen informieren Sie, wenn eine beobachtete Aktie ein Kursziel erreicht, eine Bewertungsänderung erhält oder einen Trendwechsel zeigt (z.B. SMA 200 kreuzt). Verfügbar mit Plus oder einem Tagespass.",
+        "category": "features"
+      },
+      {
+        "question": "Welche Filter kann ich zur Aktiensuche verwenden?",
+        "answer": "Sie können nach Region, Branche, Risikostufe, Anlagehorizont, Brokerverfügbarkeit, Marktkapitalisierung, Mindestkurspotenzial, Höchstpreis, nur Dividendenzahler und Status (neu/aktualisiert) filtern. Sie können auch nach Name, Tickersymbol, ISIN oder WKN suchen.",
+        "category": "stocksEtfs"
+      },
+      {
+        "question": "Welche Anlagehorizonte stehen zur Verfügung?",
+        "answer": "Bonistock unterstützt 6-Monats-, 12-Monats- und 24-Monats-Horizonte basierend auf den Analystenzielhorizonten. Wählen Sie Ihren bevorzugten Horizont, um Aktien nach den entsprechenden Analystenpreiszielen bewertet zu sehen.",
+        "category": "stocksEtfs"
+      },
+      {
+        "question": "Welche Währungen und Regionen werden unterstützt?",
+        "answer": "Bonistock unterstützt USD (globaler Markt) und EUR (deutscher Markt). Sie können in den Einstellungen zwischen ihnen wechseln. Die Abonnementpreise passen sich automatisch an Ihre gewählte Währung an.",
+        "category": "general"
+      },
+      {
+        "question": "Kann ich mich mit Google, Facebook oder Apple anmelden?",
+        "answer": "Ja. Sie können sich zusätzlich zu E-Mail und Passwort auch mit Google, Facebook oder Apple anmelden. Zwei-Faktor-Authentifizierung (2FA) wird ebenfalls für zusätzliche Kontosicherheit unterstützt.",
+        "category": "account"
+      },
+      {
+        "question": "Welche ETF-Themen sind verfügbar?",
+        "answer": "ETF-Themen umfassen Technologie, Gesundheitswesen, Saubere Energie, Dividenden, Breiter Markt, Schwellenländer und mehr. Verwenden Sie den Themenfilter auf der ETF-Seite, um ETFs nach Anlageschwerpunkt zu durchsuchen.",
+        "category": "stocksEtfs"
+      },
+      {
+        "question": "Hat Bonistock eine mobile App?",
+        "answer": "Bonistock ist eine Progressive Web App (PWA). Tippen Sie auf jedem Gerät auf 'Zum Startbildschirm hinzufügen' in Ihrem Browser für ein App-ähnliches Erlebnis mit Offline-Unterstützung und Push-Benachrichtigungen. Eine native iOS-App kommt bald.",
+        "category": "general"
       }
     ]
   },

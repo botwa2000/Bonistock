@@ -537,6 +537,56 @@
         "question": "How do I delete my account or data?",
         "answer": "Go to your Profile page and scroll to the Account section. You can export all your data as JSON (GDPR export) or permanently delete your account. Deletion removes all personal data, watchlists, alerts, and subscription information.",
         "category": "account"
+      },
+      {
+        "question": "What Auto-Mix strategies are available?",
+        "answer": "For stocks: Max Upside (highest analyst upside), Balanced Risk (diversified risk levels), Dividend Income (dividend-paying stocks only), and Sector Diversified (spreads across sectors). For ETFs: Best Sharpe (risk-adjusted returns), Lowest Fee (minimizes expense ratios), Highest Return (top CAGR), and Theme Diversified (spreads across themes).",
+        "category": "features"
+      },
+      {
+        "question": "What is Pick History?",
+        "answer": "Pick History tracks how our stock picks evolve over time. You can see which stocks appear repeatedly in our top picks — recurring appearances signal persistent analyst conviction. This feature is available with Plus or a Day Pass.",
+        "category": "features"
+      },
+      {
+        "question": "What is Performance Tracking?",
+        "answer": "Performance Tracking lets you monitor how your portfolio and watchlist perform over time. See gains, losses, and trends at a glance. This feature is available with Plus or a Day Pass.",
+        "category": "features"
+      },
+      {
+        "question": "What are Watchlists and Alerts?",
+        "answer": "Watchlists let you save and track stocks you're interested in. Alerts notify you when a watched stock hits a price target, receives a rating change, or shifts trend (e.g., crosses SMA 200). Available with Plus or a Day Pass.",
+        "category": "features"
+      },
+      {
+        "question": "What filters can I use to find stocks?",
+        "answer": "You can filter by region, sector, risk level, investment horizon, broker availability, market cap, minimum upside, maximum price, dividend-only, and status (new/updated). You can also search by name, ticker symbol, ISIN, or WKN.",
+        "category": "stocksEtfs"
+      },
+      {
+        "question": "What investment horizons are available?",
+        "answer": "Bonistock supports 6-month, 12-month, and 24-month horizons based on analyst target timeframes. Select your preferred horizon to see stocks scored according to the matching analyst price targets.",
+        "category": "stocksEtfs"
+      },
+      {
+        "question": "What currencies and regions are supported?",
+        "answer": "Bonistock supports USD (Global market) and EUR (Germany market). You can switch between them in Settings. Subscription prices automatically adjust to your selected currency.",
+        "category": "general"
+      },
+      {
+        "question": "Can I sign in with Google, Facebook, or Apple?",
+        "answer": "Yes. You can sign in with Google, Facebook, or Apple in addition to email and password. Two-factor authentication (2FA) is also supported for extra account security.",
+        "category": "account"
+      },
+      {
+        "question": "What ETF themes are available?",
+        "answer": "ETF themes include Technology, Healthcare, Clean Energy, Dividend, Broad Market, Emerging Markets, and more. Use the theme filter on the ETF page to browse ETFs by investment focus.",
+        "category": "stocksEtfs"
+      },
+      {
+        "question": "Does Bonistock have a mobile app?",
+        "answer": "Bonistock is a Progressive Web App (PWA). On any device, tap 'Add to Home Screen' in your browser for an app-like experience with offline support and push notifications. A native iOS app is coming soon.",
+        "category": "general"
       }
     ]
   },

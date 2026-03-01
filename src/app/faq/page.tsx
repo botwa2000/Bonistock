@@ -3,7 +3,7 @@ import messages from "../../../messages/en.json";
 import FaqPageContent from "@/components/features/faq-page-content";
 
 export const metadata: Metadata = {
-  title: "FAQ — Bonistock",
+  title: "FAQ",
   description:
     "Find answers about stock scores, ETF rankings, Auto-Mix, pricing, Day Passes, and how Bonistock works.",
 };
