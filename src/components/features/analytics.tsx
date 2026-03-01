@@ -50,7 +50,8 @@ export function Analytics() {
 
   // Debug: log analytics state (check browser console)
   useEffect(() => {
-    console.log("[Analytics]", { enabled, gaId: gaId ?? "(empty)", adsId: adsId ?? "(empty)", posthogKey: posthogKey ? "set" : "(empty)" });
+    const stored = typeof window !== "undefined" ? localStorage.getItem(CONSENT_KEY) : null;
+    console.log("[Analytics]", { enabled, gaId: gaId ?? "(empty)", adsId: adsId ?? "(empty)", posthogKey: posthogKey ? "set" : "(empty)", localStorage: stored });
   }, [enabled]);
 
   // Inject scripts directly into DOM when consent is granted.
@@ -63,13 +64,7 @@ export function Analytics() {
     const hasGtag = gaId || adsId;
 
     if (hasGtag) {
-      // Load gtag.js
-      const gtagScript = document.createElement("script");
-      gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaId || adsId}`;
-      gtagScript.async = true;
-      document.head.appendChild(gtagScript);
-
-      // Initialize gtag
+      // Initialize gtag BEFORE loading external script (standard pattern — stubs push to dataLayer)
       const gtagInit = document.createElement("script");
       gtagInit.textContent = [
         "window.dataLayer = window.dataLayer || [];",
@@ -79,7 +74,15 @@ export function Analytics() {
         adsId ? `gtag('config', '${adsId}');` : "",
       ].filter(Boolean).join("\n");
       document.head.appendChild(gtagInit);
-      console.log("[Analytics] gtag scripts injected");
+
+      // Load gtag.js (processes the dataLayer queue when ready)
+      const gtagScript = document.createElement("script");
+      gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaId || adsId}`;
+      gtagScript.async = true;
+      gtagScript.onload = () => console.log("[Analytics] gtag.js loaded successfully");
+      gtagScript.onerror = (e) => console.error("[Analytics] gtag.js FAILED to load", e);
+      document.head.appendChild(gtagScript);
+      console.log("[Analytics] gtag scripts injected, waiting for load...");
     }
 
     if (posthogKey) {

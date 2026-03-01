@@ -32,13 +32,20 @@ export function CookieConsentBanner() {
     const cookieVersion = getConsentCookieVersion();
     const stored = localStorage.getItem(CONSENT_KEY);
 
+    console.log("[CookieConsent] init", { cookieVersion, hasStored: !!stored });
+
     // Show banner if: no cookie, wrong version, no localStorage data, or version mismatch
     if (!cookieVersion || cookieVersion !== CONSENT_VERSION) {
-      // Clear stale data so user re-consents
       if (stored) {
         try {
           const consent = JSON.parse(stored) as CookieConsent;
-          if (consent.version === CONSENT_VERSION) return; // localStorage is current, just re-set cookie
+          if (consent.version === CONSENT_VERSION) {
+            // localStorage is current but cookie is missing — re-set cookie and notify analytics
+            document.cookie = `${CONSENT_COOKIE}=${consent.version}; max-age=31536000; path=/; SameSite=Lax`;
+            window.dispatchEvent(new Event("cookie-consent-update"));
+            console.log("[CookieConsent] restored cookie from localStorage", consent);
+            return;
+          }
         } catch { /* show banner */ }
       }
       setVisible(true);
@@ -54,6 +61,10 @@ export function CookieConsentBanner() {
       const consent = JSON.parse(stored) as CookieConsent;
       if (consent.version !== CONSENT_VERSION) {
         setVisible(true);
+      } else {
+        // Everything valid — notify analytics in case it mounted before consent was checked
+        window.dispatchEvent(new Event("cookie-consent-update"));
+        console.log("[CookieConsent] valid consent found", consent);
       }
     } catch {
       setVisible(true);
@@ -64,6 +75,9 @@ export function CookieConsentBanner() {
     localStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
     document.cookie = `${CONSENT_COOKIE}=${consent.version}; max-age=31536000; path=/; SameSite=Lax`;
     setVisible(false);
+
+    console.log("[CookieConsent] saved", consent);
+    console.log("[CookieConsent] localStorage verify:", localStorage.getItem(CONSENT_KEY));
 
     // Notify analytics component in the same tab
     window.dispatchEvent(new Event("cookie-consent-update"));
