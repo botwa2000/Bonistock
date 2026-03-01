@@ -11,12 +11,12 @@ const SECURITY_HEADERS = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' js.stripe.com",
+    "script-src 'self' 'unsafe-inline' js.stripe.com www.googletagmanager.com *.posthog.com",
     "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
     "font-src 'self' fonts.gstatic.com",
-    "connect-src 'self' api.stripe.com *.sentry.io",
+    "connect-src 'self' api.stripe.com *.sentry.io www.google-analytics.com *.google-analytics.com *.googletagmanager.com *.posthog.com",
     "frame-src js.stripe.com",
-    "img-src 'self' data: *.googleusercontent.com *.fbsbx.com",
+    "img-src 'self' data: *.googleusercontent.com *.fbsbx.com www.googletagmanager.com",
     "worker-src 'self' blob:",
   ].join("; "),
 };
