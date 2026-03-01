@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Script from "next/script";
+import { useEffect, useState, useRef } from "react";
 
 const CONSENT_KEY = "bonistock_cookie_consent";
 
@@ -19,6 +18,7 @@ function getAnalyticsConsent(): boolean {
 
 export function Analytics() {
   const [enabled, setEnabled] = useState(false);
+  const injected = useRef(false);
 
   useEffect(() => {
     setEnabled(getAnalyticsConsent());
@@ -48,49 +48,52 @@ export function Analytics() {
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
 
-  // Debug: log analytics state to help diagnose tracking issues (check browser console)
+  // Debug: log analytics state (check browser console)
   useEffect(() => {
     console.log("[Analytics]", { enabled, gaId: gaId ?? "(empty)", adsId: adsId ?? "(empty)", posthogKey: posthogKey ? "set" : "(empty)" });
   }, [enabled]);
 
-  if (!enabled) return null;
+  // Inject scripts directly into DOM when consent is granted.
+  // Using direct DOM injection instead of next/script to avoid issues
+  // with conditional rendering after hydration.
+  useEffect(() => {
+    if (!enabled || injected.current) return;
+    injected.current = true;
 
-  // Build gtag config calls: GA4 + Google Ads (if set)
-  const gtagConfigs = [
-    gaId ? `gtag('config', '${gaId}');` : "",
-    adsId ? `gtag('config', '${adsId}');` : "",
-  ].filter(Boolean).join("\n              ");
+    const hasGtag = gaId || adsId;
 
-  const hasGtag = gaId || adsId;
+    if (hasGtag) {
+      // Load gtag.js
+      const gtagScript = document.createElement("script");
+      gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaId || adsId}`;
+      gtagScript.async = true;
+      document.head.appendChild(gtagScript);
 
-  return (
-    <>
-      {hasGtag && (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${gaId || adsId}`}
-            strategy="afterInteractive"
-          />
-          <Script id="google-analytics" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              ${gtagConfigs}
-            `}
-          </Script>
-        </>
-      )}
-      {posthogKey && (
-        <Script id="posthog-analytics" strategy="afterInteractive">
-          {`
-            !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group identify setPersonProperties setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags resetGroups onFeatureFlags addFeatureFlagsHandler onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-            posthog.init('${posthogKey}', {api_host: '${posthogHost}', defaults: '2026-01-30'});
-          `}
-        </Script>
-      )}
-    </>
-  );
+      // Initialize gtag
+      const gtagInit = document.createElement("script");
+      gtagInit.textContent = [
+        "window.dataLayer = window.dataLayer || [];",
+        "function gtag(){dataLayer.push(arguments);}",
+        "gtag('js', new Date());",
+        gaId ? `gtag('config', '${gaId}');` : "",
+        adsId ? `gtag('config', '${adsId}');` : "",
+      ].filter(Boolean).join("\n");
+      document.head.appendChild(gtagInit);
+      console.log("[Analytics] gtag scripts injected");
+    }
+
+    if (posthogKey) {
+      const phScript = document.createElement("script");
+      phScript.textContent = `
+        !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group identify setPersonProperties setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags resetGroups onFeatureFlags addFeatureFlagsHandler onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+        posthog.init('${posthogKey}', {api_host: '${posthogHost}', defaults: '2026-01-30'});
+      `;
+      document.head.appendChild(phScript);
+      console.log("[Analytics] PostHog script injected");
+    }
+  }, [enabled, gaId, adsId, posthogKey, posthogHost]);
+
+  return null;
 }
 
 /**
