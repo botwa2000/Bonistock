@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/dashboard/", "/settings", "/profile"],
+      disallow: ["/api/", "/en/dashboard/", "/de/dashboard/", "/en/settings", "/de/settings", "/en/profile", "/de/profile"],
     },
     sitemap: "https://bonistock.com/sitemap.xml",
   };

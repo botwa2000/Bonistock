@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { createPassCheckoutSession } from "@/lib/stripe";
+import { getLocalePrefix } from "@/lib/locale-path";
 import { log } from "@/lib/logger";
 
 const schema = z.object({
@@ -27,11 +28,13 @@ export async function POST(req: NextRequest) {
   log.info("stripe/pass", `User ${session.user.id} → passType=${parsed.data.passType} priceId=${parsed.data.priceId}`);
 
   try {
+    const locale = await getLocalePrefix();
     const url = await createPassCheckoutSession(
       session.user.id,
       session.user.email,
       parsed.data.priceId,
-      parsed.data.passType
+      parsed.data.passType,
+      locale
     );
     log.info("stripe/pass", `Pass checkout URL created for user ${session.user.id}`);
     return NextResponse.json({ url });

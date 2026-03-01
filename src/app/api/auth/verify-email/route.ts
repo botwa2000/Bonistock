@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { renderTemplate } from "@/lib/email-renderer";
+import { getLocalePrefix } from "@/lib/locale-path";
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
@@ -43,5 +44,6 @@ export async function GET(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
 
-  return NextResponse.redirect(`${appUrl}/login?verified=true`);
+  const locale = await getLocalePrefix();
+  return NextResponse.redirect(`${appUrl}/${locale}/login?verified=true`);
 }

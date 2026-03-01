@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Bonistock",
     short_name: "Bonistock",
     description: "Stock picks & ETF rankings",
-    start_url: "/dashboard",
+    start_url: "/en/dashboard",
     display: "standalone",
     background_color: "#0a0a0a",
     theme_color: "#10b981",

@@ -3,7 +3,7 @@
 > **Objective:** Maximum conversions (registrations + purchases)
 > **Daily budget:** ~$20–25 / ~20–25 EUR
 > **Markets:** United States (English) & Germany (German)
-> **Landing URLs:** `https://bonistock.com/pricing` and `https://bonistock.com/register`
+> **Landing URLs:** `https://bonistock.com/en/pricing` / `https://bonistock.com/de/pricing` and `https://bonistock.com/en/register` / `https://bonistock.com/de/register`
 
 ---
 
@@ -121,7 +121,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com/register` |
+| **Final URL** | `https://bonistock.com/en/register` |
 | **Headline 1** | 200+ Stocks & 100+ ETFs Ranked |
 | **Headline 2** | Analyst Consensus Rankings |
 | **Headline 3** | Free Stock & ETF Picks — Try Now |
@@ -167,7 +167,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com/register` |
+| **Final URL** | `https://bonistock.com/en/register` |
 | **Headline 1** | Auto-Mix Builds Your Portfolio |
 | **Headline 2** | Enter an Amount, Get a Plan |
 | **Headline 3** | Portfolio Builder — Free to Try |
@@ -207,7 +207,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com` |
+| **Final URL** | `https://bonistock.com/en` |
 | **Headline 1** | Bonistock — Smart Stock Picks |
 | **Headline 2** | Analyst Consensus + ETF Rankings |
 | **Headline 3** | Start Free Today |
@@ -242,7 +242,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com/register` |
+| **Final URL** | `https://bonistock.com/en/register` |
 | **Headline 1** | A Smarter Way to Pick Stocks |
 | **Headline 2** | Data, Not Opinions |
 | **Headline 3** | Free Stock & ETF Research |
@@ -315,7 +315,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com/register` |
+| **Final URL** | `https://bonistock.com/de/register` |
 | **Headline 1** | 200+ Aktien & 100+ ETFs gerankt |
 | **Headline 2** | Analystenkonsens-Rankings |
 | **Headline 3** | Kostenlos starten — Jetzt testen |
@@ -358,7 +358,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com/register` |
+| **Final URL** | `https://bonistock.com/de/register` |
 | **Headline 1** | Auto-Mix baut dein Portfolio |
 | **Headline 2** | Betrag eingeben, Plan erhalten |
 | **Headline 3** | Portfolio-Builder — Gratis testen |
@@ -398,7 +398,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com` |
+| **Final URL** | `https://bonistock.com/de` |
 | **Headline 1** | Bonistock — Kluge Aktienauswahl |
 | **Headline 2** | Analystenkonsens + ETF-Rankings |
 | **Headline 3** | Kostenlos starten |
@@ -433,7 +433,7 @@ Account
 
 | Field | Content |
 |-------|---------|
-| **Final URL** | `https://bonistock.com/register` |
+| **Final URL** | `https://bonistock.com/de/register` |
 | **Headline 1** | Aktien cleverer auswählen |
 | **Headline 2** | Daten statt Meinungen |
 | **Headline 3** | Gratis Aktien- & ETF-Research |
@@ -463,15 +463,15 @@ Account
 
 | Conversion | Type | Purpose |
 |------------|------|---------|
-| Page view: `/pricing` | Page visit | Measure pricing page interest |
-| Page view: `/dashboard` | Page visit | Measure post-registration engagement |
+| Page view: `/en/pricing` (US) / `/de/pricing` (DE) | Page visit | Measure pricing page interest |
+| Page view: `/en/dashboard` (US) / `/de/dashboard` (DE) | Page visit | Measure post-registration engagement |
 | Button click: "Start Plus" | Click event | Measure checkout intent |
 
 ### Implementation
 
 **Google Tag Manager (GTM) setup:**
 
-1. **Registration event** — fire on `/register` success callback:
+1. **Registration event** — fire on `/en/register` or `/de/register` success callback:
    ```js
    gtag('event', 'conversion', {
      'send_to': 'AW-XXXXXXXXX/registration',
@@ -540,7 +540,7 @@ Add these as **observation** (not targeting) so you collect data without restric
 | List | Definition | Use |
 |------|------------|-----|
 | All visitors (30 days) | Anyone who visited bonistock.com | Awareness baseline |
-| Pricing page visitors | Visited `/pricing` but didn't purchase | High-intent retargeting |
+| Pricing page visitors | Visited `/en/pricing` or `/de/pricing` but didn't purchase | High-intent retargeting |
 | Registered but not subscribed | Completed registration, no purchase | Upsell retargeting |
 | Cart abandoners | Clicked "Start Plus" but didn't complete | Checkout recovery |
 
@@ -550,13 +550,13 @@ Add these as **observation** (not targeting) so you collect data without restric
 
 ### Sitelink Extensions
 
-| US (English) | DE (German) | Final URL |
-|-------------|-------------|-----------|
-| Free Stock & ETF Picks | Kostenlose Aktien- & ETF-Picks | /register |
-| Pricing & Plans | Preise & Pläne | /pricing |
-| Auto-Mix Portfolio Builder | Auto-Mix Portfolio-Builder | /register |
-| How It Works | So funktioniert's | /about |
-| FAQ | Häufige Fragen | /faq |
+| US (English) | Final URL (US) | DE (German) | Final URL (DE) |
+|-------------|----------------|-------------|----------------|
+| Free Stock & ETF Picks | /en/register | Kostenlose Aktien- & ETF-Picks | /de/register |
+| Pricing & Plans | /en/pricing | Preise & Pläne | /de/pricing |
+| Auto-Mix Portfolio Builder | /en/register | Auto-Mix Portfolio-Builder | /de/register |
+| How It Works | /en/about | So funktioniert's | /de/about |
+| FAQ | /en/faq | Häufige Fragen | /de/faq |
 
 ### Callout Extensions
 
@@ -702,7 +702,7 @@ Once you have **30+ conversions** in a campaign:
 
 ## 10. Landing Page Recommendations
 
-### Registration Page (`/register`)
+### Registration Page (`/en/register` / `/de/register`)
 
 Ensure the page has:
 - [ ] Clear value proposition above the fold
@@ -714,7 +714,7 @@ Ensure the page has:
 - [ ] Page load speed < 3 seconds (Core Web Vitals)
 - [ ] Trust signals (money-back guarantee badge)
 
-### Pricing Page (`/pricing`)
+### Pricing Page (`/en/pricing` / `/de/pricing`)
 
 Ensure the page has:
 - [ ] All three tiers visible (Free, Plus, Day Pass)
@@ -728,6 +728,8 @@ Ensure the page has:
 ### URL Parameters
 
 Use `?utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_content={adgroupid}` on all final URLs for GA4 attribution beyond gclid auto-tagging.
+
+Example: `https://bonistock.com/en/register?utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_content={adgroupid}` (US) / `https://bonistock.com/de/register?utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_content={adgroupid}` (DE)
 
 ---
 

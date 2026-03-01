@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
 import { useState, useEffect } from "react";
 import { Toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth-context";
@@ -10,6 +11,7 @@ import { trackEvent } from "@/components/features/analytics";
 function PaymentToastInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const { refreshUser } = useAuth();
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" | "info" } | null>(null);
 
@@ -49,13 +51,14 @@ function PaymentToastInner() {
         .catch(() => { /* analytics failure is non-critical */ });
     }
 
-    // Clean URL params
+    // Clean URL params — use usePathname (locale-stripped) to avoid double-prefix
     const url = new URL(window.location.href);
     url.searchParams.delete("subscription");
     url.searchParams.delete("pass");
     url.searchParams.delete("canceled");
     url.searchParams.delete("session_id");
-    router.replace(url.pathname + url.search, { scroll: false });
+    const remainingSearch = url.search;
+    router.replace(pathname + remainingSearch, { scroll: false });
 
     // Refresh user tier after successful payment (webhook may need a moment)
     if (subscription === "success" || pass === "success") {
@@ -63,7 +66,7 @@ function PaymentToastInner() {
       const t2 = setTimeout(() => refreshUser(), 4000);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
-  }, [searchParams, router, refreshUser]);
+  }, [searchParams, router, pathname, refreshUser]);
 
   if (!toast) return null;
 

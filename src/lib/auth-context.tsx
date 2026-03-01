@@ -14,6 +14,11 @@ import { isNative, registerPushNotifications } from "@/lib/native";
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+function getLocaleFromPath(): string {
+  const seg = window.location.pathname.split("/")[1];
+  return seg === "de" ? "de" : "en";
+}
+
 interface UserData {
   id: string;
   email: string;
@@ -114,7 +119,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       if (loggingOut) return;
       loggingOut = true;
       signOut({ redirect: false }).then(() => {
-        window.location.href = "/login?reason=inactive";
+        window.location.href = `/${getLocaleFromPath()}/login?reason=inactive`;
       });
     };
 
@@ -172,15 +177,18 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   );
 
   const loginWithGoogle = useCallback(async () => {
-    await signIn("google", { callbackUrl: "/dashboard" });
+    const locale = getLocaleFromPath();
+    await signIn("google", { callbackUrl: `/${locale}/dashboard` });
   }, []);
 
   const loginWithFacebook = useCallback(async () => {
-    await signIn("facebook", { callbackUrl: "/dashboard" });
+    const locale = getLocaleFromPath();
+    await signIn("facebook", { callbackUrl: `/${locale}/dashboard` });
   }, []);
 
   const loginWithApple = useCallback(async () => {
-    await signIn("apple", { callbackUrl: "/dashboard" });
+    const locale = getLocaleFromPath();
+    await signIn("apple", { callbackUrl: `/${locale}/dashboard` });
   }, []);
 
   const logout = useCallback(async () => {
@@ -199,7 +207,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
     await signOut({ redirect: false });
     setUser(null);
-    window.location.href = "/";
+    window.location.href = `/${getLocaleFromPath()}`;
   }, []);
 
   return (

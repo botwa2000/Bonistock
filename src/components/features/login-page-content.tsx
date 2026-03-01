@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,17 +45,18 @@ function LoginContent() {
       if (result.ok) {
         hapticNotification("success");
         // Check if user is admin to redirect appropriately
+        const locale = window.location.pathname.split("/")[1] || "en";
         try {
           const userRes = await fetch("/api/user/settings");
           if (userRes.ok) {
             const userData = await userRes.json();
             if (userData.role === "ADMIN") {
-              window.location.href = "/dashboard/admin";
+              window.location.href = `/${locale}/dashboard/admin`;
               return;
             }
           }
         } catch { /* fallback to /dashboard */ }
-        window.location.href = "/dashboard";
+        window.location.href = `/${locale}/dashboard`;
       } else if (result.error === "2FA_REQUIRED") {
         setShow2FA(true);
       } else {
@@ -82,17 +83,18 @@ function LoginContent() {
         // Re-login after 2FA verification
         const result = await login(email, password);
         if (result.ok) {
+          const locale = window.location.pathname.split("/")[1] || "en";
           try {
             const userRes = await fetch("/api/user/settings");
             if (userRes.ok) {
               const userData = await userRes.json();
               if (userData.role === "ADMIN") {
-                window.location.href = "/dashboard/admin";
+                window.location.href = `/${locale}/dashboard/admin`;
                 return;
               }
             }
           } catch { /* fallback to /dashboard */ }
-          window.location.href = "/dashboard";
+          window.location.href = `/${locale}/dashboard`;
         }
       } else {
         const data = await res.json();

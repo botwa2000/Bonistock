@@ -1,31 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
+import { useRouter, usePathname } from "@/i18n/navigation";
 
 const locales = [
   { code: "en", label: "English", flag: "🇺🇸" },
   { code: "de", label: "Deutsch", flag: "🇩🇪" },
 ] as const;
 
-function getLocaleCookie(): string {
-  const match = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]*)/);
-  return match?.[1] ?? "en";
-}
-
-function setLocaleCookie(locale: string) {
-  document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
-}
-
 export function LanguageSwitcher() {
   const router = useRouter();
+  const pathname = usePathname();
+  const current = useLocale();
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState("en");
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setCurrent(getLocaleCookie());
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -37,22 +26,18 @@ export function LanguageSwitcher() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = async (locale: string) => {
-    setLocaleCookie(locale);
-    setCurrent(locale);
+  const handleSelect = (newLocale: string) => {
     setOpen(false);
 
     // Try to persist to user settings if logged in
     fetch("/api/user/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ language: locale.toUpperCase() }),
+      body: JSON.stringify({ language: newLocale.toUpperCase() }),
     }).catch(() => {});
 
-    router.refresh();
+    router.replace(pathname, { locale: newLocale as "en" | "de" });
   };
-
-  const currentLocale = locales.find((l) => l.code === current) ?? locales[0];
 
   return (
     <div ref={ref} className="relative">

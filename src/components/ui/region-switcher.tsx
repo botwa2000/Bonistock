@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { getRegionMeta } from "@/lib/region-meta";
 
 interface RegionCurrencyInfo {

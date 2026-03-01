@@ -60,7 +60,8 @@ export async function getOrCreateCustomer(
 export async function createCheckoutSession(
   userId: string,
   email: string,
-  priceId: string
+  priceId: string,
+  locale = "en"
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
@@ -70,8 +71,8 @@ export async function createCheckoutSession(
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/pricing?canceled=true`,
+    success_url: `${appUrl}/${locale}/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${appUrl}/${locale}/pricing?canceled=true`,
     metadata: { userId },
   });
 
@@ -83,7 +84,8 @@ export async function createPassCheckoutSession(
   userId: string,
   email: string,
   priceId: string,
-  passType: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"
+  passType: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY",
+  locale = "en"
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
@@ -94,8 +96,8 @@ export async function createPassCheckoutSession(
     customer: customerId,
     mode: "payment",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?pass=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/pricing?canceled=true`,
+    success_url: `${appUrl}/${locale}/dashboard?pass=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${appUrl}/${locale}/pricing?canceled=true`,
     metadata: { userId, passType },
     invoice_creation: { enabled: true },
     payment_intent_data: { receipt_email: email },
@@ -106,14 +108,15 @@ export async function createPassCheckoutSession(
 }
 
 export async function createCustomerPortalSession(
-  stripeCustomerId: string
+  stripeCustomerId: string,
+  locale = "en"
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
 
   const session = await getStripeClient().billingPortal.sessions.create({
     customer: stripeCustomerId,
-    return_url: `${appUrl}/settings`,
+    return_url: `${appUrl}/${locale}/settings`,
   });
 
   return session.url;

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -23,11 +23,11 @@ export function Hero() {
             <Link href="/login">
               <Button size="lg">{t("heroCta")}</Button>
             </Link>
-            <Link href="#how-it-works">
+            <a href="#how-it-works">
               <Button variant="secondary" size="lg">
                 {t("heroSecondaryCta")}
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </Container>

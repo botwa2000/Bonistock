@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import type { EtfPick, EtfFilters, EtfMixStrategy } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

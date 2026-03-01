@@ -42,8 +42,8 @@ export const metadata: Metadata = {
   },
   alternates: {
     languages: {
-      en: "https://bonistock.com",
-      de: "https://bonistock.com",
+      en: "https://bonistock.com/en",
+      de: "https://bonistock.com/de",
     },
   },
   icons: {

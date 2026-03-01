@@ -24,7 +24,8 @@ export function AccountSection() {
       const res = await fetch("/api/user/delete", { method: "POST" });
       if (res.ok) {
         await signOut({ redirect: false });
-        window.location.href = "/";
+        const locale = window.location.pathname.split("/")[1] || "en";
+        window.location.href = `/${locale}`;
       }
     } finally {
       setDeleting(false);
