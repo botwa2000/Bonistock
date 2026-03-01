@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "@/i18n/navigation";
 import { getRegionMeta } from "@/lib/region-meta";
 
 interface RegionCurrencyInfo {
@@ -20,7 +19,6 @@ function setRegionCookie(region: string) {
 }
 
 export function RegionSwitcher() {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("GLOBAL");
   const [regionCurrencies, setRegionCurrencies] = useState<RegionCurrencyInfo[]>([]);
@@ -56,7 +54,8 @@ export function RegionSwitcher() {
       body: JSON.stringify({ region }),
     }).catch(() => {});
 
-    router.refresh();
+    // Hard reload so all client components re-read the cookie on mount
+    window.location.reload();
   };
 
   // Get currency for a region from DB mappings, fallback to USD
