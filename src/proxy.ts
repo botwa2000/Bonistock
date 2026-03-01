@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "./i18n/routing";
 import { rateLimit } from "@/lib/rate-limit";
 
 const isDev = (process.env.NEXT_PUBLIC_APP_URL ?? "").includes("dev.");
@@ -27,12 +29,21 @@ const API_WINDOW = 60 * 1000;
 const AUTH_LIMIT = 10; // 10 req/min for auth routes
 const AUTH_WINDOW = 60 * 1000;
 
+const intlMiddleware = createIntlMiddleware(routing);
+
 function getClientIP(req: NextRequest): string {
   return (
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
     "unknown"
   );
+}
+
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  return response;
 }
 
 export function proxy(req: NextRequest) {
@@ -92,13 +103,21 @@ export function proxy(req: NextRequest) {
     }
   }
 
-  // Add security headers to all responses
-  const response = NextResponse.next();
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-    response.headers.set(key, value);
+  // i18n locale routing for non-API, non-static paths
+  const isApiOrStatic =
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/monitoring") ||
+    pathname.startsWith("/icons/") ||
+    pathname.includes(".");
+  if (!isApiOrStatic) {
+    const response = intlMiddleware(req);
+    return applySecurityHeaders(response);
   }
 
-  return response;
+  // Add security headers to all responses
+  const response = NextResponse.next();
+  return applySecurityHeaders(response);
 }
 
 export const config = {
