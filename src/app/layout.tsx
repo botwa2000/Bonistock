@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
-import { AuthProvider } from "@/lib/auth-context";
-import { ThemeProvider } from "@/lib/theme-provider";
-import { CookieConsentBanner } from "@/components/features/cookie-consent";
-import { Analytics } from "@/components/features/analytics";
-import { InstallPrompt } from "@/components/features/install-prompt";
-import { NativeInit } from "@/components/features/native-init";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -62,10 +55,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
-  const messages = await getMessages();
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#10b981" />
@@ -73,17 +65,7 @@ export default async function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${jetBrainsMono.variable} antialiased`}
       >
-        <NextIntlClientProvider messages={messages}>
-          <AuthProvider>
-            <ThemeProvider>
-              {children}
-              <CookieConsentBanner />
-              <InstallPrompt />
-              <NativeInit />
-              <Analytics />
-            </ThemeProvider>
-          </AuthProvider>
-        </NextIntlClientProvider>
+        {children}
       </body>
     </html>
   );
