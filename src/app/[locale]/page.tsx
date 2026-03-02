@@ -9,23 +9,24 @@ export const metadata: Metadata = {
 };
 
 function HomeJsonLd() {
-  const structuredData = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "Bonistock",
-      url: "https://bonistock.com",
-      logo: "https://bonistock.com/icons/icon-512.png",
-      description:
-        "Stock picks scored by analyst consensus and ETFs ranked by actual returns.",
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: "Bonistock",
-      url: "https://bonistock.com",
-    },
-  ];
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "Bonistock",
+        url: "https://bonistock.com",
+        logo: "https://bonistock.com/icons/icon-512.png",
+        description:
+          "Stock picks scored by analyst consensus and ETFs ranked by actual returns.",
+      },
+      {
+        "@type": "WebSite",
+        name: "Bonistock",
+        url: "https://bonistock.com",
+      },
+    ],
+  };
 
   return (
     <script
