@@ -96,10 +96,14 @@ export async function POST() {
   if (originalUser.email) {
     try {
       if (hadActiveSubscription) {
+        const paymentSource = originalUser.subscription!.paymentSource;
+        const cancelNote = paymentSource === "APPLE"
+          ? "Your Apple subscription has not been automatically canceled. Please cancel it manually in <strong>Settings > Apple ID > Subscriptions</strong> on your device to avoid further charges."
+          : "Your Stripe subscription has been canceled immediately — you will not be charged again.";
         const { subject, html } = await renderTemplate("accountDeletionWithSubscription", {
           userName: originalUser.name ?? "there",
           tier: originalUser.subscription!.tier,
-          paymentSource: originalUser.subscription!.paymentSource,
+          cancelNote,
         });
         await sendEmail(originalUser.email, subject, html);
       } else {

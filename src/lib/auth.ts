@@ -9,6 +9,7 @@ import { db } from "./db";
 import { verifyPassword } from "./password";
 import { isLockedOut, recordFailedLogin, resetFailedLogins } from "./lockout";
 import { logAudit } from "./audit";
+import { notifyAdmins } from "./admin-notify";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -145,6 +146,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      const name = user.name ?? "Unknown";
+      const email = user.email ?? "no-email";
+      await notifyAdmins(
+        `New signup: ${name} (${email})`,
+        `<h2>New User Registration (OAuth)</h2><p><strong>Name:</strong> ${name}</p><p><strong>Email:</strong> ${email}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+      );
+    },
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       // Handle OAuth sign-in for soft-deleted accounts: restore the user

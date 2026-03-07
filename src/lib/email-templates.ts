@@ -117,19 +117,31 @@ export function emailChangeConfirmation(name: string, newEmail: string, confirmU
 export function accountDeletionWithSubscriptionEmail(
   name: string,
   tier: string,
-  paymentSource: string
+  cancelNote: string
 ): string {
-  const manageNote =
-    paymentSource === "APPLE"
-      ? "Your Apple subscription has not been automatically canceled. Please cancel it manually in <strong>Settings > Apple ID > Subscriptions</strong> on your device to avoid further charges."
-      : "Your Stripe subscription has been canceled immediately — you will not be charged again.";
-
   return layout(`
     <h1>Account deleted &amp; subscription canceled</h1>
     <p>Hi ${name},</p>
     <p>Your Bonistock account has been successfully deleted. All your personal data has been anonymized and your <strong>${tier}</strong> subscription has been canceled.</p>
-    <p>${manageNote}</p>
+    <p>${cancelNote}</p>
     <p>If you change your mind, you're welcome to create a new account anytime — but please note that your previous subscription and data cannot be restored.</p>
+  `);
+}
+
+export function invoiceEmail(
+  name: string,
+  amount: string,
+  invoiceUrl: string,
+  invoiceNumber: string
+): string {
+  return layout(`
+    <h1>Your invoice</h1>
+    <p>Hi ${name},</p>
+    <p>Your payment of <strong>${amount}</strong> has been received. Invoice <strong>#${invoiceNumber}</strong> is ready.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${invoiceUrl}" class="btn">View Invoice</a>
+    </p>
+    <p>You can view, download, or print your invoice from the link above.</p>
   `);
 }
 

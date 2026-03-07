@@ -160,6 +160,28 @@ export async function POST(req: NextRequest) {
             }),
           },
         });
+
+        // Send invoice email to user
+        if (invoice.hosted_invoice_url && invoice.customer_email) {
+          const sub = await db.subscription.findUnique({
+            where: { stripeSubscriptionId: subscriptionId },
+            include: { user: { select: { email: true, name: true } } },
+          });
+          if (sub) {
+            const amount = invoice.amount_paid != null
+              ? `${(invoice.amount_paid / 100).toFixed(2)} ${(invoice.currency ?? "usd").toUpperCase()}`
+              : "";
+            const invoiceNumber = invoice.number ?? invoice.id;
+            const { subject: invSubject, html: invHtml } = await renderTemplate("invoice", {
+              userName: sub.user.name ?? "there",
+              amount,
+              invoiceUrl: invoice.hosted_invoice_url,
+              invoiceNumber,
+            });
+            await sendEmail(sub.user.email, invSubject, invHtml);
+            log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber}`);
+          }
+        }
       }
       break;
     }
@@ -218,10 +240,27 @@ export async function POST(req: NextRequest) {
         include: { user: { select: { email: true, name: true } } },
       });
       if (updSub) {
-        await notifyAdmins(
-          `Subscription updated: ${statusMap[subscription.status] ?? subscription.status}`,
-          `<h2>Subscription Updated</h2><p><strong>User:</strong> ${updSub.user.name ?? "Unknown"} (${updSub.user.email})</p><p><strong>Status:</strong> ${statusMap[subscription.status] ?? subscription.status}</p><p><strong>Cancel at period end:</strong> ${subscription.cancel_at_period_end}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
-        );
+        if (subscription.cancel_at_period_end) {
+          // Send cancellation email to user and notify admins
+          const updSubItem = subscription.items.data[0];
+          const endTimestamp = updSubItem?.current_period_end;
+          const endDate = endTimestamp ? new Date(endTimestamp * 1000).toLocaleDateString() : "soon";
+          const { subject: cancelSubject, html: cancelHtml } = await renderTemplate("subscriptionCanceled", {
+            userName: updSub.user.name ?? "there",
+            endDate,
+          });
+          await sendEmail(updSub.user.email, cancelSubject, cancelHtml);
+          await logAudit(updSub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel_scheduled" });
+          await notifyAdmins(
+            `Cancellation requested: ${updSub.user.name ?? "Unknown"}`,
+            `<h2>Subscription Cancellation Requested</h2><p><strong>User:</strong> ${updSub.user.name ?? "Unknown"} (${updSub.user.email})</p><p><strong>Access until:</strong> ${endDate}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          );
+        } else {
+          await notifyAdmins(
+            `Subscription updated: ${statusMap[subscription.status] ?? subscription.status}`,
+            `<h2>Subscription Updated</h2><p><strong>User:</strong> ${updSub.user.name ?? "Unknown"} (${updSub.user.email})</p><p><strong>Status:</strong> ${statusMap[subscription.status] ?? subscription.status}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          );
+        }
       }
       break;
     }
@@ -237,6 +276,32 @@ export async function POST(req: NextRequest) {
           where: { id: sub.id },
           data: { status: "CANCELED", tier: "FREE" },
         });
+
+        // Void open invoices and refund paid invoices within 14-day cooling-off period
+        const stripe = getStripe();
+        try {
+          const invoices = await stripe.invoices.list({
+            subscription: subscription.id,
+            limit: 5,
+          });
+          for (const inv of invoices.data) {
+            const ageMs = Date.now() - (inv.created * 1000);
+            const within14Days = ageMs < 14 * 24 * 60 * 60 * 1000;
+            if (!within14Days) continue;
+
+            if (inv.status === "open" || inv.status === "draft") {
+              await stripe.invoices.voidInvoice(inv.id);
+              log.info("stripe/webhook", `Voided invoice ${inv.id} (cooling-off)`);
+            } else if (inv.status === "paid" && inv.payment_intent) {
+              const piId = typeof inv.payment_intent === "string" ? inv.payment_intent : inv.payment_intent.id;
+              await stripe.refunds.create({ payment_intent: piId });
+              log.info("stripe/webhook", `Refunded invoice ${inv.id} (cooling-off)`);
+            }
+          }
+        } catch (err) {
+          log.error("stripe/webhook", "Failed to void/refund invoices:", err);
+        }
+
         const delSubItem = subscription.items.data[0];
         const endTimestamp = delSubItem?.current_period_end;
         const { subject: scSubject, html: scHtml } = await renderTemplate("subscriptionCanceled", {

@@ -448,6 +448,28 @@ async function seedEmailTemplates() {
     <p>Your Bonistock account has been successfully deleted. All your personal data has been anonymized.</p>
     <p>If you change your mind, you're welcome to create a new account anytime.</p>`,
     },
+    {
+      slug: "accountDeletionWithSubscription",
+      name: "Account Deleted with Subscription",
+      subject: "Your account has been deleted & subscription canceled",
+      body: `<h1>Account deleted &amp; subscription canceled</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your Bonistock account has been successfully deleted. All your personal data has been anonymized and your <strong>{{tier}}</strong> subscription has been canceled.</p>
+    <p>{{cancelNote}}</p>
+    <p>If you change your mind, you're welcome to create a new account anytime — but please note that your previous subscription and data cannot be restored.</p>`,
+    },
+    {
+      slug: "invoice",
+      name: "Invoice",
+      subject: "Invoice #{{invoiceNumber}}",
+      body: `<h1>Your invoice</h1>
+    <p>Hi {{userName}},</p>
+    <p>Your payment of <strong>{{amount}}</strong> has been received. Invoice <strong>#{{invoiceNumber}}</strong> is ready.</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="{{invoiceUrl}}" class="btn">View Invoice</a>
+    </p>
+    <p>You can view, download, or print your invoice from the link above.</p>`,
+    },
   ];
 
   for (const t of templates) {

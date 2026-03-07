@@ -17,6 +17,8 @@ const sampleVars: Record<string, Record<string, string>> = {
   emailChange: { userName: SAMPLE_NAME, newEmail: "new@example.com", confirmUrl: SAMPLE_URL },
   paymentFailed: { userName: SAMPLE_NAME, settingsUrl: SAMPLE_URL },
   accountDeletion: { userName: SAMPLE_NAME },
+  accountDeletionWithSubscription: { userName: SAMPLE_NAME, tier: "Plus", cancelNote: "Your Stripe subscription has been canceled immediately — you will not be charged again." },
+  invoice: { userName: SAMPLE_NAME, amount: "6.99 USD", invoiceUrl: SAMPLE_URL, invoiceNumber: "INV-0001" },
 };
 
 const sendSchema = z.object({

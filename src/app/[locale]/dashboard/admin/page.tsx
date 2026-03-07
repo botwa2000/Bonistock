@@ -441,6 +441,8 @@ export default function AdminPage() {
     emailChange: ["userName", "newEmail", "confirmUrl"],
     paymentFailed: ["userName", "settingsUrl"],
     accountDeletion: ["userName"],
+    accountDeletionWithSubscription: ["userName", "tier", "cancelNote"],
+    invoice: ["userName", "amount", "invoiceUrl", "invoiceNumber"],
   };
 
   const handleSendTest = async (templateId: string) => {

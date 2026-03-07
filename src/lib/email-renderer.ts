@@ -10,6 +10,7 @@ import {
   emailChangeConfirmation,
   paymentFailedEmail,
   accountDeletionWithSubscriptionEmail,
+  invoiceEmail,
 } from "@/lib/email-templates";
 
 // Hardcoded fallbacks keyed by slug
@@ -42,6 +43,10 @@ const fallbacks: Record<string, (vars: Record<string, string>) => { subject: str
     subject: "Confirm your new email",
     html: emailChangeConfirmation(v.userName ?? "", v.newEmail ?? "", v.confirmUrl ?? ""),
   }),
+  invoice: (v) => ({
+    subject: `Invoice #${v.invoiceNumber ?? ""}`,
+    html: invoiceEmail(v.userName ?? "", v.amount ?? "", v.invoiceUrl ?? "", v.invoiceNumber ?? ""),
+  }),
   paymentFailed: (v) => ({
     subject: "Payment failed",
     html: paymentFailedEmail(v.userName ?? ""),
@@ -56,7 +61,7 @@ const fallbacks: Record<string, (vars: Record<string, string>) => { subject: str
   }),
   accountDeletionWithSubscription: (v) => ({
     subject: "Your account has been deleted & subscription canceled",
-    html: accountDeletionWithSubscriptionEmail(v.userName ?? "", v.tier ?? "Plus", v.paymentSource ?? "STRIPE"),
+    html: accountDeletionWithSubscriptionEmail(v.userName ?? "", v.tier ?? "Plus", v.cancelNote ?? ""),
   }),
 };
 
