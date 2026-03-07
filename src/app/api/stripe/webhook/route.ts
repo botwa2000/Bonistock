@@ -292,8 +292,9 @@ export async function POST(req: NextRequest) {
             if (inv.status === "open" || inv.status === "draft") {
               await stripe.invoices.voidInvoice(inv.id);
               log.info("stripe/webhook", `Voided invoice ${inv.id} (cooling-off)`);
-            } else if (inv.status === "paid" && inv.payment_intent) {
-              const piId = typeof inv.payment_intent === "string" ? inv.payment_intent : inv.payment_intent.id;
+            } else if (inv.status === "paid" && (inv as any).payment_intent) {
+              const pi = (inv as any).payment_intent;
+              const piId = typeof pi === "string" ? pi : pi.id;
               await stripe.refunds.create({ payment_intent: piId });
               log.info("stripe/webhook", `Refunded invoice ${inv.id} (cooling-off)`);
             }
