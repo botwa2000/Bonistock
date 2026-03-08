@@ -37,7 +37,7 @@ const fallbacks: Record<string, (vars: Record<string, string>) => { subject: str
   }),
   subscriptionCanceled: (v) => ({
     subject: "Subscription canceled",
-    html: subscriptionCanceledEmail(v.userName ?? "", v.endDate ?? ""),
+    html: subscriptionCanceledEmail(v.userName ?? "", v.endDate ?? "", v.refundNote),
   }),
   emailChange: (v) => ({
     subject: "Confirm your new email",

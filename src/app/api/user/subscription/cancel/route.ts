@@ -58,6 +58,13 @@ export async function POST() {
     if (within14Days) {
       await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
 
+      // Update DB immediately so refreshUser() sees the change right away
+      // (webhook will also set this, but the UI needs it now)
+      await db.subscription.update({
+        where: { userId: session.user.id },
+        data: { status: "CANCELED", tier: "FREE", cancelAtPeriodEnd: false },
+      });
+
       await logAudit(session.user.id, "SUBSCRIPTION_CHANGE", {
         action: "cancel_immediate_refund",
         stripeSubscriptionId: subscription.stripeSubscriptionId,

@@ -93,11 +93,12 @@ export function subscriptionConfirmationEmail(
   `);
 }
 
-export function subscriptionCanceledEmail(name: string, endDate: string): string {
+export function subscriptionCanceledEmail(name: string, endDate: string, refundNote?: string): string {
   return layout(`
     <h1>Subscription canceled</h1>
     <p>Hi ${name},</p>
-    <p>Your subscription has been canceled. You'll continue to have access until <strong>${endDate}</strong>.</p>
+    <p>Your subscription has been canceled. Your access ends <strong>${endDate}</strong>.</p>
+    ${refundNote ? `<p style="background: #1a2e1a; border: 1px solid #2d5a2d; border-radius: 8px; padding: 12px 16px; color: #6ee7b7; font-size: 14px;">✓ ${refundNote}</p>` : ""}
     <p>You can resubscribe anytime from your account settings.</p>
   `);
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, type EmailAttachment } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
 import { notifyAdmins } from "@/lib/admin-notify";
@@ -210,8 +210,25 @@ export async function POST(req: NextRequest) {
               periodStart,
               periodEnd,
             });
-            await sendEmail(sub.user.email, invSubject, invHtml);
-            log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber}`);
+            // Fetch invoice PDF and attach it
+            const attachments: EmailAttachment[] = [];
+            if (invoice.invoice_pdf) {
+              try {
+                const pdfRes = await fetch(invoice.invoice_pdf);
+                if (pdfRes.ok) {
+                  const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+                  attachments.push({
+                    filename: `bonistock-invoice-${invoiceNumber}.pdf`,
+                    content: pdfBuffer,
+                    contentType: "application/pdf",
+                  });
+                }
+              } catch {
+                log.warn("stripe/webhook", `Failed to fetch invoice PDF for ${invoiceNumber}`);
+              }
+            }
+            await sendEmail(sub.user.email, invSubject, invHtml, attachments);
+            log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber} (pdf=${attachments.length > 0})`);
           } catch (err) {
             log.error("stripe/webhook", `Failed to send invoice email for subscription ${subscriptionId}`, err);
           }
@@ -315,6 +332,8 @@ export async function POST(req: NextRequest) {
 
         // Void open invoices and refund paid invoices within 14-day cooling-off period
         const stripe = getStripe();
+        let refundedAmount = 0;
+        let refundedCurrency = "usd";
         try {
           const invoices = await stripe.invoices.list({
             subscription: subscription.id,
@@ -338,6 +357,8 @@ export async function POST(req: NextRequest) {
               if (pi) {
                 const piId = typeof pi === "string" ? pi : pi.id;
                 await stripe.refunds.create({ payment_intent: piId });
+                refundedAmount += inv.amount_paid ?? 0;
+                refundedCurrency = inv.currency ?? "usd";
                 log.info("stripe/webhook", `Refunded invoice ${inv.id} (cooling-off)`);
               }
             }
@@ -351,19 +372,23 @@ export async function POST(req: NextRequest) {
         const wasWithin14Days = startTimestamp &&
           Date.now() - startTimestamp * 1000 < 14 * 24 * 60 * 60 * 1000;
         const endDate = wasWithin14Days
-          ? "now (14-day cooling-off refund issued)"
+          ? "now"
           : delSubItem?.current_period_end
             ? new Date(delSubItem.current_period_end * 1000).toLocaleDateString()
             : "soon";
+        const refundNote = wasWithin14Days && refundedAmount > 0
+          ? `A full refund of ${(refundedAmount / 100).toFixed(2)} ${refundedCurrency.toUpperCase()} has been issued to your original payment method. Please allow 5–10 business days for the refund to appear.`
+          : "";
         const { subject: scSubject, html: scHtml } = await renderTemplate("subscriptionCanceled", {
           userName: sub.user.name ?? "there",
           endDate,
+          refundNote,
         });
         await sendEmail(sub.user.email, scSubject, scHtml);
         await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: wasWithin14Days ? "cancel_refund" : "cancel" });
         await notifyAdmins(
           wasWithin14Days ? "Subscription canceled (14-day refund)" : "Subscription canceled",
-          `<h2>Subscription Canceled${wasWithin14Days ? " (14-day Refund)" : ""}</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          `<h2>Subscription Canceled${wasWithin14Days ? ` (Refund: ${(refundedAmount / 100).toFixed(2)} ${refundedCurrency.toUpperCase()})` : ""}</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
       }
       break;

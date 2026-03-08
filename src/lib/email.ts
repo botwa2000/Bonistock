@@ -16,10 +16,17 @@ function getTransport() {
   });
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  attachments?: EmailAttachment[]
 ): Promise<void> {
   const from = process.env.EMAIL_FROM;
   if (!from) throw new Error("Missing required env var: EMAIL_FROM");
@@ -29,7 +36,17 @@ export async function sendEmail(
 
   try {
     const transport = getTransport();
-    const info = await transport.sendMail({ from, to, subject, html });
+    const info = await transport.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      attachments: attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
+    });
     log.info("email", `Sent to=${to} messageId=${info.messageId} response="${info.response}" (${Date.now() - start}ms)`);
   } catch (err) {
     log.error("email", `Failed to send to=${to} subject="${subject}"`, err);
