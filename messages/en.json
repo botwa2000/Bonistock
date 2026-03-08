@@ -313,6 +313,7 @@
     "resumeSubscription": "Resume Subscription",
     "cancelConfirmTitle": "Cancel your subscription?",
     "cancelConfirmMessage": "You'll keep access to Plus features until {date}. After that, your account returns to the free tier.",
+    "cancelConfirmImmediate": "Your subscription started less than 14 days ago. Canceling now will end your access immediately and issue a full refund.",
     "cancelConfirmButton": "Yes, Cancel",
     "cancelKeepButton": "Keep Subscription",
     "subscriptionCanceling": "Your subscription will end on {date}.",

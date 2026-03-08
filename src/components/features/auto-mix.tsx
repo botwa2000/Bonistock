@@ -19,24 +19,21 @@ function buildAllocations(
   filtered: StockPick[],
   amount: number,
 ): { allocations: MixAllocation[]; cash: number; totalInvested: number } {
-  let top: StockPick[] = [];
+  // 1. Rank candidates by strategy
+  let ranked: StockPick[] = [];
 
   switch (strategy) {
-    case "maxUpside": {
-      const ranked = [...filtered].sort((a, b) => b.upside - a.upside);
-      const avgPrice = ranked.length > 0 ? ranked.reduce((s, p) => s + p.price, 0) / ranked.length : 100;
-      const maxPicks = Math.min(Math.max(Math.floor(amount / avgPrice), 2), Math.min(ranked.length, 8));
-      top = ranked.slice(0, Math.max(maxPicks, Math.min(4, ranked.length)));
+    case "maxUpside":
+      ranked = [...filtered].sort((a, b) => b.upside - a.upside);
       break;
-    }
     case "balancedRisk": {
       const safe = filtered.filter((p) => p.risk === "low" || p.risk === "balanced");
-      top = [...safe].sort((a, b) => b.upside - a.upside).slice(0, 8);
+      ranked = [...safe].sort((a, b) => b.upside - a.upside);
       break;
     }
     case "dividendIncome": {
       const divStocks = filtered.filter((p) => p.dividendYield > 0);
-      top = [...divStocks].sort((a, b) => b.dividendYield - a.dividendYield).slice(0, 8);
+      ranked = [...divStocks].sort((a, b) => b.dividendYield - a.dividendYield);
       break;
     }
     case "sectorDiversified": {
@@ -45,45 +42,60 @@ function buildAllocations(
       for (const p of sorted) {
         if (!bySector.has(p.sector)) bySector.set(p.sector, p);
       }
-      top = [...bySector.values()].slice(0, 8);
+      ranked = [...bySector.values()];
       break;
     }
   }
 
-  if (top.length === 0) return { allocations: [], cash: amount, totalInvested: 0 };
-
-  // Remove stocks that cost more than their equal-share budget allows (at least 1 whole share)
-  const perPosition = amount / top.length;
-  const affordable = top.filter((p) => p.price <= perPosition);
+  // 2. Only keep stocks we can afford at least 1 share of
+  const affordable = ranked.filter((p) => p.price <= amount);
   if (affordable.length === 0) return { allocations: [], cash: amount, totalInvested: 0 };
 
-  // Weighting: maxUpside uses inverse-rank, others use equal weight
-  const useRankWeight = strategy === "maxUpside";
-  const weightSum = useRankWeight
-    ? affordable.reduce((sum, _, idx) => sum + (affordable.length - idx), 0)
-    : affordable.length;
+  // 3. Determine target positions (aim for 4-8 based on budget and prices)
+  const targetPositions = Math.min(affordable.length, 8);
+  const picks = affordable.slice(0, targetPositions);
 
-  const allocations: MixAllocation[] = affordable.map((p, idx) => {
-    const weight = useRankWeight ? (affordable.length - idx) / weightSum : 1 / weightSum;
-    const dollars = Math.round(amount * weight * 100) / 100;
-    const shares = Math.floor(dollars / p.price);
-    const spend = Math.round(shares * p.price * 100) / 100;
+  // 4. First pass: equal allocation, buy whole shares
+  const perPosition = amount / picks.length;
+  const shares = new Map<string, number>();
+  for (const p of picks) {
+    shares.set(p.symbol, Math.floor(perPosition / p.price));
+  }
+
+  // Remove picks where 0 shares could be bought
+  const filled = picks.filter((p) => (shares.get(p.symbol) ?? 0) > 0);
+  if (filled.length === 0) return { allocations: [], cash: amount, totalInvested: 0 };
+
+  // 5. Redistribute leftover: buy more shares starting from top-ranked
+  let spent = filled.reduce((s, p) => s + (shares.get(p.symbol) ?? 0) * p.price, 0);
+  let remaining = amount - spent;
+  for (const p of filled) {
+    while (remaining >= p.price) {
+      shares.set(p.symbol, (shares.get(p.symbol) ?? 0) + 1);
+      remaining -= p.price;
+      spent += p.price;
+    }
+  }
+
+  // 6. Build allocations with actual spend
+  const allocations: MixAllocation[] = filled.map((p) => {
+    const count = shares.get(p.symbol) ?? 0;
+    const positionSpend = Math.round(count * p.price * 100) / 100;
     return {
       symbol: p.symbol,
       name: p.name,
       price: p.price,
       risk: p.risk,
-      weight,
-      dollars,
-      shares,
-      spend,
+      weight: spent > 0 ? positionSpend / spent : 0,
+      dollars: positionSpend,
+      shares: count,
+      spend: positionSpend,
       upside: p.upside,
     };
   });
 
-  const spent = allocations.reduce((s, a) => s + a.spend, 0);
   const cash = Math.round((amount - spent) * 100) / 100;
-  return { allocations, cash, totalInvested: spent };
+  return { allocations, cash, totalInvested: Math.round(spent * 100) / 100 };
 }
 
 export function AutoMix() {
@@ -214,9 +226,9 @@ export function AutoMix() {
               <div key={alloc.symbol} className="relative">
                 {stock && <TickerCard pick={stock} compact />}
                 <div className="mt-1 flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated/80 px-3 py-1.5 text-xs">
+                  <span className="font-semibold text-text-primary">{alloc.shares} × {formatPrice(alloc.price)}</span>
+                  <span className="text-text-secondary">{formatPrice(alloc.spend)}</span>
                   <Badge>{Math.round(alloc.weight * 100)}%</Badge>
-                  <span className="text-text-secondary">{formatPrice(alloc.dollars)}</span>
-                  <span className="font-semibold text-text-primary">{alloc.shares} {alloc.shares === 1 ? "share" : "shares"}</span>
                 </div>
               </div>
             );

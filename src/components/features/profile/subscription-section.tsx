@@ -17,6 +17,7 @@ interface SubscriptionInfo {
   planName?: string;
   planPrice?: string;
   billingInterval?: string | null;
+  currentPeriodStart?: string | null;
   currentPeriodEnd?: string | null;
   cancelAtPeriodEnd?: boolean;
 }
@@ -74,15 +75,22 @@ export function SubscriptionSection() {
       const res = await fetch("/api/user/subscription/cancel", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setSubInfo((prev) =>
-          prev
-            ? {
-                ...prev,
-                cancelAtPeriodEnd: true,
-                currentPeriodEnd: data.currentPeriodEnd ?? prev.currentPeriodEnd,
-              }
-            : prev
-        );
+        if (data.canceled) {
+          // Immediate cancel (14-day cooling-off) — subscription is gone, refresh user
+          await refreshUser();
+          setSubInfo(null);
+        } else {
+          // Cancel at period end — subscription stays active until end date
+          setSubInfo((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  cancelAtPeriodEnd: true,
+                  currentPeriodEnd: data.currentPeriodEnd ?? prev.currentPeriodEnd,
+                }
+              : prev
+          );
+        }
         setShowCancelConfirm(false);
       }
     } finally {
@@ -95,9 +103,16 @@ export function SubscriptionSection() {
     try {
       const res = await fetch("/api/user/subscription/resume", { method: "POST" });
       if (res.ok) {
+        const data = await res.json();
+        if (data.redirect) {
+          // Subscription was fully canceled — redirect to resubscribe
+          window.location.href = data.redirect;
+          return;
+        }
         setSubInfo((prev) =>
           prev ? { ...prev, cancelAtPeriodEnd: false } : prev
         );
+        await refreshUser();
       }
     } finally {
       setActionLoading(false);
@@ -186,13 +201,18 @@ export function SubscriptionSection() {
           ) : null}
 
           {/* Cancel confirmation (inline) */}
-          {showCancelConfirm && (
+          {showCancelConfirm && (() => {
+            const within14Days = subInfo?.currentPeriodStart &&
+              Date.now() - new Date(subInfo.currentPeriodStart).getTime() < 14 * 24 * 60 * 60 * 1000;
+            return (
             <div className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 space-y-2">
               <p className="text-sm font-medium text-warning-fg">
                 {t("cancelConfirmTitle")}
               </p>
               <p className="text-xs text-text-secondary">
-                {t("cancelConfirmMessage", { date: periodEndDate ?? "" })}
+                {within14Days
+                  ? t("cancelConfirmImmediate")
+                  : t("cancelConfirmMessage", { date: periodEndDate ?? "" })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -213,7 +233,8 @@ export function SubscriptionSection() {
                 </Button>
               </div>
             </div>
-          )}
+          );
+          })()}
         </div>
       )}
 

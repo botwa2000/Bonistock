@@ -16,6 +16,7 @@ export async function GET() {
       stripePriceId: true,
       paymentSource: true,
       appleOriginalTransactionId: true,
+      currentPeriodStart: true,
       currentPeriodEnd: true,
       cancelAtPeriodEnd: true,
     },
@@ -55,6 +56,7 @@ export async function GET() {
     planName,
     planPrice,
     billingInterval,
+    currentPeriodStart: subscription.currentPeriodStart?.toISOString() ?? null,
     currentPeriodEnd: subscription.currentPeriodEnd?.toISOString() ?? null,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
   });

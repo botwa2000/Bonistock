@@ -313,6 +313,7 @@
     "resumeSubscription": "Abonnement fortsetzen",
     "cancelConfirmTitle": "Abonnement k\u00fcndigen?",
     "cancelConfirmMessage": "Sie behalten den Zugriff auf Plus-Funktionen bis {date}. Danach kehrt Ihr Konto zum kostenlosen Tarif zur\u00fcck.",
+    "cancelConfirmImmediate": "Ihr Abonnement wurde vor weniger als 14 Tagen abgeschlossen. Eine K\u00fcndigung jetzt beendet den Zugang sofort und erstattet den vollen Betrag.",
     "cancelConfirmButton": "Ja, k\u00fcndigen",
     "cancelKeepButton": "Abonnement behalten",
     "subscriptionCanceling": "Ihr Abonnement endet am {date}.",

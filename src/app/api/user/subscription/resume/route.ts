@@ -22,10 +22,8 @@ export async function POST() {
   });
 
   if (!subscription) {
-    return NextResponse.json(
-      { error: "No active subscription found" },
-      { status: 404 }
-    );
+    // No subscription at all — redirect to pricing to resubscribe
+    return NextResponse.json({ redirect: "/pricing" });
   }
 
   if (subscription.paymentSource === "APPLE") {
@@ -35,11 +33,9 @@ export async function POST() {
     );
   }
 
-  if (!subscription.stripeSubscriptionId) {
-    return NextResponse.json(
-      { error: "No active subscription found" },
-      { status: 404 }
-    );
+  // Subscription was fully canceled (e.g. 14-day refund) — redirect to resubscribe
+  if (subscription.status === "CANCELED" || !subscription.stripeSubscriptionId) {
+    return NextResponse.json({ redirect: "/pricing" });
   }
 
   if (!subscription.cancelAtPeriodEnd) {
