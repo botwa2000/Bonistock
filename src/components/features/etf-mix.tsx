@@ -28,41 +28,44 @@ function buildEtfAllocations(
   candidates: EtfPick[],
   amount: number,
 ): { allocations: EtfAllocation[]; cash: number } {
-  let top: EtfPick[] = [];
+  // 1. Rank candidates by strategy
+  let ranked: EtfPick[] = [];
 
   switch (strategy) {
-    case "bestSharpe": {
-      top = [...candidates].sort((a, b) => b.sharpe - a.sharpe).slice(0, 5);
+    case "bestSharpe":
+      ranked = [...candidates].sort((a, b) => b.sharpe - a.sharpe);
       break;
-    }
     case "lowestFee": {
       const withFee = candidates.filter((e) => e.fee != null);
-      top = [...withFee].sort((a, b) => (a.fee ?? 99) - (b.fee ?? 99)).slice(0, 5);
+      ranked = [...withFee].sort((a, b) => (a.fee ?? 99) - (b.fee ?? 99));
       break;
     }
-    case "highestReturn": {
-      top = [...candidates].sort((a, b) => (b.cagr5y ?? b.cagr1y ?? 0) - (a.cagr5y ?? a.cagr1y ?? 0)).slice(0, 5);
+    case "highestReturn":
+      ranked = [...candidates].sort((a, b) => (b.cagr5y ?? b.cagr1y ?? 0) - (a.cagr5y ?? a.cagr1y ?? 0));
       break;
-    }
     case "themeDiversified": {
       const byTheme = new Map<string, EtfPick>();
       const sorted = [...candidates].sort((a, b) => b.sharpe - a.sharpe);
       for (const e of sorted) {
         if (!byTheme.has(e.theme)) byTheme.set(e.theme, e);
       }
-      top = [...byTheme.values()].slice(0, 5);
+      ranked = [...byTheme.values()];
       break;
     }
   }
 
-  if (top.length === 0) return { allocations: [], cash: amount };
+  if (ranked.length === 0) return { allocations: [], cash: amount };
 
-  // bestSharpe weights by Sharpe ratio; others use equal weight
+  // 2. Scale positions with budget: 3 at $100, up to 10 at $10k+
+  const maxPositions = Math.min(ranked.length, Math.max(3, Math.min(10, Math.floor(amount / 1000) + 3)));
+  const top = ranked.slice(0, maxPositions);
+
+  // 3. Weight: bestSharpe by Sharpe ratio, others equal weight
   const useSharpeWeight = strategy === "bestSharpe";
-  const totalSharpe = useSharpeWeight ? top.reduce((sum, e) => sum + e.sharpe, 0) : 0;
+  const totalSharpe = useSharpeWeight ? top.reduce((sum, e) => sum + Math.max(e.sharpe, 0), 0) : 0;
 
   const allocations: EtfAllocation[] = top.map((e) => {
-    const weight = useSharpeWeight && totalSharpe > 0 ? e.sharpe / totalSharpe : 1 / top.length;
+    const weight = useSharpeWeight && totalSharpe > 0 ? Math.max(e.sharpe, 0) / totalSharpe : 1 / top.length;
     const dollars = Math.round(amount * weight * 100) / 100;
     return {
       symbol: e.symbol,
