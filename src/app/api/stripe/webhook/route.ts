@@ -142,10 +142,11 @@ export async function POST(req: NextRequest) {
 
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice;
-      if ((invoice as any).subscription) {
-        const subscriptionId = typeof (invoice as any).subscription === "string"
-          ? (invoice as any).subscription
-          : (invoice as any).subscription.id;
+      const invSubscription = (invoice as any).subscription;
+      if (invSubscription) {
+        const subscriptionId = typeof invSubscription === "string"
+          ? invSubscription
+          : invSubscription.id;
         const stripeSubscription = await getStripe().subscriptions.retrieve(subscriptionId);
         const invSubItem = stripeSubscription.items.data[0];
         await db.subscription.updateMany({
@@ -170,38 +171,47 @@ export async function POST(req: NextRequest) {
         });
         if (!sub && invoice.customer) {
           const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer.id;
+          log.info("stripe/webhook", `invoice.paid: subscription not found by subscriptionId=${subscriptionId}, trying customerId=${customerId}`);
           sub = await db.subscription.findUnique({
             where: { stripeCustomerId: customerId },
             include: { user: { select: { email: true, name: true } } },
           });
         }
         if (sub) {
-          const amount = invoice.amount_paid != null
-            ? `${(invoice.amount_paid / 100).toFixed(2)} ${(invoice.currency ?? "usd").toUpperCase()}`
-            : "";
-          const invoiceNumber = invoice.number ?? invoice.id;
-          const priceName = stripeSubscription.items.data[0]?.price;
-          const interval = priceName?.recurring?.interval;
-          const planName = `Plus ${interval === "year" ? "Annual" : "Monthly"}`;
-          const periodStart = invSubItem?.current_period_start
-            ? new Date(invSubItem.current_period_start * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-            : "";
-          const periodEnd = invSubItem?.current_period_end
-            ? new Date(invSubItem.current_period_end * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-            : "";
-          const invoiceUrl = invoice.hosted_invoice_url ?? "";
-          const { subject: invSubject, html: invHtml } = await renderTemplate("invoice", {
-            userName: sub.user.name ?? "there",
-            amount,
-            invoiceUrl,
-            invoiceNumber,
-            planName,
-            periodStart,
-            periodEnd,
-          });
-          await sendEmail(sub.user.email, invSubject, invHtml);
-          log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber}`);
+          try {
+            const amount = invoice.amount_paid != null
+              ? `${(invoice.amount_paid / 100).toFixed(2)} ${(invoice.currency ?? "usd").toUpperCase()}`
+              : "";
+            const invoiceNumber = invoice.number ?? invoice.id;
+            const priceName = stripeSubscription.items.data[0]?.price;
+            const interval = priceName?.recurring?.interval;
+            const planName = `Plus ${interval === "year" ? "Annual" : "Monthly"}`;
+            const periodStart = invSubItem?.current_period_start
+              ? new Date(invSubItem.current_period_start * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+              : "";
+            const periodEnd = invSubItem?.current_period_end
+              ? new Date(invSubItem.current_period_end * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+              : "";
+            const invoiceUrl = invoice.hosted_invoice_url ?? "";
+            const { subject: invSubject, html: invHtml } = await renderTemplate("invoice", {
+              userName: sub.user.name ?? "there",
+              amount,
+              invoiceUrl,
+              invoiceNumber,
+              planName,
+              periodStart,
+              periodEnd,
+            });
+            await sendEmail(sub.user.email, invSubject, invHtml);
+            log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber}`);
+          } catch (err) {
+            log.error("stripe/webhook", `Failed to send invoice email for subscription ${subscriptionId}`, err);
+          }
+        } else {
+          log.warn("stripe/webhook", `invoice.paid: could not find subscription for subscriptionId=${subscriptionId}, customer=${invoice.customer}`);
         }
+      } else {
+        log.info("stripe/webhook", `invoice.paid: no subscription on invoice ${invoice.id}, skipping`);
       }
       break;
     }
