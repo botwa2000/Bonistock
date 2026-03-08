@@ -442,7 +442,7 @@ export default function AdminPage() {
     paymentFailed: ["userName", "settingsUrl"],
     accountDeletion: ["userName"],
     accountDeletionWithSubscription: ["userName", "tier", "cancelNote"],
-    invoice: ["userName", "amount", "invoiceUrl", "invoiceNumber"],
+    invoice: ["userName", "amount", "invoiceUrl", "invoiceNumber", "planName", "periodStart", "periodEnd"],
   };
 
   const handleSendTest = async (templateId: string) => {

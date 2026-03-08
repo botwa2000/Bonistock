@@ -45,7 +45,7 @@ const fallbacks: Record<string, (vars: Record<string, string>) => { subject: str
   }),
   invoice: (v) => ({
     subject: `Invoice #${v.invoiceNumber ?? ""}`,
-    html: invoiceEmail(v.userName ?? "", v.amount ?? "", v.invoiceUrl ?? "", v.invoiceNumber ?? ""),
+    html: invoiceEmail(v.userName ?? "", v.amount ?? "", v.invoiceUrl ?? "", v.invoiceNumber ?? "", v.planName ?? "", v.periodStart ?? "", v.periodEnd ?? ""),
   }),
   paymentFailed: (v) => ({
     subject: "Payment failed",

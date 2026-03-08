@@ -464,11 +464,16 @@ async function seedEmailTemplates() {
       subject: "Invoice #{{invoiceNumber}}",
       body: `<h1>Your invoice</h1>
     <p>Hi {{userName}},</p>
-    <p>Your payment of <strong>{{amount}}</strong> has been received. Invoice <strong>#{{invoiceNumber}}</strong> is ready.</p>
+    <p>Thank you for your payment. Here are your invoice details:</p>
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+      <tr><td style="padding: 8px 0; color: #a3a3a3; font-size: 14px;">Invoice</td><td style="padding: 8px 0; color: #ffffff; font-size: 14px; text-align: right;"><strong>#{{invoiceNumber}}</strong></td></tr>
+      <tr><td style="padding: 8px 0; border-top: 1px solid #262626; color: #a3a3a3; font-size: 14px;">Plan</td><td style="padding: 8px 0; border-top: 1px solid #262626; color: #ffffff; font-size: 14px; text-align: right;">{{planName}}</td></tr>
+      <tr><td style="padding: 8px 0; border-top: 1px solid #262626; color: #a3a3a3; font-size: 14px;">Period</td><td style="padding: 8px 0; border-top: 1px solid #262626; color: #ffffff; font-size: 14px; text-align: right;">{{periodStart}} — {{periodEnd}}</td></tr>
+      <tr><td style="padding: 8px 0; border-top: 1px solid #262626; color: #a3a3a3; font-size: 14px;">Amount paid</td><td style="padding: 8px 0; border-top: 1px solid #262626; color: #ffffff; font-size: 14px; text-align: right;"><strong>{{amount}}</strong></td></tr>
+    </table>
     <p style="text-align: center; margin: 24px 0;">
       <a href="{{invoiceUrl}}" class="btn">View Invoice</a>
-    </p>
-    <p>You can view, download, or print your invoice from the link above.</p>`,
+    </p>`,
     },
   ];
 

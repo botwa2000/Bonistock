@@ -162,25 +162,36 @@ export async function POST(req: NextRequest) {
         });
 
         // Send invoice email to user
-        if (invoice.hosted_invoice_url && invoice.customer_email) {
-          const sub = await db.subscription.findUnique({
-            where: { stripeSubscriptionId: subscriptionId },
-            include: { user: { select: { email: true, name: true } } },
+        const sub = await db.subscription.findUnique({
+          where: { stripeSubscriptionId: subscriptionId },
+          include: { user: { select: { email: true, name: true } } },
+        });
+        if (sub) {
+          const amount = invoice.amount_paid != null
+            ? `${(invoice.amount_paid / 100).toFixed(2)} ${(invoice.currency ?? "usd").toUpperCase()}`
+            : "";
+          const invoiceNumber = invoice.number ?? invoice.id;
+          const priceName = stripeSubscription.items.data[0]?.price;
+          const interval = priceName?.recurring?.interval;
+          const planName = `Plus ${interval === "year" ? "Annual" : "Monthly"}`;
+          const periodStart = invSubItem?.current_period_start
+            ? new Date(invSubItem.current_period_start * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "";
+          const periodEnd = invSubItem?.current_period_end
+            ? new Date(invSubItem.current_period_end * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "";
+          const invoiceUrl = invoice.hosted_invoice_url ?? "";
+          const { subject: invSubject, html: invHtml } = await renderTemplate("invoice", {
+            userName: sub.user.name ?? "there",
+            amount,
+            invoiceUrl,
+            invoiceNumber,
+            planName,
+            periodStart,
+            periodEnd,
           });
-          if (sub) {
-            const amount = invoice.amount_paid != null
-              ? `${(invoice.amount_paid / 100).toFixed(2)} ${(invoice.currency ?? "usd").toUpperCase()}`
-              : "";
-            const invoiceNumber = invoice.number ?? invoice.id;
-            const { subject: invSubject, html: invHtml } = await renderTemplate("invoice", {
-              userName: sub.user.name ?? "there",
-              amount,
-              invoiceUrl: invoice.hosted_invoice_url,
-              invoiceNumber,
-            });
-            await sendEmail(sub.user.email, invSubject, invHtml);
-            log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber}`);
-          }
+          await sendEmail(sub.user.email, invSubject, invHtml);
+          log.info("stripe/webhook", `Invoice email sent to ${sub.user.email} for invoice ${invoiceNumber}`);
         }
       }
       break;
