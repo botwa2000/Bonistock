@@ -52,16 +52,21 @@ function buildAllocations(
 
   if (top.length === 0) return { allocations: [], cash: amount, totalInvested: 0 };
 
+  // Remove stocks that cost more than their equal-share budget allows (at least 1 whole share)
+  const perPosition = amount / top.length;
+  const affordable = top.filter((p) => p.price <= perPosition);
+  if (affordable.length === 0) return { allocations: [], cash: amount, totalInvested: 0 };
+
   // Weighting: maxUpside uses inverse-rank, others use equal weight
   const useRankWeight = strategy === "maxUpside";
   const weightSum = useRankWeight
-    ? top.reduce((sum, _, idx) => sum + (top.length - idx), 0)
-    : top.length;
+    ? affordable.reduce((sum, _, idx) => sum + (affordable.length - idx), 0)
+    : affordable.length;
 
-  const allocations: MixAllocation[] = top.map((p, idx) => {
-    const weight = useRankWeight ? (top.length - idx) / weightSum : 1 / weightSum;
+  const allocations: MixAllocation[] = affordable.map((p, idx) => {
+    const weight = useRankWeight ? (affordable.length - idx) / weightSum : 1 / weightSum;
     const dollars = Math.round(amount * weight * 100) / 100;
-    const shares = Math.floor((dollars / p.price) * 100) / 100;
+    const shares = Math.floor(dollars / p.price);
     const spend = Math.round(shares * p.price * 100) / 100;
     return {
       symbol: p.symbol,
@@ -148,17 +153,46 @@ export function AutoMix() {
       </div>
       <p className="text-xs text-text-tertiary">{t(`strategyDesc_${strategy}`)}</p>
 
-      <Card variant="glass" padding="sm" className="flex items-center gap-3">
-        <Input
-          label={t("amount")}
-          id="mix-amount"
-          type="number"
-          value={amount}
-          min={50}
-          max={10000}
-          step={50}
-          onChange={(e) => setAmount(Number(e.target.value) || 0)}
-        />
+      <Card variant="glass" padding="sm" className="space-y-3 px-4 py-3">
+        <label className="text-xs text-text-secondary">{t("amount")}</label>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-text-tertiary">$50</span>
+          <input
+            type="range"
+            min={50}
+            max={10000}
+            step={50}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            className="flex-1 accent-emerald-400"
+          />
+          <span className="text-xs text-text-tertiary">$10k</span>
+          <Input
+            id="mix-amount"
+            type="number"
+            value={amount}
+            min={50}
+            max={10000}
+            step={50}
+            onChange={(e) => setAmount(Math.min(10000, Math.max(50, Number(e.target.value) || 50)))}
+            className="!w-24 text-center"
+          />
+        </div>
+        <div className="flex gap-2">
+          {[500, 1000, 2500, 5000].map((v) => (
+            <button
+              key={v}
+              onClick={() => setAmount(v)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                amount === v
+                  ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
+                  : "bg-surface border border-border text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {v >= 1000 ? `$${v / 1000}k` : `$${v}`}
+            </button>
+          ))}
+        </div>
       </Card>
 
       <StockFilterBar
@@ -182,7 +216,7 @@ export function AutoMix() {
                 <div className="mt-1 flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated/80 px-3 py-1.5 text-xs">
                   <Badge>{Math.round(alloc.weight * 100)}%</Badge>
                   <span className="text-text-secondary">{formatPrice(alloc.dollars)}</span>
-                  <span className="font-semibold text-text-primary">{alloc.shares.toFixed(2)} sh</span>
+                  <span className="font-semibold text-text-primary">{alloc.shares} {alloc.shares === 1 ? "share" : "shares"}</span>
                 </div>
               </div>
             );

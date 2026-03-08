@@ -18,6 +18,7 @@ export async function POST() {
       paymentSource: true,
       status: true,
       cancelAtPeriodEnd: true,
+      currentPeriodStart: true,
     },
   });
 
@@ -50,6 +51,27 @@ export async function POST() {
   }
 
   try {
+    // Within 14-day cooling-off: cancel immediately with full refund
+    const within14Days = subscription.currentPeriodStart &&
+      Date.now() - subscription.currentPeriodStart.getTime() < 14 * 24 * 60 * 60 * 1000;
+
+    if (within14Days) {
+      await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
+
+      await logAudit(session.user.id, "SUBSCRIPTION_CHANGE", {
+        action: "cancel_immediate_refund",
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+      });
+
+      log.info("subscription:cancel", `User ${session.user.id} canceled within 14-day cooling-off (immediate + refund)`);
+
+      return NextResponse.json({
+        cancelAtPeriodEnd: false,
+        canceled: true,
+      });
+    }
+
+    // After 14 days: cancel at period end (no refund)
     const updated = await stripe.subscriptions.update(
       subscription.stripeSubscriptionId,
       { cancel_at_period_end: true }
@@ -65,7 +87,7 @@ export async function POST() {
       stripeSubscriptionId: subscription.stripeSubscriptionId,
     });
 
-    log.info("subscription:cancel", `User ${session.user.id} scheduled cancellation`);
+    log.info("subscription:cancel", `User ${session.user.id} scheduled cancellation at period end`);
 
     return NextResponse.json({
       cancelAtPeriodEnd: true,

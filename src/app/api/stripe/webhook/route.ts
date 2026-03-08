@@ -315,16 +315,23 @@ export async function POST(req: NextRequest) {
         }
 
         const delSubItem = subscription.items.data[0];
-        const endTimestamp = delSubItem?.current_period_end;
+        const startTimestamp = delSubItem?.current_period_start;
+        const wasWithin14Days = startTimestamp &&
+          Date.now() - startTimestamp * 1000 < 14 * 24 * 60 * 60 * 1000;
+        const endDate = wasWithin14Days
+          ? "now (14-day cooling-off refund issued)"
+          : delSubItem?.current_period_end
+            ? new Date(delSubItem.current_period_end * 1000).toLocaleDateString()
+            : "soon";
         const { subject: scSubject, html: scHtml } = await renderTemplate("subscriptionCanceled", {
           userName: sub.user.name ?? "there",
-          endDate: endTimestamp ? new Date(endTimestamp * 1000).toLocaleDateString() : "soon",
+          endDate,
         });
         await sendEmail(sub.user.email, scSubject, scHtml);
-        await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel" });
+        await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: wasWithin14Days ? "cancel_refund" : "cancel" });
         await notifyAdmins(
-          "Subscription canceled",
-          `<h2>Subscription Canceled</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          wasWithin14Days ? "Subscription canceled (14-day refund)" : "Subscription canceled",
+          `<h2>Subscription Canceled${wasWithin14Days ? " (14-day Refund)" : ""}</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
       }
       break;

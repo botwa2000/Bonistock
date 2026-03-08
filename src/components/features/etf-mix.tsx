@@ -146,17 +146,46 @@ export function EtfMix() {
       </div>
       <p className="text-xs text-text-tertiary">{t(`etfStrategyDesc_${strategy}`)}</p>
 
-      <Card variant="glass" padding="sm" className="flex items-center gap-3">
-        <Input
-          label={t("etfAmount")}
-          id="etf-mix-amount"
-          type="number"
-          value={amount}
-          min={100}
-          max={50000}
-          step={100}
-          onChange={(e) => setAmount(Number(e.target.value) || 0)}
-        />
+      <Card variant="glass" padding="sm" className="space-y-3 px-4 py-3">
+        <label className="text-xs text-text-secondary">{t("etfAmount")}</label>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-text-tertiary">$100</span>
+          <input
+            type="range"
+            min={100}
+            max={50000}
+            step={100}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            className="flex-1 accent-emerald-400"
+          />
+          <span className="text-xs text-text-tertiary">$50k</span>
+          <Input
+            id="etf-mix-amount"
+            type="number"
+            value={amount}
+            min={100}
+            max={50000}
+            step={100}
+            onChange={(e) => setAmount(Math.min(50000, Math.max(100, Number(e.target.value) || 100)))}
+            className="!w-24 text-center"
+          />
+        </div>
+        <div className="flex gap-2">
+          {[1000, 2500, 5000, 10000].map((v) => (
+            <button
+              key={v}
+              onClick={() => setAmount(v)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                amount === v
+                  ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
+                  : "bg-surface border border-border text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {v >= 1000 ? `$${v / 1000}k` : `$${v}`}
+            </button>
+          ))}
+        </div>
       </Card>
 
       <EtfFilterBar
