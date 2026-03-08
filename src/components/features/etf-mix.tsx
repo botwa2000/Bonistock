@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useAuth } from "@/lib/auth-context";
 import type { EtfPick, EtfFilters, EtfMixStrategy } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { EtfFilterBar, defaultEtfFilters } from "@/components/features/filter-bar";
 import { EtfCard } from "@/components/features/etf-card";
 import { formatPrice } from "@/lib/currency";
+
+const FREE_ETF_LIMIT = 5;
 
 interface EtfAllocation {
   symbol: string;
@@ -84,11 +87,15 @@ function buildEtfAllocations(
 
 export function EtfMix() {
   const t = useTranslations("mix");
+  const { user } = useAuth();
   const [etfs, setEtfs] = useState<EtfPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState(1000);
   const [strategy, setStrategy] = useState<EtfMixStrategy>("bestSharpe");
   const [filters, setFilters] = useState<EtfFilters>(defaultEtfFilters);
+
+  const tier = user?.tier ?? "free";
+  const hasFullAccess = tier === "plus" || (tier === "pass" && user?.passWindowActive);
 
   useEffect(() => {
     fetch("/api/etfs")
@@ -102,8 +109,15 @@ export function EtfMix() {
     [etfs]
   );
 
+  const freeEtfSymbols = useMemo(
+    () => new Set(etfs.slice(0, FREE_ETF_LIMIT).map((e) => e.symbol)),
+    [etfs]
+  );
+
   const candidates = useMemo(() => {
-    return etfs.filter((e) => {
+    // Free users can only mix from ETFs they can actually view
+    const pool = hasFullAccess ? etfs : etfs.filter((e) => freeEtfSymbols.has(e.symbol));
+    return pool.filter((e) => {
       if (filters.region !== "all" && e.region !== filters.region) return false;
       if (filters.theme !== "all" && e.theme !== filters.theme) return false;
       if (filters.broker !== "any" && !e.brokerAvailability.includes(filters.broker as any))
@@ -114,7 +128,7 @@ export function EtfMix() {
       }
       return true;
     });
-  }, [etfs, filters]);
+  }, [etfs, filters, hasFullAccess, freeEtfSymbols]);
 
   const result = useMemo(
     () => buildEtfAllocations(strategy, candidates, amount),

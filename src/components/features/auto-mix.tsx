@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useAuth } from "@/lib/auth-context";
 import type { StockPick, StockFilters, MixAllocation, StockMixStrategy } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,16 +101,25 @@ function buildAllocations(
 
 export function AutoMix() {
   const t = useTranslations("mix");
+  const { user } = useAuth();
   const [stocks, setStocks] = useState<StockPick[]>([]);
+  const [freeSymbols, setFreeSymbols] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState(500);
   const [strategy, setStrategy] = useState<StockMixStrategy>("maxUpside");
   const [filters, setFilters] = useState<StockFilters>(defaultStockFilters);
 
+  const tier = user?.tier ?? "free";
+  const hasFullAccess = tier === "plus" || (tier === "pass" && user?.passWindowActive);
+
   useEffect(() => {
     fetch("/api/stocks")
       .then((r) => r.json())
-      .then((data) => { setStocks(data.stocks ?? data); setLoading(false); })
+      .then((data) => {
+        setStocks(data.stocks ?? data);
+        if (data.freeSymbols) setFreeSymbols(new Set(data.freeSymbols));
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -119,7 +129,9 @@ export function AutoMix() {
   );
 
   const filtered = useMemo(() => {
-    return stocks.filter((p) => {
+    // Free users can only mix from stocks they can actually view
+    const pool = hasFullAccess ? stocks : stocks.filter((p) => freeSymbols.has(p.symbol));
+    return pool.filter((p) => {
       if (filters.region !== "all" && p.region !== filters.region) return false;
       if (filters.sector !== "all" && p.sector !== filters.sector) return false;
       if (filters.risk !== "any" && p.risk !== filters.risk) return false;
@@ -130,7 +142,7 @@ export function AutoMix() {
       if (filters.dividendOnly && p.dividendYield <= 0) return false;
       return true;
     });
-  }, [stocks, filters]);
+  }, [stocks, filters, hasFullAccess, freeSymbols]);
 
   const result = useMemo(
     () => buildAllocations(strategy, filtered, amount),
