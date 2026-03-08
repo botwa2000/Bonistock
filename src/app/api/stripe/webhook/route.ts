@@ -20,6 +20,17 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: "2026-01-28.clover" });
 }
 
+/** Extract subscription ID from an invoice (handles both old and new Stripe API shapes). */
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  // New API (2026-01-28.clover): invoice.parent.subscription_details.subscription
+  const parentSub = invoice.parent?.subscription_details?.subscription;
+  if (parentSub) return typeof parentSub === "string" ? parentSub : parentSub.id;
+  // Legacy fallback
+  const legacy = (invoice as any).subscription;
+  if (legacy) return typeof legacy === "string" ? legacy : legacy.id;
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) throw new Error("Missing required env var: STRIPE_WEBHOOK_SECRET");
@@ -142,11 +153,8 @@ export async function POST(req: NextRequest) {
 
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice;
-      const invSubscription = (invoice as any).subscription;
-      if (invSubscription) {
-        const subscriptionId = typeof invSubscription === "string"
-          ? invSubscription
-          : invSubscription.id;
+      const subscriptionId = getInvoiceSubscriptionId(invoice);
+      if (subscriptionId) {
         const stripeSubscription = await getStripe().subscriptions.retrieve(subscriptionId);
         const invSubItem = stripeSubscription.items.data[0];
         await db.subscription.updateMany({
@@ -218,12 +226,10 @@ export async function POST(req: NextRequest) {
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      if ((invoice as any).subscription) {
-        const subscriptionId = typeof (invoice as any).subscription === "string"
-          ? (invoice as any).subscription
-          : (invoice as any).subscription.id;
+      const pfSubscriptionId = getInvoiceSubscriptionId(invoice);
+      if (pfSubscriptionId) {
         const sub = await db.subscription.findUnique({
-          where: { stripeSubscriptionId: subscriptionId },
+          where: { stripeSubscriptionId: pfSubscriptionId },
           include: { user: { select: { email: true, name: true } } },
         });
         if (sub) {
@@ -239,7 +245,7 @@ export async function POST(req: NextRequest) {
           await sendEmail(sub.user.email, pfSubject, pfHtml);
           await notifyAdmins(
             "Payment failed",
-            `<h2>Payment Failed</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Subscription:</strong> ${subscriptionId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+            `<h2>Payment Failed</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Subscription:</strong> ${pfSubscriptionId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
           );
         }
       }
@@ -313,6 +319,7 @@ export async function POST(req: NextRequest) {
           const invoices = await stripe.invoices.list({
             subscription: subscription.id,
             limit: 5,
+            expand: ["data.payments"],
           });
           for (const inv of invoices.data) {
             const ageMs = Date.now() - (inv.created * 1000);
@@ -322,11 +329,17 @@ export async function POST(req: NextRequest) {
             if (inv.status === "open" || inv.status === "draft") {
               await stripe.invoices.voidInvoice(inv.id);
               log.info("stripe/webhook", `Voided invoice ${inv.id} (cooling-off)`);
-            } else if (inv.status === "paid" && (inv as any).payment_intent) {
-              const pi = (inv as any).payment_intent;
-              const piId = typeof pi === "string" ? pi : pi.id;
-              await stripe.refunds.create({ payment_intent: piId });
-              log.info("stripe/webhook", `Refunded invoice ${inv.id} (cooling-off)`);
+            } else if (inv.status === "paid") {
+              // Try new API shape first, then legacy
+              const payment = inv.payments?.data?.[0]?.payment;
+              const piFromPayments = payment?.payment_intent;
+              const piLegacy = (inv as any).payment_intent;
+              const pi = piFromPayments ?? piLegacy;
+              if (pi) {
+                const piId = typeof pi === "string" ? pi : pi.id;
+                await stripe.refunds.create({ payment_intent: piId });
+                log.info("stripe/webhook", `Refunded invoice ${inv.id} (cooling-off)`);
+              }
             }
           }
         } catch (err) {
