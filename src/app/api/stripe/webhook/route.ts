@@ -162,10 +162,19 @@ export async function POST(req: NextRequest) {
         });
 
         // Send invoice email to user
-        const sub = await db.subscription.findUnique({
+        // Look up by stripeSubscriptionId first, fall back to stripeCustomerId
+        // (invoice.paid can fire before checkout.session.completed sets the subscriptionId)
+        let sub = await db.subscription.findUnique({
           where: { stripeSubscriptionId: subscriptionId },
           include: { user: { select: { email: true, name: true } } },
         });
+        if (!sub && invoice.customer) {
+          const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer.id;
+          sub = await db.subscription.findUnique({
+            where: { stripeCustomerId: customerId },
+            include: { user: { select: { email: true, name: true } } },
+          });
+        }
         if (sub) {
           const amount = invoice.amount_paid != null
             ? `${(invoice.amount_paid / 100).toFixed(2)} ${(invoice.currency ?? "usd").toUpperCase()}`
