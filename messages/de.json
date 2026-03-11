@@ -810,5 +810,35 @@
     "risk": "Risiko",
     "plusRequired": "Der Pick-Verlauf ist für Plus- und Pass-Abonnenten verfügbar.",
     "upgradeCta": "Auf Plus upgraden"
+  },
+  "topStocks": {
+    "title": "Top-Aktien nach Analystenkonsens",
+    "subtitle": "Über 200 Aktien werden jede Nacht anhand professioneller Kauf-/Verkaufsempfehlungen und Kurszielen bewertet. Sehen Sie, bei welchen Aktien Analysten aktuell am optimistischsten sind.",
+    "rankedLabel": "Bewertet nach Analystenkonsens",
+    "moreStocks": "{count}+ weitere Aktien bewertet",
+    "registerToSee": "Kostenlos registrieren",
+    "ctaTitle": "Vollständige Analyse mit Kurszielen & Auto-Mix",
+    "ctaText": "Registrieren Sie sich kostenlos für Kurspotenziale, Analystenbewertungen, Kursziele und unseren automatischen Portfolio-Builder.",
+    "ctaButton": "Kostenlos starten",
+    "seoTitle1": "So bewertet Bonistock Aktien",
+    "seoText1": "Unser Scoring-Algorithmus aggregiert Kursziele und Kauf-/Verkaufs-/Halteempfehlungen von Dutzenden professioneller Analysten bei großen Banken und Research-Häusern. Jede Aktie erhält einen zusammengesetzten Score basierend auf dem Kurspotenzial — der Differenz zwischen aktuellem Kurs und durchschnittlichem Analysten-Kursziel — sowie der Überzeugungsstärke, die misst, wie stark Analysten übereinstimmen. Die Liste wird jede Nacht mit lizenzierten kommerziellen Finanzdaten neu berechnet.",
+    "seoTitle2": "Warum Analystenkonsens wichtig ist",
+    "seoText2": "Wenn über 40 unabhängige Analysten bei verschiedenen Institutionen sich auf ein ähnliches Kursziel und eine Kaufempfehlung einigen, signalisiert das breites institutionelles Vertrauen. Bonistock macht diese Konsenssignale sichtbar, damit Sie erkennen können, welche Aktien die stärkste professionelle Unterstützung haben — ohne Dutzende einzelner Research-Berichte lesen zu müssen. Aktien werden über US-, europäische und Schwellenländermärkte bewertet.",
+    "disclaimer": "Rankings dienen nur zu Informationszwecken und stellen keine Anlageberatung dar. Kurse sind Tagesschlusskurse. Vergangene Wertentwicklung garantiert keine zukünftigen Ergebnisse."
+  },
+  "bestEtfs": {
+    "title": "Beste ETFs nach realen Renditen",
+    "subtitle": "Über 100 ETFs sortiert nach tatsächlicher 1-Jahres-, 3-Jahres- und 5-Jahres-Performance (CAGR). Wöchentlich aktualisiert.",
+    "rankedLabel": "Bewertet nach realen Renditen",
+    "moreEtfs": "{count}+ weitere ETFs bewertet",
+    "registerToSee": "Kostenlos registrieren",
+    "ctaTitle": "Vollständige ETF-Daten mit Filtern & Auto-Mix",
+    "ctaText": "Registrieren Sie sich kostenlos für detaillierte CAGR-Daten, Sharpe-Ratios, Kostenquoten, Drawdown-Metriken und unseren ETF-Portfolio-Builder.",
+    "ctaButton": "Kostenlos starten",
+    "seoTitle1": "So bewertet Bonistock ETFs",
+    "seoText1": "Anders als Aktien, die wir nach zukunftsgerichteten Analystenzielen bewerten, werden ETFs rein nach rückblickenden tatsächlichen Renditen eingestuft. Wir verfolgen 1-Jahres-, 3-Jahres- und 5-Jahres-CAGR für über 100 ETFs in den Bereichen Technologie, Gesundheitswesen, saubere Energie, breiter Markt, Schwellenländer und weiteren Themen. Performance-Daten stammen von Yahoo Finance und Fondsanbietern, wöchentlich aktualisiert.",
+    "seoTitle2": "Warum reale Renditen bei ETFs besser sind als Prognosen",
+    "seoText2": "Die ETF-Performance ist berechenbarer als bei Einzelaktien, da Diversifikation unternehmensspezifische Risiken glättet. Ein Fonds, der über 5 Jahre jährlich 15% geliefert hat, sagt mehr als jede Analystenprognose. Deshalb stufen wir ETFs nach tatsächlichen Renditen — CAGR — ein, zusammen mit Kostenquoten und risikobereinigten Kennzahlen wie dem Sharpe-Ratio. Wir decken US-gelistete ETFs und UCITS-konforme europäische ETFs ab, die bei Sparplan-Investoren beliebt sind.",
+    "disclaimer": "Rankings dienen nur zu Informationszwecken und stellen keine Anlageberatung dar. Vergangene Wertentwicklung garantiert keine zukünftigen Ergebnisse."
   }
 }

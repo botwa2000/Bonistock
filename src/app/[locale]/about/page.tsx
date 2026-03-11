@@ -3,9 +3,14 @@ import { setRequestLocale } from "next-intl/server";
 import AboutPageContent from "@/components/features/about-page-content";
 
 export const metadata: Metadata = {
-  title: "About",
+  title: "About Bonistock — Stock Scoring & ETF Rankings",
   description:
-    "Learn about the Bonistock team, our data sources, scoring methodology, and the Bonifatus Group.",
+    "Learn how Bonistock scores 200+ stocks by analyst consensus and ranks 100+ ETFs by actual returns. Meet the Bonifatus Group team from Bad Homburg, Germany.",
+  openGraph: {
+    title: "About Bonistock — How We Rank Stocks & ETFs",
+    description:
+      "Our scoring methodology, data sources, and the team behind Bonistock.",
+  },
 };
 
 export default async function AboutPage({

@@ -170,6 +170,9 @@ export default function SettingsPage() {
                 options={[
                   { value: "EN", label: "English" },
                   { value: "DE", label: "Deutsch" },
+                  { value: "FR", label: "Fran\u00e7ais" },
+                  { value: "ES", label: "Espa\u00f1ol" },
+                  { value: "IT", label: "Italiano" },
                 ]}
               />
             </div>

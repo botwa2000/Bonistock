@@ -25,6 +25,20 @@ function HomeJsonLd() {
         name: "Bonistock",
         url: "https://bonistock.com",
       },
+      {
+        "@type": "SoftwareApplication",
+        name: "Bonistock",
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Web",
+        url: "https://bonistock.com",
+        description:
+          "200+ stocks scored nightly by analyst consensus. 100+ ETFs ranked by actual 1/3/5-year returns. Auto-Mix portfolio builder. Free to start.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+      },
     ],
   };
 

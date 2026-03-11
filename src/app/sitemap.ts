@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
+import { locales } from "@/i18n/routing";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = "https://bonistock.com";
-  const locales = ["en", "de"] as const;
 
   const pages = [
     { path: "/", priority: 1.0 },
+    { path: "/top-stocks", priority: 0.9 },
+    { path: "/best-etfs", priority: 0.9 },
     { path: "/pricing", priority: 0.9 },
     { path: "/faq", priority: 0.8 },
     { path: "/about", priority: 0.7 },

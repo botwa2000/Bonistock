@@ -15,9 +15,11 @@ import { dispatchRegionChange } from "@/lib/region-context";
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+const SUPPORTED_LOCALES = ["en", "de", "fr", "es", "it"];
+
 function getLocaleFromPath(): string {
   const seg = window.location.pathname.split("/")[1];
-  return seg === "de" ? "de" : "en";
+  return SUPPORTED_LOCALES.includes(seg) ? seg : "en";
 }
 
 interface UserData {
@@ -74,7 +76,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         // Sync locale cookie with user's saved language preference
         if (data.language) {
           const locale = data.language.toLowerCase();
-          if (["en", "de"].includes(locale)) {
+          if (SUPPORTED_LOCALES.includes(locale)) {
             document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
           }
         }

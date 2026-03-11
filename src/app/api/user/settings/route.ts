@@ -8,7 +8,7 @@ import { log } from "@/lib/logger";
 
 const updateSchema = z.object({
   region: z.string().optional(),
-  language: z.enum(["EN", "DE", "ES", "FR"]).optional(),
+  language: z.enum(["EN", "DE", "FR", "ES", "IT"]).optional(),
   theme: z.enum(["DARK", "LIGHT"]).optional(),
   goal: z.enum(["GROWTH", "INCOME", "BALANCED"]).optional(),
   name: z.string().min(1).max(100).optional(),

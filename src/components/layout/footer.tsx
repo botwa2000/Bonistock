@@ -24,6 +24,16 @@ export function Footer() {
             </h4>
             <ul className="mt-3 space-y-2 text-sm text-text-secondary">
               <li>
+                <Link href="/top-stocks" className="hover:text-text-primary">
+                  {t("nav.stocks")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/best-etfs" className="hover:text-text-primary">
+                  {t("nav.etfs")}
+                </Link>
+              </li>
+              <li>
                 <Link href="/pricing" className="hover:text-text-primary">
                   {t("nav.pricing")}
                 </Link>
@@ -36,11 +46,6 @@ export function Footer() {
               <li>
                 <Link href="/dashboard/mix" className="hover:text-text-primary">
                   {t("nav.mix")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard/brokers" className="hover:text-text-primary">
-                  {t("nav.brokers")}
                 </Link>
               </li>
             </ul>

@@ -19,6 +19,12 @@ export function Navbar() {
         <div className="hidden sm:block"><Logo /></div>
         <div className="flex items-center gap-2 sm:gap-6">
           <div className="hidden items-center gap-5 text-sm text-text-secondary md:flex">
+            <Link href="/top-stocks" className="transition-colors hover:text-text-primary">
+              {t("nav.stocks")}
+            </Link>
+            <Link href="/best-etfs" className="transition-colors hover:text-text-primary">
+              {t("nav.etfs")}
+            </Link>
             <Link href="/pricing" className="transition-colors hover:text-text-primary">
               {t("nav.pricing")}
             </Link>

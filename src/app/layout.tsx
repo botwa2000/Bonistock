@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { getLocale } from "next-intl/server";
+import { locales } from "@/i18n/routing";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -34,10 +35,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
   },
   alternates: {
-    languages: {
-      en: "https://bonistock.com/en",
-      de: "https://bonistock.com/de",
-    },
+    languages: Object.fromEntries(
+      locales.map((l) => [l, `https://bonistock.com/${l}`])
+    ),
   },
   icons: {
     icon: "/favicon.ico",

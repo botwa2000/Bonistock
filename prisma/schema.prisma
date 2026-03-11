@@ -542,8 +542,9 @@ enum Region {
 enum Language {
   EN
   DE
-  ES
   FR
+  ES
+  IT
 }
 
 enum Theme {

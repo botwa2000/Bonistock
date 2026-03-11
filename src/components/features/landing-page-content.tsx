@@ -122,10 +122,10 @@ function InvestmentPreviewSection() {
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         {/* Stocks column */}
         <div className="min-w-0 space-y-3">
-          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2.5">
+          <Link href="/top-stocks" className="block rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2.5 transition-colors hover:bg-emerald-400/10">
             <h3 className="text-sm font-semibold text-accent-fg">{t("stockSectionTitle")}</h3>
             <p className="mt-0.5 text-xs text-text-secondary">{t("stockSectionSubtitle")}</p>
-          </div>
+          </Link>
           {unlockedStocks.map((pick) => (
             <TickerCard key={pick.symbol} pick={pick} compact />
           ))}
@@ -136,10 +136,10 @@ function InvestmentPreviewSection() {
 
         {/* ETFs column */}
         <div className="min-w-0 space-y-3">
-          <div className="rounded-xl border border-blue-400/20 bg-blue-400/5 px-3 py-2.5">
+          <Link href="/best-etfs" className="block rounded-xl border border-blue-400/20 bg-blue-400/5 px-3 py-2.5 transition-colors hover:bg-blue-400/10">
             <h3 className="text-sm font-semibold text-blue-300 light:text-blue-600">{t("etfSectionTitle")}</h3>
             <p className="mt-0.5 text-xs text-text-secondary">{t("etfSectionSubtitle")}</p>
-          </div>
+          </Link>
           {unlockedEtfs.map((etf) => {
             const y1 = formatCagr(etf.cagr1y);
             const y3 = formatCagr(etf.cagr3y);

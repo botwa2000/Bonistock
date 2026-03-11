@@ -3,10 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocale } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/navigation";
+import { locales as appLocales } from "@/i18n/routing";
 
 const locales = [
-  { code: "en", label: "English", flag: "🇺🇸" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "en", label: "English", flag: "\u{1F1FA}\u{1F1F8}" },
+  { code: "de", label: "Deutsch", flag: "\u{1F1E9}\u{1F1EA}" },
+  { code: "fr", label: "Fran\u00e7ais", flag: "\u{1F1EB}\u{1F1F7}" },
+  { code: "es", label: "Espa\u00f1ol", flag: "\u{1F1EA}\u{1F1F8}" },
+  { code: "it", label: "Italiano", flag: "\u{1F1EE}\u{1F1F9}" },
 ] as const;
 
 export function LanguageSwitcher() {
@@ -36,7 +40,7 @@ export function LanguageSwitcher() {
       body: JSON.stringify({ language: newLocale.toUpperCase() }),
     }).catch(() => {});
 
-    router.replace(pathname, { locale: newLocale as "en" | "de" });
+    router.replace(pathname, { locale: newLocale as (typeof appLocales)[number] });
   };
 
   return (
