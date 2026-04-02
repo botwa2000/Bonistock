@@ -40,6 +40,7 @@ interface UserData {
   passWindowActive: boolean;
   emailAlerts: boolean;
   weeklyDigest: boolean;
+  isPromoter: boolean;
 }
 
 interface AuthContextType {

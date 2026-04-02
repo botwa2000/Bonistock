@@ -101,6 +101,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           })}
         </ul>
 
+        {user?.isPromoter && (
+          <div className="mt-3 border-t border-border-subtle pt-3">
+            <Link
+              href="/dashboard/promoter"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+                pathname.startsWith("/dashboard/promoter")
+                  ? "bg-surface text-text-primary"
+                  : "text-text-secondary hover:bg-surface hover:text-text-primary"
+              }`}
+            >
+              <span className="w-5 text-center">{"\u2605"}</span>
+              <span>Promoter</span>
+              <Badge variant="accent" className="ml-auto text-[10px]">
+                PRO
+              </Badge>
+            </Link>
+          </div>
+        )}
+
         {user?.role === "ADMIN" && (
           <div className="mt-3 border-t border-border-subtle pt-3">
             <Link

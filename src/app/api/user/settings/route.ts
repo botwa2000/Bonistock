@@ -43,6 +43,7 @@ export async function GET() {
       emailAlerts: true,
       weeklyDigest: true,
       createdAt: true,
+      promoter: { select: { id: true } },
     },
   });
 
@@ -56,7 +57,7 @@ export async function GET() {
     hasActivePassWindow(user.id),
   ]);
 
-  const { passwordHash, ...safeUser } = user;
+  const { passwordHash, promoter, ...safeUser } = user;
 
   log.debug("user/settings", `GET user=${user.id} tier=${tier} pass=${passInfo?.activationsRemaining ?? 0}`);
 
@@ -68,6 +69,7 @@ export async function GET() {
     passActivationsRemaining: passInfo?.activationsRemaining ?? 0,
     passExpiry: passInfo?.expiry ?? null,
     passWindowActive,
+    isPromoter: !!promoter,
   });
 }
 
