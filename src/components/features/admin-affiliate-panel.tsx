@@ -524,18 +524,20 @@ function PromotersTab() {
   const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [tiers, setTiers] = useState<PromoterTier[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState<Record<string, string>>({});
 
-  const fetchData = useCallback(async (q: string) => {
+  // Add-promoter search
+  const [addSearchInput, setAddSearchInput] = useState("");
+  const [addSearchResults, setAddSearchResults] = useState<{ id: string; email: string; name: string | null; promoter: null | { refCode: string } }[]>([]);
+  const [addSearching, setAddSearching] = useState(false);
+  const [addTierId, setAddTierId] = useState<Record<string, string>>({});
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (q) params.set("search", q);
       const [pRes, tRes] = await Promise.all([
-        fetch(`/api/admin/promoters?${params}`),
+        fetch("/api/admin/promoters"),
         fetch("/api/admin/promoter-tiers"),
       ]);
       if (pRes.ok) setPromoters(await pRes.json());
@@ -545,11 +547,40 @@ function PromotersTab() {
     }
   }, []);
 
-  useEffect(() => { fetchData(""); }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSearch = () => {
-    setSearch(searchInput);
-    fetchData(searchInput);
+  const handleAddSearch = async () => {
+    if (!addSearchInput.trim()) return;
+    setAddSearching(true);
+    try {
+      const params = new URLSearchParams({ search: addSearchInput.trim() });
+      const res = await fetch(`/api/admin/users?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAddSearchResults(data.users ?? []);
+      }
+    } finally {
+      setAddSearching(false);
+    }
+  };
+
+  const handleMakePromoter = async (userId: string) => {
+    const tierId = addTierId[userId] ?? "";
+    if (!tierId) return;
+    setAssigningId(userId);
+    try {
+      const res = await fetch(`/api/admin/promoters/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tierId }),
+      });
+      if (res.ok) {
+        setAddSearchResults((prev) => prev.filter((u) => u.id !== userId));
+        fetchData();
+      }
+    } finally {
+      setAssigningId(null);
+    }
   };
 
   const handleAssignTier = async (promoter: Promoter) => {
@@ -558,11 +589,11 @@ function PromotersTab() {
     setAssigningId(promoter.userId);
     try {
       const res = await fetch(`/api/admin/promoters/${promoter.userId}`, {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tierId }),
       });
-      if (res.ok) fetchData(search);
+      if (res.ok) fetchData();
     } finally {
       setAssigningId(null);
     }
@@ -571,20 +602,59 @@ function PromotersTab() {
   const handleRemove = async (userId: string) => {
     if (!confirm("Remove this promoter? Their ref code will be deactivated.")) return;
     await fetch(`/api/admin/promoters/${userId}`, { method: "DELETE" });
-    fetchData(search);
+    fetchData();
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <input
-          className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary"
-          placeholder="Search by email or name..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-        />
-        <Button variant="secondary" size="sm" onClick={handleSearch}>Search</Button>
+      {/* Add promoter */}
+      <div className="rounded-lg border border-border bg-surface-elevated p-3 space-y-2">
+        <p className="text-xs font-medium text-text-secondary">Add Promoter</p>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary"
+            placeholder="Search user by email or name..."
+            value={addSearchInput}
+            onChange={(e) => setAddSearchInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAddSearch(); }}
+          />
+          <Button variant="secondary" size="sm" disabled={addSearching} onClick={handleAddSearch}>
+            {addSearching ? "..." : "Search"}
+          </Button>
+        </div>
+        {addSearchResults.length > 0 && (
+          <div className="space-y-1 pt-1">
+            {addSearchResults.map((u) => (
+              <div key={u.id} className="flex items-center gap-2 text-sm">
+                <span className="flex-1 text-text-primary truncate">{u.email}{u.name ? ` (${u.name})` : ""}</span>
+                {u.promoter ? (
+                  <span className="text-xs text-text-tertiary">Already promoter</span>
+                ) : (
+                  <>
+                    <select
+                      className="rounded border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                      value={addTierId[u.id] ?? ""}
+                      onChange={(e) => setAddTierId((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                    >
+                      <option value="" className="bg-surface-elevated text-text-primary">— tier —</option>
+                      {tiers.map((t) => (
+                        <option key={t.id} value={t.id} className="bg-surface-elevated text-text-primary">{t.name}</option>
+                      ))}
+                    </select>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={assigningId === u.id || !addTierId[u.id]}
+                      onClick={() => handleMakePromoter(u.id)}
+                    >
+                      {assigningId === u.id ? "..." : "Add"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -698,10 +768,10 @@ function VouchersTab() {
         code: code.trim().toUpperCase(),
         type: voucherType,
         discountType,
-        maxUses: maxUses ? parseInt(maxUses, 10) : null,
-        validUntil: validUntil ? new Date(validUntil).toISOString() : null,
-        description: description || null,
       };
+      if (maxUses) body.maxUses = parseInt(maxUses, 10);
+      if (validUntil) body.validUntil = new Date(validUntil).toISOString();
+      if (description) body.description = description;
       if (discountType === "PERCENT") body.discountPct = parseFloat(discountPct);
       if (discountType === "FIXED_AMOUNT") body.discountFixed = Math.round(parseFloat(discountFixed) * 100);
       if (discountType === "FREE_PASS") body.passDays = parseInt(passDays, 10);
