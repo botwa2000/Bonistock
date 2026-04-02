@@ -16,9 +16,12 @@ interface ActiveVoucher {
 }
 
 function discountText(v: ActiveVoucher): string {
+  if (v.discountType === "PERCENT" && v.discountPct != null) {
+    const suffix = v.description ?? "any plan";
+    if (v.discountPct >= 100) return `Free — ${suffix}`;
+    return `${v.discountPct}% off ${suffix}`;
+  }
   if (v.description) return v.description;
-  if (v.discountType === "PERCENT" && v.discountPct)
-    return `Save ${v.discountPct}% on any plan`;
   if (v.discountType === "FIXED_AMOUNT" && v.discountFixed)
     return `Save $${(v.discountFixed / 100).toFixed(0)} on any plan`;
   if (v.discountType === "FREE_PASS" && v.passDays)
