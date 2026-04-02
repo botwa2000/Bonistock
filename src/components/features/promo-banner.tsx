@@ -15,18 +15,29 @@ interface ActiveVoucher {
   useCount: number;
 }
 
-function discountText(v: ActiveVoucher): string {
+function Highlight({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-bold bg-background/20 rounded px-1.5 py-0.5 mx-0.5">
+      {children}
+    </span>
+  );
+}
+
+function discountNode(v: ActiveVoucher): React.ReactNode {
   if (v.discountType === "PERCENT" && v.discountPct != null) {
     const suffix = v.description ?? "any plan";
-    if (v.discountPct >= 100) return `Free — ${suffix}`;
-    return `${v.discountPct}% off ${suffix}`;
+    if (v.discountPct >= 100) return <><Highlight>Free</Highlight> — {suffix}</>;
+    return <><Highlight>{v.discountPct}% off</Highlight> {suffix}</>;
   }
-  if (v.description) return v.description;
-  if (v.discountType === "FIXED_AMOUNT" && v.discountFixed)
-    return `Save $${(v.discountFixed / 100).toFixed(0)} on any plan`;
-  if (v.discountType === "FREE_PASS" && v.passDays)
-    return `Get a ${v.passDays}-day free pass`;
-  return "Special offer available";
+  if (v.discountType === "FIXED_AMOUNT" && v.discountFixed) {
+    const suffix = v.description ?? "any plan";
+    return <>Save <Highlight>${(v.discountFixed / 100).toFixed(0)} off</Highlight> {suffix}</>;
+  }
+  if (v.discountType === "FREE_PASS" && v.passDays) {
+    const suffix = v.description ?? "";
+    return <><Highlight>{v.passDays}-day free pass</Highlight>{suffix ? ` — ${suffix}` : ""}</>;
+  }
+  return <>{v.description ?? "Special offer available"}</>;
 }
 
 function expiryText(validUntil: string | null): string | null {
@@ -84,7 +95,7 @@ export function PromoBanner() {
         <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
           <span className="shrink-0">🎉</span>
           <span className="truncate">
-            {discountText(voucher)}
+            {discountNode(voucher)}
           </span>
           {expiry && (
             <span className={`hidden shrink-0 text-xs sm:inline ${isUrgent ? "font-bold" : "opacity-75"}`}>
