@@ -18,6 +18,7 @@ const registerSchema = z.object({
     analytics: z.boolean(),
     marketing: z.boolean(),
   }).optional(),
+  refCode: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
   const detectedRegion = detectedLanguage === "DE" ? "DE" : "GLOBAL";
 
   const passwordHash = await hashPassword(password);
-  const user = await db.user.create({
+  const newUser = await db.user.create({
     data: {
       email,
       name,
@@ -71,6 +72,21 @@ export async function POST(req: NextRequest) {
       privacyAcceptedAt: new Date(),
     },
   });
+
+  // Referral attribution from cookie or body
+  const refCode = req.cookies.get("bonistock_ref")?.value ?? (body as { refCode?: string }).refCode;
+  if (refCode) {
+    const upperRef = refCode.toUpperCase();
+    const promoter = await db.promoter.findUnique({ where: { refCode: upperRef } });
+    if (promoter) {
+      await db.user.update({
+        where: { id: newUser.id },
+        data: { referredByPromoterId: promoter.id }
+      }).catch(() => {});
+    }
+  }
+
+  const user = newUser;
 
   // Create verification token
   const token = randomBytes(32).toString("hex");

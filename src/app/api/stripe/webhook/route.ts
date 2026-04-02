@@ -89,6 +89,18 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        // Set referral attribution from metadata if present
+        const refCode = session.metadata?.refCode as string | undefined;
+        if (refCode && userId) {
+          const promoter = await db.promoter.findUnique({ where: { refCode } });
+          if (promoter) {
+            await db.user.update({
+              where: { id: userId },
+              data: { referredByPromoterId: { set: promoter.id } },
+            }).catch(() => {});
+          }
+        }
+
         const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
         if (user) {
           const { subject, html } = await renderTemplate("subscriptionConfirmation", {
@@ -237,6 +249,50 @@ export async function POST(req: NextRequest) {
         }
       } else {
         log.info("stripe/webhook", `invoice.paid: no subscription on invoice ${invoice.id}, skipping`);
+      }
+
+      // Commission attribution
+      try {
+        const subForCommission = await db.subscription.findUnique({
+          where: { stripeCustomerId: invoice.customer as string },
+          select: { userId: true, user: { select: { referredByPromoterId: true } } },
+        });
+
+        if (subForCommission?.user?.referredByPromoterId) {
+          const promoter = await db.promoter.findUnique({
+            where: { id: subForCommission.user.referredByPromoterId },
+            include: { tier: true },
+          });
+
+          if (promoter) {
+            const invoiceAmount = invoice.amount_paid as number; // in cents
+            const currency = (invoice.currency as string) ?? "usd";
+            const commissionPct = Number(promoter.tier.commissionPct);
+            const commissionAmount = Math.round(invoiceAmount * commissionPct / 100);
+
+            if (commissionAmount > 0) {
+              await db.$transaction([
+                db.promoterCommission.create({
+                  data: {
+                    promoterId: promoter.id,
+                    userId: subForCommission.userId,
+                    amount: commissionAmount,
+                    currency,
+                    pct: promoter.tier.commissionPct,
+                    status: "PENDING",
+                    stripeInvoiceId: invoice.id as string,
+                  },
+                }),
+                db.promoter.update({
+                  where: { id: promoter.id },
+                  data: { pendingEarnings: { increment: commissionAmount / 100 } },
+                }),
+              ]);
+            }
+          }
+        }
+      } catch (commissionErr) {
+        log.error("stripe/webhook", "Commission creation failed:", commissionErr);
       }
       break;
     }

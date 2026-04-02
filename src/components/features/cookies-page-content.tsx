@@ -57,8 +57,13 @@ export default function CookiesPageContent() {
 
   const marketingCookies = [
     {
-      name: "Affiliate Attribution",
-      purpose: "Tracks broker comparison clicks for affiliate commission attribution. Only set if you accept marketing cookies.",
+      name: "bonistock_ref",
+      purpose: "Stores the referral code of a promoter who referred you. Used to attribute your account to a promoter and credit their commission. Set when you visit a referral link. Only set if you accept marketing cookies.",
+      duration: "30 days",
+    },
+    {
+      name: "Affiliate attribution (general)",
+      purpose: "Tracks affiliate and broker comparison clicks for commission attribution. Only set if you accept marketing cookies.",
       duration: "30 days",
     },
   ];

@@ -61,19 +61,34 @@ export async function createCheckoutSession(
   userId: string,
   email: string,
   priceId: string,
-  locale = "en"
+  locale = "en",
+  voucherCode?: string,
+  refCode?: string
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
 
   const customerId = await getOrCreateCustomer(userId, email);
+
+  let discounts: { coupon: string }[] | undefined;
+  if (voucherCode) {
+    const voucher = await db.voucher.findUnique({
+      where: { code: voucherCode },
+      select: { stripeCouponId: true, active: true, discountType: true },
+    });
+    if (voucher?.active && voucher.stripeCouponId) {
+      discounts = [{ coupon: voucher.stripeCouponId }];
+    }
+  }
+
   const session = await getStripeClient().checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${appUrl}/${locale}/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/${locale}/pricing?canceled=true`,
-    metadata: { userId },
+    metadata: { userId, refCode: refCode ?? "" },
+    ...(discounts && { discounts }),
   });
 
   if (!session.url) throw new Error("Stripe did not return a checkout URL");
@@ -85,12 +100,24 @@ export async function createPassCheckoutSession(
   email: string,
   priceId: string,
   passType: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY",
-  locale = "en"
+  locale = "en",
+  voucherCode?: string
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) throw new Error("Missing required env var: NEXT_PUBLIC_APP_URL");
 
   const customerId = await getOrCreateCustomer(userId, email);
+
+  let discounts: { coupon: string }[] | undefined;
+  if (voucherCode) {
+    const voucher = await db.voucher.findUnique({
+      where: { code: voucherCode },
+      select: { stripeCouponId: true, active: true, discountType: true },
+    });
+    if (voucher?.active && voucher.stripeCouponId) {
+      discounts = [{ coupon: voucher.stripeCouponId }];
+    }
+  }
 
   const session = await getStripeClient().checkout.sessions.create({
     customer: customerId,
@@ -101,6 +128,7 @@ export async function createPassCheckoutSession(
     metadata: { userId, passType },
     invoice_creation: { enabled: true },
     payment_intent_data: { receipt_email: email },
+    ...(discounts && { discounts }),
   });
 
   if (!session.url) throw new Error("Stripe did not return a checkout URL");

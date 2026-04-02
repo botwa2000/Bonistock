@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AdminAffiliatePanel } from "@/components/features/admin-affiliate-panel";
 
 interface AdminStats {
   users: {
@@ -1709,6 +1710,9 @@ export default function AdminPage() {
             </div>
           )}
         </Card>
+
+        {/* Affiliate Program */}
+        <AdminAffiliatePanel />
 
         {/* Email Preview Modal */}
         {previewHtml && (

@@ -7,6 +7,7 @@ import { log } from "@/lib/logger";
 
 const schema = z.object({
   priceId: z.string().min(1),
+  voucherCode: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -26,13 +27,17 @@ export async function POST(req: NextRequest) {
 
   log.info("stripe/checkout", `User ${session.user.id} → priceId=${parsed.data.priceId}`);
 
+  const refCode = req.cookies.get("bonistock_ref")?.value;
+
   try {
     const locale = await getLocalePrefix();
     const url = await createCheckoutSession(
       session.user.id,
       session.user.email,
       parsed.data.priceId,
-      locale
+      locale,
+      parsed.data.voucherCode,
+      refCode
     );
     log.info("stripe/checkout", `Checkout URL created for user ${session.user.id}`);
     return NextResponse.json({ url });

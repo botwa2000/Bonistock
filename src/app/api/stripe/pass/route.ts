@@ -8,6 +8,7 @@ import { log } from "@/lib/logger";
 const schema = z.object({
   priceId: z.string().min(1),
   passType: z.enum(["ONE_DAY", "THREE_DAY", "TWELVE_DAY"]),
+  voucherCode: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -34,7 +35,8 @@ export async function POST(req: NextRequest) {
       session.user.email,
       parsed.data.priceId,
       parsed.data.passType,
-      locale
+      locale,
+      parsed.data.voucherCode
     );
     log.info("stripe/pass", `Pass checkout URL created for user ${session.user.id}`);
     return NextResponse.json({ url });

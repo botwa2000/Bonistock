@@ -199,6 +199,35 @@ export function PricingCards() {
 
   const [error, setError] = useState<string | null>(null);
 
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherInput, setVoucherInput] = useState("");
+  const [voucherStatus, setVoucherStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
+  const [voucherInfo, setVoucherInfo] = useState<{ discountType: string; discountPct?: number; discountFixed?: number; passDays?: number; description?: string } | null>(null);
+
+  const handleValidateVoucher = async () => {
+    if (!voucherInput.trim()) return;
+    setVoucherStatus("validating");
+    try {
+      const res = await fetch("/api/vouchers/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: voucherInput.trim().toUpperCase() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVoucherCode(voucherInput.trim().toUpperCase());
+        setVoucherInfo(data);
+        setVoucherStatus("valid");
+      } else {
+        setVoucherStatus("invalid");
+        setVoucherCode("");
+        setVoucherInfo(null);
+      }
+    } catch {
+      setVoucherStatus("invalid");
+    }
+  };
+
   const handleSubscribe = async (tier: "free" | "plus") => {
     if (!isLoggedIn) {
       router.push("/login?redirect=/pricing");
@@ -253,6 +282,7 @@ export function PricingCards() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId: subPriceId,
+          voucherCode: voucherCode || undefined,
         }),
       });
       const data = await res.json();
@@ -282,6 +312,32 @@ export function PricingCards() {
 
     setError(null);
     setBuying(product.id);
+
+    // FREE_PASS voucher: redeem directly without Stripe
+    if (!isIOS && voucherCode && voucherInfo?.discountType === "FREE_PASS") {
+      try {
+        const redeemRes = await fetch("/api/vouchers/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: voucherCode }),
+        });
+        if (redeemRes.ok) {
+          await refreshUser();
+          setVoucherCode("");
+          setVoucherInput("");
+          setVoucherInfo(null);
+          setVoucherStatus("idle");
+        } else {
+          const data = await redeemRes.json();
+          setError(data.error ?? "Failed to redeem voucher. Please try again.");
+        }
+      } catch {
+        setError("Network error. Please try again.");
+      } finally {
+        setBuying(null);
+      }
+      return;
+    }
 
     // iOS: use StoreKit 2 via @capgo/native-purchases
     if (isIOS && product.appleProductId) {
@@ -324,6 +380,7 @@ export function PricingCards() {
         body: JSON.stringify({
           priceId: passPriceId,
           passType: product.passType,
+          voucherCode: voucherCode || undefined,
         }),
       });
       const data = await res.json();
@@ -382,6 +439,13 @@ export function PricingCards() {
 
   // Free tier price display
   const freePrice = `${prefixSymbol(displayCurrencySymbol)}0`;
+
+  function formatVoucherDiscount(info: { discountType: string; discountPct?: number; discountFixed?: number; passDays?: number }): string {
+    if (info.discountType === "PERCENT") return `${info.discountPct}% discount applied`;
+    if (info.discountType === "FIXED_AMOUNT") return `${displayCurrencySymbol}${((info.discountFixed ?? 0) / 100).toFixed(2)} off`;
+    if (info.discountType === "FREE_PASS") return `${info.passDays}-day free pass unlocked`;
+    return "Discount applied";
+  }
 
   return (
     <div className="space-y-6">
@@ -563,6 +627,31 @@ export function PricingCards() {
             {t("dayPassNote")}
           </p>
         </Card>
+      </div>
+
+      {/* Voucher code input */}
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-sm text-text-secondary">Have a voucher code?</p>
+        <div className="flex gap-2 w-full max-w-xs">
+          <input
+            type="text"
+            placeholder="Enter code (e.g. BONI25)"
+            value={voucherInput}
+            onChange={(e) => { setVoucherInput(e.target.value.toUpperCase()); if (voucherStatus !== "idle") { setVoucherStatus("idle"); setVoucherCode(""); setVoucherInfo(null); } }}
+            className="flex-1 rounded-md border border-input-border bg-input-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-fg uppercase"
+          />
+          <Button size="sm" variant="secondary" onClick={handleValidateVoucher} disabled={voucherStatus === "validating" || !voucherInput.trim()}>
+            {voucherStatus === "validating" ? "..." : "Apply"}
+          </Button>
+        </div>
+        {voucherStatus === "valid" && voucherInfo && (
+          <p className="text-sm text-success-fg">
+            &#10003; {voucherInfo.description ? voucherInfo.description + " \u2014 " : ""}{formatVoucherDiscount(voucherInfo)}
+          </p>
+        )}
+        {voucherStatus === "invalid" && (
+          <p className="text-sm text-danger-fg">Invalid or expired voucher code.</p>
+        )}
       </div>
 
       {error && (
