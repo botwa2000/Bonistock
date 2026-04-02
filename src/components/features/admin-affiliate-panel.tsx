@@ -7,36 +7,50 @@ import { Button } from "@/components/ui/button";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+interface VoucherTemplate {
+  discountType: "PERCENT" | "FIXED_AMOUNT" | "FREE_PASS";
+  discountPct?: number;
+  discountFixed?: number;
+  passDays?: number;
+  passType?: string;
+}
+
 interface PromoterTier {
   id: string;
   name: string;
   commissionPct: number;
-  monthlyLimit: number | null;
-  voucherTemplate: string | null;
+  monthlyVoucherLimit: number;
+  recurringCommissions: boolean;
+  voucherTemplate: VoucherTemplate | null;
   _count?: { promoters: number };
 }
 
 interface Promoter {
   id: string;
   userId: string;
-  refCode: string;
-  totalEarnings: number;
-  monthlyUsage: number;
+  email: string;
+  name: string | null;
   tierId: string | null;
-  tier: PromoterTier | null;
-  user: { email: string; name: string | null };
+  tierName: string | null;
+  refCode: string;
+  voucherUseCount: number;
+  totalEarnings: string;
+  pendingEarnings: string;
+  monthlyVoucherLimit: number;
+  createdAt: string;
 }
 
 interface Voucher {
   id: string;
   code: string;
+  type: string;
   discountType: string;
   discountPct: number | null;
   discountFixed: number | null;
   passDays: number | null;
   maxUses: number | null;
-  usedCount: number;
-  expiresAt: string | null;
+  useCount: number;
+  validUntil: string | null;
   active: boolean;
   description: string | null;
 }
@@ -44,10 +58,14 @@ interface Voucher {
 interface Commission {
   id: string;
   promoterId: string;
+  promoterEmail: string;
+  referredUserId: string;
+  referredUserEmail: string | null;
   amount: number;
+  currency: string;
   status: string;
   createdAt: string;
-  promoter: { refCode: string; user: { email: string } };
+  settledAt: string | null;
 }
 
 type Tab = "tiers" | "promoters" | "vouchers" | "commissions";
@@ -58,8 +76,20 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+function formatDollars(val: string | number): string {
+  return `$${parseFloat(String(val)).toFixed(2)}`;
+}
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
+}
+
+function templateLabel(t: VoucherTemplate | null): string {
+  if (!t) return "—";
+  if (t.discountType === "PERCENT") return `${t.discountPct ?? "?"}% off`;
+  if (t.discountType === "FIXED_AMOUNT") return formatCents(t.discountFixed ?? 0);
+  if (t.discountType === "FREE_PASS") return `${t.passDays ?? "?"}d pass`;
+  return "—";
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -104,20 +134,27 @@ function TiersTab() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Form fields
+  // Create form fields
   const [name, setName] = useState("");
   const [commissionPct, setCommissionPct] = useState("");
   const [monthlyLimit, setMonthlyLimit] = useState("");
-  const [voucherTemplate, setVoucherTemplate] = useState("");
+  const [recurringCommissions, setRecurringCommissions] = useState(true);
+  const [vtDiscountType, setVtDiscountType] = useState<"PERCENT" | "FIXED_AMOUNT" | "FREE_PASS">("PERCENT");
+  const [vtDiscountPct, setVtDiscountPct] = useState("");
+  const [vtDiscountFixed, setVtDiscountFixed] = useState("");
+  const [vtPassDays, setVtPassDays] = useState("");
 
-  // Edit fields (mirror of form)
+  // Edit fields
   const [editName, setEditName] = useState("");
   const [editCommissionPct, setEditCommissionPct] = useState("");
   const [editMonthlyLimit, setEditMonthlyLimit] = useState("");
-  const [editVoucherTemplate, setEditVoucherTemplate] = useState("");
-
-  const [error, setError] = useState<string | null>(null);
+  const [editRecurring, setEditRecurring] = useState(true);
+  const [editVtDiscountType, setEditVtDiscountType] = useState<"PERCENT" | "FIXED_AMOUNT" | "FREE_PASS">("PERCENT");
+  const [editVtDiscountPct, setEditVtDiscountPct] = useState("");
+  const [editVtDiscountFixed, setEditVtDiscountFixed] = useState("");
+  const [editVtPassDays, setEditVtPassDays] = useState("");
 
   const fetchTiers = useCallback(async () => {
     setLoading(true);
@@ -132,9 +169,23 @@ function TiersTab() {
   useEffect(() => { fetchTiers(); }, [fetchTiers]);
 
   const resetForm = () => {
-    setName(""); setCommissionPct(""); setMonthlyLimit(""); setVoucherTemplate("");
+    setName(""); setCommissionPct(""); setMonthlyLimit(""); setRecurringCommissions(true);
+    setVtDiscountType("PERCENT"); setVtDiscountPct(""); setVtDiscountFixed(""); setVtPassDays("");
     setError(null);
   };
+
+  function buildVoucherTemplate(
+    discountType: string,
+    discountPct: string,
+    discountFixed: string,
+    passDays: string
+  ): Record<string, unknown> {
+    const tpl: Record<string, unknown> = { discountType };
+    if (discountType === "PERCENT" && discountPct) tpl.discountPct = parseFloat(discountPct);
+    if (discountType === "FIXED_AMOUNT" && discountFixed) tpl.discountFixed = Math.round(parseFloat(discountFixed) * 100);
+    if (discountType === "FREE_PASS" && passDays) tpl.passDays = parseInt(passDays, 10);
+    return tpl;
+  }
 
   const handleCreate = async () => {
     const pct = parseFloat(commissionPct);
@@ -151,8 +202,9 @@ function TiersTab() {
         body: JSON.stringify({
           name,
           commissionPct: pct,
-          monthlyLimit: monthlyLimit ? Math.round(parseFloat(monthlyLimit) * 100) : null,
-          voucherTemplate: voucherTemplate || null,
+          monthlyVoucherLimit: monthlyLimit ? parseInt(monthlyLimit, 10) : -1,
+          recurringCommissions,
+          voucherTemplate: buildVoucherTemplate(vtDiscountType, vtDiscountPct, vtDiscountFixed, vtPassDays),
         }),
       });
       if (res.ok) {
@@ -172,8 +224,13 @@ function TiersTab() {
     setEditingId(tier.id);
     setEditName(tier.name);
     setEditCommissionPct(String(tier.commissionPct));
-    setEditMonthlyLimit(tier.monthlyLimit != null ? (tier.monthlyLimit / 100).toFixed(2) : "");
-    setEditVoucherTemplate(tier.voucherTemplate ?? "");
+    setEditMonthlyLimit(tier.monthlyVoucherLimit !== -1 ? String(tier.monthlyVoucherLimit) : "");
+    setEditRecurring(tier.recurringCommissions);
+    const tpl = tier.voucherTemplate;
+    setEditVtDiscountType((tpl?.discountType as "PERCENT" | "FIXED_AMOUNT" | "FREE_PASS") ?? "PERCENT");
+    setEditVtDiscountPct(tpl?.discountPct != null ? String(tpl.discountPct) : "");
+    setEditVtDiscountFixed(tpl?.discountFixed != null ? (tpl.discountFixed / 100).toFixed(2) : "");
+    setEditVtPassDays(tpl?.passDays != null ? String(tpl.passDays) : "");
   };
 
   const handleSave = async (id: string) => {
@@ -187,8 +244,9 @@ function TiersTab() {
         body: JSON.stringify({
           name: editName,
           commissionPct: pct,
-          monthlyLimit: editMonthlyLimit ? Math.round(parseFloat(editMonthlyLimit) * 100) : null,
-          voucherTemplate: editVoucherTemplate || null,
+          monthlyVoucherLimit: editMonthlyLimit ? parseInt(editMonthlyLimit, 10) : -1,
+          recurringCommissions: editRecurring,
+          voucherTemplate: buildVoucherTemplate(editVtDiscountType, editVtDiscountPct, editVtDiscountFixed, editVtPassDays),
         }),
       });
       if (res.ok) {
@@ -241,25 +299,79 @@ function TiersTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-text-secondary mb-1">Monthly Limit ($, blank = unlimited)</label>
+              <label className="block text-xs text-text-secondary mb-1">Monthly Voucher Limit (-1 = unlimited)</label>
               <input
                 type="number"
-                min="0"
-                step="0.01"
+                min="-1"
+                step="1"
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
                 value={monthlyLimit}
                 onChange={(e) => setMonthlyLimit(e.target.value)}
-                placeholder="500.00"
+                placeholder="-1"
               />
             </div>
-            <div>
-              <label className="block text-xs text-text-secondary mb-1">Voucher Template (code prefix)</label>
+            <div className="flex items-center gap-2 pt-5">
               <input
-                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-                value={voucherTemplate}
-                onChange={(e) => setVoucherTemplate(e.target.value.toUpperCase())}
-                placeholder="e.g. PARTNER"
+                id="recurring"
+                type="checkbox"
+                checked={recurringCommissions}
+                onChange={(e) => setRecurringCommissions(e.target.checked)}
+                className="rounded"
               />
+              <label htmlFor="recurring" className="text-xs text-text-secondary">Recurring commissions</label>
+            </div>
+          </div>
+          <div className="border-t border-border-subtle pt-3">
+            <p className="text-xs font-medium text-text-secondary mb-2">Voucher Template</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Discount Type</label>
+                <select
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                  value={vtDiscountType}
+                  onChange={(e) => setVtDiscountType(e.target.value as typeof vtDiscountType)}
+                >
+                  <option value="PERCENT" className="bg-surface-elevated text-text-primary">Percent</option>
+                  <option value="FIXED_AMOUNT" className="bg-surface-elevated text-text-primary">Fixed Amount</option>
+                  <option value="FREE_PASS" className="bg-surface-elevated text-text-primary">Free Pass</option>
+                </select>
+              </div>
+              {vtDiscountType === "PERCENT" && (
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Discount %</label>
+                  <input
+                    type="number" min="0" max="100" step="1"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={vtDiscountPct}
+                    onChange={(e) => setVtDiscountPct(e.target.value)}
+                    placeholder="25"
+                  />
+                </div>
+              )}
+              {vtDiscountType === "FIXED_AMOUNT" && (
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Fixed Amount ($)</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={vtDiscountFixed}
+                    onChange={(e) => setVtDiscountFixed(e.target.value)}
+                    placeholder="5.00"
+                  />
+                </div>
+              )}
+              {vtDiscountType === "FREE_PASS" && (
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Pass Days</label>
+                  <input
+                    type="number" min="1"
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                    value={vtPassDays}
+                    onChange={(e) => setVtPassDays(e.target.value)}
+                    placeholder="3"
+                  />
+                </div>
+              )}
             </div>
           </div>
           {error && <p className="text-xs text-danger-fg">{error}</p>}
@@ -276,88 +388,130 @@ function TiersTab() {
       ) : tiers.length === 0 ? (
         <p className="text-sm text-text-tertiary">No tiers yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border-subtle text-left text-text-tertiary">
-                <th className="pb-2 pr-4">Name</th>
-                <th className="pb-2 pr-4">Commission %</th>
-                <th className="pb-2 pr-4">Monthly Limit</th>
-                <th className="pb-2 pr-4">Voucher Template</th>
-                <th className="pb-2 pr-4">Promoters</th>
-                <th className="pb-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tiers.map((tier) => (
-                <tr key={tier.id} className="border-b border-border-subtle/50">
-                  <td className="py-2 pr-4 text-text-primary">
-                    {editingId === tier.id ? (
-                      <input
-                        className="w-28 rounded border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                      />
-                    ) : tier.name}
-                  </td>
-                  <td className="py-2 pr-4 text-text-secondary">
-                    {editingId === tier.id ? (
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        className="w-20 rounded border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                        value={editCommissionPct}
-                        onChange={(e) => setEditCommissionPct(e.target.value)}
-                      />
-                    ) : `${tier.commissionPct}%`}
-                  </td>
-                  <td className="py-2 pr-4 text-text-secondary">
-                    {editingId === tier.id ? (
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="w-24 rounded border border-border bg-surface px-2 py-1 text-sm text-text-primary"
-                        value={editMonthlyLimit}
-                        onChange={(e) => setEditMonthlyLimit(e.target.value)}
-                        placeholder="Unlimited"
-                      />
-                    ) : tier.monthlyLimit != null ? formatCents(tier.monthlyLimit) : "Unlimited"}
-                  </td>
-                  <td className="py-2 pr-4 text-text-secondary">
-                    {editingId === tier.id ? (
-                      <input
-                        className="w-24 rounded border border-border bg-surface px-2 py-1 text-sm text-text-primary uppercase"
-                        value={editVoucherTemplate}
-                        onChange={(e) => setEditVoucherTemplate(e.target.value.toUpperCase())}
-                        placeholder="—"
-                      />
-                    ) : tier.voucherTemplate ?? "—"}
-                  </td>
-                  <td className="py-2 pr-4 text-text-tertiary">{tier._count?.promoters ?? 0}</td>
-                  <td className="py-2">
-                    <div className="flex gap-1">
-                      {editingId === tier.id ? (
-                        <>
-                          <Button variant="primary" size="sm" disabled={saving} onClick={() => handleSave(tier.id)}>
-                            {saving ? "..." : "Save"}
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button variant="secondary" size="sm" onClick={() => startEdit(tier)}>Edit</Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleDelete(tier.id)}>Delete</Button>
-                        </>
-                      )}
+        <div className="space-y-3">
+          {tiers.map((tier) =>
+            editingId === tier.id ? (
+              <div key={tier.id} className="rounded-lg border border-border bg-surface-elevated p-4 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-1">Tier Name</label>
+                    <input
+                      className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-1">Commission %</label>
+                    <input
+                      type="number" min="0" max="100" step="0.1"
+                      className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={editCommissionPct}
+                      onChange={(e) => setEditCommissionPct(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-1">Monthly Voucher Limit (-1 = unlimited)</label>
+                    <input
+                      type="number" min="-1" step="1"
+                      className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                      value={editMonthlyLimit}
+                      onChange={(e) => setEditMonthlyLimit(e.target.value)}
+                      placeholder="-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-4">
+                    <input
+                      id={`recurring-${tier.id}`}
+                      type="checkbox"
+                      checked={editRecurring}
+                      onChange={(e) => setEditRecurring(e.target.checked)}
+                      className="rounded"
+                    />
+                    <label htmlFor={`recurring-${tier.id}`} className="text-xs text-text-secondary">Recurring commissions</label>
+                  </div>
+                </div>
+                <div className="border-t border-border-subtle pt-3">
+                  <p className="text-xs font-medium text-text-secondary mb-2">Voucher Template</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1">Discount Type</label>
+                      <select
+                        className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                        value={editVtDiscountType}
+                        onChange={(e) => setEditVtDiscountType(e.target.value as typeof editVtDiscountType)}
+                      >
+                        <option value="PERCENT" className="bg-surface-elevated text-text-primary">Percent</option>
+                        <option value="FIXED_AMOUNT" className="bg-surface-elevated text-text-primary">Fixed Amount</option>
+                        <option value="FREE_PASS" className="bg-surface-elevated text-text-primary">Free Pass</option>
+                      </select>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {editVtDiscountType === "PERCENT" && (
+                      <div>
+                        <label className="block text-xs text-text-secondary mb-1">Discount %</label>
+                        <input
+                          type="number" min="0" max="100" step="1"
+                          className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                          value={editVtDiscountPct}
+                          onChange={(e) => setEditVtDiscountPct(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {editVtDiscountType === "FIXED_AMOUNT" && (
+                      <div>
+                        <label className="block text-xs text-text-secondary mb-1">Fixed Amount ($)</label>
+                        <input
+                          type="number" min="0" step="0.01"
+                          className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                          value={editVtDiscountFixed}
+                          onChange={(e) => setEditVtDiscountFixed(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {editVtDiscountType === "FREE_PASS" && (
+                      <div>
+                        <label className="block text-xs text-text-secondary mb-1">Pass Days</label>
+                        <input
+                          type="number" min="1"
+                          className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+                          value={editVtPassDays}
+                          onChange={(e) => setEditVtPassDays(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" disabled={saving} onClick={() => handleSave(tier.id)}>
+                    {saving ? "..." : "Save"}
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div key={tier.id} className="rounded-lg border border-border bg-surface-elevated p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-text-primary">{tier.name}</span>
+                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-text-tertiary">
+                      <span>{tier.commissionPct}% commission</span>
+                      <span>
+                        {tier.monthlyVoucherLimit === -1
+                          ? "Unlimited vouchers/mo"
+                          : `${tier.monthlyVoucherLimit} vouchers/mo`}
+                      </span>
+                      <span>Template: {templateLabel(tier.voucherTemplate)}</span>
+                      <span>{tier._count?.promoters ?? 0} promoters</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0 ml-3">
+                    <Button variant="secondary" size="sm" onClick={() => startEdit(tier)}>Edit</Button>
+                    <Button variant="secondary" size="sm" onClick={() => handleDelete(tier.id)}>Delete</Button>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
         </div>
       )}
     </div>
@@ -399,13 +553,14 @@ function PromotersTab() {
   };
 
   const handleAssignTier = async (promoter: Promoter) => {
-    const tierId = selectedTier[promoter.userId] ?? "";
+    const tierId = selectedTier[promoter.userId] ?? promoter.tierId ?? "";
+    if (!tierId) return;
     setAssigningId(promoter.userId);
     try {
       const res = await fetch(`/api/admin/promoters/${promoter.userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tierId: tierId || null }),
+        body: JSON.stringify({ tierId }),
       });
       if (res.ok) fetchData(search);
     } finally {
@@ -424,7 +579,7 @@ function PromotersTab() {
       <div className="flex gap-2">
         <input
           className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary"
-          placeholder="Search by email or refCode..."
+          placeholder="Search by email or name..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -447,14 +602,14 @@ function PromotersTab() {
                 <th className="pb-2 pr-3">Ref Code</th>
                 <th className="pb-2 pr-3">Tier</th>
                 <th className="pb-2 pr-3">Earnings</th>
-                <th className="pb-2 pr-3">Mo. Usage</th>
+                <th className="pb-2 pr-3">Vouchers</th>
                 <th className="pb-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {promoters.map((p) => (
                 <tr key={p.id} className="border-b border-border-subtle/50">
-                  <td className="py-2 pr-3 text-text-primary">{p.user.email}</td>
+                  <td className="py-2 pr-3 text-text-primary">{p.email}</td>
                   <td className="py-2 pr-3">
                     <span className="font-mono text-xs text-text-secondary">{p.refCode}</span>
                   </td>
@@ -480,8 +635,8 @@ function PromotersTab() {
                       </Button>
                     </div>
                   </td>
-                  <td className="py-2 pr-3 text-text-secondary">{formatCents(p.totalEarnings)}</td>
-                  <td className="py-2 pr-3 text-text-secondary">{formatCents(p.monthlyUsage)}</td>
+                  <td className="py-2 pr-3 text-text-secondary">{formatDollars(p.totalEarnings)}</td>
+                  <td className="py-2 pr-3 text-text-tertiary">{p.voucherUseCount}</td>
                   <td className="py-2">
                     <Button variant="secondary" size="sm" onClick={() => handleRemove(p.userId)}>
                       Remove
@@ -508,12 +663,13 @@ function VouchersTab() {
 
   // Form
   const [code, setCode] = useState("");
+  const [voucherType, setVoucherType] = useState<"ADMIN_PUBLIC" | "ADMIN_SINGLE">("ADMIN_PUBLIC");
   const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED_AMOUNT" | "FREE_PASS">("PERCENT");
   const [discountPct, setDiscountPct] = useState("");
   const [discountFixed, setDiscountFixed] = useState("");
   const [passDays, setPassDays] = useState("");
   const [maxUses, setMaxUses] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
+  const [validUntil, setValidUntil] = useState("");
   const [description, setDescription] = useState("");
 
   const fetchVouchers = useCallback(async () => {
@@ -529,8 +685,8 @@ function VouchersTab() {
   useEffect(() => { fetchVouchers(); }, [fetchVouchers]);
 
   const resetForm = () => {
-    setCode(""); setDiscountType("PERCENT"); setDiscountPct(""); setDiscountFixed("");
-    setPassDays(""); setMaxUses(""); setExpiresAt(""); setDescription(""); setError(null);
+    setCode(""); setVoucherType("ADMIN_PUBLIC"); setDiscountType("PERCENT"); setDiscountPct(""); setDiscountFixed("");
+    setPassDays(""); setMaxUses(""); setValidUntil(""); setDescription(""); setError(null);
   };
 
   const handleCreate = async () => {
@@ -540,9 +696,10 @@ function VouchersTab() {
     try {
       const body: Record<string, unknown> = {
         code: code.trim().toUpperCase(),
+        type: voucherType,
         discountType,
         maxUses: maxUses ? parseInt(maxUses, 10) : null,
-        expiresAt: expiresAt || null,
+        validUntil: validUntil ? new Date(validUntil).toISOString() : null,
         description: description || null,
       };
       if (discountType === "PERCENT") body.discountPct = parseFloat(discountPct);
@@ -611,6 +768,17 @@ function VouchersTab() {
               />
             </div>
             <div>
+              <label className="block text-xs text-text-secondary mb-1">Voucher Type</label>
+              <select
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                value={voucherType}
+                onChange={(e) => setVoucherType(e.target.value as typeof voucherType)}
+              >
+                <option value="ADMIN_PUBLIC" className="bg-surface-elevated text-text-primary">Public (multi-use)</option>
+                <option value="ADMIN_SINGLE" className="bg-surface-elevated text-text-primary">Single-user</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs text-text-secondary mb-1">Discount Type</label>
               <select
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
@@ -671,12 +839,12 @@ function VouchersTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-text-secondary mb-1">Expires At (blank = never)</label>
+              <label className="block text-xs text-text-secondary mb-1">Valid Until (blank = never)</label>
               <input
                 type="date"
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
               />
             </div>
             <div className="sm:col-span-2">
@@ -711,7 +879,7 @@ function VouchersTab() {
                 <th className="pb-2 pr-3">Type</th>
                 <th className="pb-2 pr-3">Discount</th>
                 <th className="pb-2 pr-3">Uses</th>
-                <th className="pb-2 pr-3">Expires</th>
+                <th className="pb-2 pr-3">Valid Until</th>
                 <th className="pb-2 pr-3">Status</th>
                 <th className="pb-2">Actions</th>
               </tr>
@@ -721,14 +889,14 @@ function VouchersTab() {
                 <tr key={v.id} className="border-b border-border-subtle/50">
                   <td className="py-2 pr-3 font-mono text-xs text-text-primary">{v.code}</td>
                   <td className="py-2 pr-3">
-                    <Badge variant="default">{v.discountType}</Badge>
+                    <Badge variant="default">{v.type}</Badge>
                   </td>
                   <td className="py-2 pr-3 text-text-secondary">{discountLabel(v)}</td>
                   <td className="py-2 pr-3 text-text-tertiary">
-                    {v.usedCount}/{v.maxUses ?? "∞"}
+                    {v.useCount}/{v.maxUses ?? "∞"}
                   </td>
                   <td className="py-2 pr-3 text-text-tertiary">
-                    {v.expiresAt ? formatDate(v.expiresAt) : "Never"}
+                    {v.validUntil ? formatDate(v.validUntil) : "Never"}
                   </td>
                   <td className="py-2 pr-3">
                     <Badge variant={v.active ? "success" : "danger"}>
@@ -768,7 +936,7 @@ function CommissionsTab() {
     try {
       const params = new URLSearchParams({ status });
       const res = await fetch(`/api/admin/commissions?${params}`);
-      if (res.ok) setCommissions(await res.json());
+      if (res.ok) setCommissions((await res.json()).commissions);
     } finally {
       setLoading(false);
     }
@@ -776,29 +944,33 @@ function CommissionsTab() {
 
   useEffect(() => { fetchCommissions(statusFilter); }, [fetchCommissions, statusFilter]);
 
+  // Group commissions by promoter for batch settle
+  const byPromoter = commissions.reduce<
+    Record<string, { promoterEmail: string; items: Commission[]; total: number }>
+  >((acc, c) => {
+    if (!acc[c.promoterId]) {
+      acc[c.promoterId] = { promoterEmail: c.promoterEmail, items: [], total: 0 };
+    }
+    acc[c.promoterId].items.push(c);
+    acc[c.promoterId].total += c.amount;
+    return acc;
+  }, {});
+
   const handleSettle = async (promoterId: string) => {
+    const group = byPromoter[promoterId];
+    if (!group) return;
     setSettling(promoterId);
     try {
       const res = await fetch("/api/admin/commissions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ promoterId, status: "SETTLED" }),
+        body: JSON.stringify({ ids: group.items.map((c) => c.id) }),
       });
       if (res.ok) fetchCommissions(statusFilter);
     } finally {
       setSettling(null);
     }
   };
-
-  // Group commissions by promoter for batch settle
-  const byPromoter = commissions.reduce<Record<string, { promoter: Commission["promoter"]; items: Commission[]; total: number }>>((acc, c) => {
-    if (!acc[c.promoterId]) {
-      acc[c.promoterId] = { promoter: c.promoter, items: [], total: 0 };
-    }
-    acc[c.promoterId].items.push(c);
-    acc[c.promoterId].total += c.amount;
-    return acc;
-  }, {});
 
   return (
     <div className="space-y-4">
@@ -827,10 +999,7 @@ function CommissionsTab() {
           {Object.entries(byPromoter).map(([promoterId, group]) => (
             <div key={promoterId} className="rounded-lg border border-border bg-surface-elevated p-4">
               <div className="flex items-center justify-between mb-3">
-                <div>
-                  <span className="text-sm font-medium text-text-primary">{group.promoter.user.email}</span>
-                  <span className="ml-2 font-mono text-xs text-text-tertiary">({group.promoter.refCode})</span>
-                </div>
+                <span className="text-sm font-medium text-text-primary">{group.promoterEmail}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-text-primary">
                     Total: {formatCents(group.total)}

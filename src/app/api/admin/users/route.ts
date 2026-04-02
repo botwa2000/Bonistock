@@ -31,6 +31,9 @@ export const GET = adminRoute(async (req: NextRequest) => {
         subscription: {
           select: { status: true, tier: true },
         },
+        promoter: {
+          select: { id: true, tierId: true, refCode: true, tier: { select: { name: true } } },
+        },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -49,6 +52,9 @@ export const GET = adminRoute(async (req: NextRequest) => {
       tier: u.subscription?.tier ?? "FREE",
       status: u.subscription?.status ?? "INACTIVE",
       createdAt: u.createdAt,
+      promoter: u.promoter
+        ? { id: u.promoter.id, tierId: u.promoter.tierId, refCode: u.promoter.refCode, tierName: u.promoter.tier.name }
+        : null,
     })),
     total,
     page,

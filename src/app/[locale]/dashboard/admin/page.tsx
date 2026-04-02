@@ -97,6 +97,7 @@ interface AdminUser {
   tier: string;
   status: string;
   createdAt: string;
+  promoter: { id: string; tierId: string; refCode: string; tierName: string } | null;
 }
 
 function formatUptime(seconds: number): string {
@@ -156,6 +157,11 @@ export default function AdminPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editUserFields, setEditUserFields] = useState<{ tier: string; role: string }>({ tier: "FREE", role: "USER" });
   const [savingUser, setSavingUser] = useState(false);
+
+  // Promoter assignment state
+  const [promoterTiers, setPromoterTiers] = useState<{ id: string; name: string }[]>([]);
+  const [promoterTierId, setPromoterTierId] = useState("");
+  const [assigningPromoter, setAssigningPromoter] = useState(false);
 
   // Create form state
   const [formName, setFormName] = useState("");
@@ -253,6 +259,11 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchPromoterTiers = useCallback(async () => {
+    const res = await fetch("/api/admin/promoter-tiers");
+    if (res.ok) setPromoterTiers(await res.json());
+  }, []);
+
   const fetchCurrencies = useCallback(async () => {
     setCurrenciesLoading(true);
     try {
@@ -274,8 +285,9 @@ export default function AdminPage() {
       fetchUsers(1, "");
       fetchEmailTemplates();
       fetchCurrencies();
+      fetchPromoterTiers();
     }
-  }, [user, fetchStats, fetchProducts, fetchUsers, fetchEmailTemplates, fetchCurrencies]);
+  }, [user, fetchStats, fetchProducts, fetchUsers, fetchEmailTemplates, fetchCurrencies, fetchPromoterTiers]);
 
   const handleToggleActive = async (product: Product) => {
     const res = await fetch(`/api/admin/products/${product.id}`, {
@@ -720,6 +732,7 @@ export default function AdminPage() {
   const startEditingUser = (u: AdminUser) => {
     setEditingUserId(u.id);
     setEditUserFields({ tier: u.tier, role: u.role });
+    setPromoterTierId(u.promoter?.tierId ?? "");
   };
 
   const handleSaveUser = async (userId: string) => {
@@ -732,11 +745,40 @@ export default function AdminPage() {
       });
       if (res.ok) {
         const updated = await res.json();
-        setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...updated, promoter: u.promoter } : u)));
         setEditingUserId(null);
       }
     } finally {
       setSavingUser(false);
+    }
+  };
+
+  const handleAssignPromoter = async (userId: string) => {
+    if (!promoterTierId) return;
+    setAssigningPromoter(true);
+    try {
+      const res = await fetch(`/api/admin/promoters/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tierId: promoterTierId }),
+      });
+      if (res.ok) {
+        await fetchUsers(usersPage, usersSearch);
+        setEditingUserId(null);
+      }
+    } finally {
+      setAssigningPromoter(false);
+    }
+  };
+
+  const handleRemovePromoter = async (userId: string) => {
+    if (!confirm("Remove promoter status from this user?")) return;
+    setAssigningPromoter(true);
+    try {
+      await fetch(`/api/admin/promoters/${userId}`, { method: "DELETE" });
+      await fetchUsers(usersPage, usersSearch);
+    } finally {
+      setAssigningPromoter(false);
     }
   };
 
@@ -867,6 +909,7 @@ export default function AdminPage() {
                       <th className="pb-2">{t("email")}</th>
                       <th className="pb-2">{t("role")}</th>
                       <th className="pb-2">{t("tier")}</th>
+                      <th className="pb-2">Promoter</th>
                       <th className="pb-2">{t("region")}</th>
                       <th className="pb-2">{t("joined")}</th>
                       <th className="pb-2">{t("actions")}</th>
@@ -908,6 +951,47 @@ export default function AdminPage() {
                             <Badge variant={u.tier === "PLUS" ? "accent" : u.tier === "PASS" ? "info" : "default"}>
                               {u.tier}
                             </Badge>
+                          )}
+                        </td>
+                        <td className="py-2">
+                          {editingUserId === u.id ? (
+                            <div className="flex items-center gap-1">
+                              <select
+                                className="rounded border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                                value={promoterTierId}
+                                onChange={(e) => setPromoterTierId(e.target.value)}
+                              >
+                                <option value="" className="bg-surface-elevated text-text-primary">— assign tier —</option>
+                                {promoterTiers.map((t) => (
+                                  <option key={t.id} value={t.id} className="bg-surface-elevated text-text-primary">{t.name}</option>
+                                ))}
+                              </select>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={assigningPromoter || !promoterTierId}
+                                onClick={() => handleAssignPromoter(u.id)}
+                              >
+                                {assigningPromoter ? "..." : u.promoter ? "Change" : "Add"}
+                              </Button>
+                              {u.promoter && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={assigningPromoter}
+                                  onClick={() => handleRemovePromoter(u.id)}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          ) : u.promoter ? (
+                            <div>
+                              <span className="font-mono text-xs text-accent-fg">{u.promoter.refCode}</span>
+                              <span className="ml-1 text-xs text-text-tertiary">({u.promoter.tierName})</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-text-tertiary">—</span>
                           )}
                         </td>
                         <td className="py-2 text-text-secondary">{u.region}</td>
