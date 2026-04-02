@@ -7,13 +7,16 @@ import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { RegionSwitcher } from "@/components/ui/region-switcher";
+import { PromoBanner } from "@/components/features/promo-banner";
 
 export function Navbar() {
   const t = useTranslations();
   const { isLoggedIn } = useAuth();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-xl">
+    <>
+      <PromoBanner />
+      <nav className="sticky top-0 z-50 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-2 md:px-8">
         <div className="sm:hidden"><Logo size="sm" showText={false} /></div>
         <div className="hidden sm:block"><Logo /></div>
@@ -56,5 +59,6 @@ export function Navbar() {
         </div>
       </div>
     </nav>
+    </>
   );
 }
