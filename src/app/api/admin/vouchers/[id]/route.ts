@@ -77,10 +77,10 @@ export const DELETE = adminRoute(async (req: NextRequest) => {
     return NextResponse.json({ error: "Voucher not found" }, { status: 404 });
   }
 
-  const voucher = await db.voucher.update({
-    where: { id },
-    data: { active: false },
-  });
+  await db.$transaction([
+    db.voucherRedemption.deleteMany({ where: { voucherId: id } }),
+    db.voucher.delete({ where: { id } }),
+  ]);
 
-  return NextResponse.json(voucher);
+  return NextResponse.json({ success: true });
 });

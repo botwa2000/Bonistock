@@ -806,6 +806,34 @@ function VouchersTab() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this voucher?")) return;
     await fetch(`/api/admin/vouchers/${id}`, { method: "DELETE" });
+    setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    fetchVouchers();
+  };
+
+  // ── Selection state ──
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelected(selected.size === vouchers.length ? new Set() : new Set(vouchers.map((v) => v.id)));
+  };
+
+  const handleBulkAction = async (action: "activate" | "deactivate" | "delete") => {
+    if (selected.size === 0) return;
+    if (action === "delete" && !confirm(`Permanently delete ${selected.size} voucher(s)?`)) return;
+    await fetch("/api/admin/vouchers/bulk-action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(selected), action }),
+    });
+    setSelected(new Set());
     fetchVouchers();
   };
 
@@ -1193,6 +1221,28 @@ function VouchersTab() {
         </div>
       )}
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+          <span className="flex-1 text-xs text-text-secondary">{selected.size} selected</span>
+          <Button variant="secondary" size="sm" onClick={() => handleBulkAction("activate")}>
+            Activate
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => handleBulkAction("deactivate")}>
+            Deactivate
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => handleBulkAction("delete")}>
+            Delete
+          </Button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="text-xs text-text-tertiary hover:text-text-primary"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-6">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-text-tertiary border-t-accent-fg" />
@@ -1204,6 +1254,14 @@ function VouchersTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border-subtle text-left text-text-tertiary">
+                <th className="pb-2 pr-3 w-8">
+                  <input
+                    type="checkbox"
+                    className="rounded border-border"
+                    checked={vouchers.length > 0 && selected.size === vouchers.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="pb-2 pr-3">Code</th>
                 <th className="pb-2 pr-3">Type</th>
                 <th className="pb-2 pr-3">Discount</th>
@@ -1215,7 +1273,18 @@ function VouchersTab() {
             </thead>
             <tbody>
               {vouchers.map((v) => (
-                <tr key={v.id} className="border-b border-border-subtle/50">
+                <tr
+                  key={v.id}
+                  className={`border-b border-border-subtle/50 ${selected.has(v.id) ? "bg-surface" : ""}`}
+                >
+                  <td className="py-2 pr-3">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      checked={selected.has(v.id)}
+                      onChange={() => toggleSelect(v.id)}
+                    />
+                  </td>
                   <td className="py-2 pr-3 font-mono text-xs text-text-primary">{v.code}</td>
                   <td className="py-2 pr-3">
                     <Badge variant="default">{v.type}</Badge>
@@ -1237,7 +1306,7 @@ function VouchersTab() {
                       <Button variant="secondary" size="sm" onClick={() => handleToggleActive(v)}>
                         {v.active ? "Disable" : "Enable"}
                       </Button>
-                      <Button variant="secondary" size="sm" onClick={() => handleDelete(v.id)}>
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(v.id)}>
                         Delete
                       </Button>
                     </div>
