@@ -262,44 +262,118 @@ function OverviewTab({
   );
 }
 
+// ─── Download helpers ─────────────────────────────────────────────────────────
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadTxt(codes: string[], stem: string) {
+  triggerDownload(new Blob([codes.join("\n")], { type: "text/plain" }), `${stem}.txt`);
+}
+
+function downloadCsv(codes: string[], discountLabel: string, stem: string) {
+  const date = new Date().toISOString().split("T")[0];
+  const rows = ["code,discount,generated_at", ...codes.map((c) => `${c},${discountLabel},${date}`)];
+  triggerDownload(new Blob([rows.join("\n")], { type: "text/csv" }), `${stem}.csv`);
+}
+
 // ─── Vouchers Tab ─────────────────────────────────────────────────────────────
 
 function VouchersTab({ profile, vouchers, onGenerated }: {
   profile: PromoterProfile;
   vouchers: Voucher[];
-  onGenerated: (code: string, updatedVouchers: Voucher[], updatedProfile: PromoterProfile) => void;
+  onGenerated: (codes: string[], updatedVouchers: Voucher[], updatedProfile: PromoterProfile) => void;
 }) {
   const { promoter } = profile;
   const [generating, setGenerating] = useState(false);
-  const [newCode, setNewCode] = useState<string | null>(null);
+  const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
+  const [generatedDiscount, setGeneratedDiscount] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [count, setCount] = useState(1);
 
-  const atLimit =
-    promoter.monthlyLimit !== -1 && promoter.usedThisMonth >= promoter.monthlyLimit;
+  const remaining =
+    promoter.monthlyLimit === -1
+      ? 50
+      : Math.max(0, promoter.monthlyLimit - promoter.usedThisMonth);
+  const maxCount = Math.min(50, remaining);
+  const atLimit = remaining === 0;
 
   const quotaLabel =
     promoter.monthlyLimit === -1
       ? "Unlimited vouchers / month"
       : `${promoter.usedThisMonth} of ${promoter.monthlyLimit} used this month`;
 
+  function formatDiscountFromRaw(
+    discountType: string,
+    discountPct: number | null,
+    discountFixed: number | null,
+    passDays: number | null,
+  ): string {
+    if (discountType === "PERCENT" && discountPct != null) return `${discountPct}% off`;
+    if (discountType === "FIXED_AMOUNT" && discountFixed != null)
+      return `$${(discountFixed / 100).toFixed(2)} off`;
+    if (discountType === "FREE_PASS" && passDays != null) return `${passDays}-day pass`;
+    return "";
+  }
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
-    setNewCode(null);
+    setGeneratedCodes([]);
     try {
-      const res = await fetch("/api/promoter/vouchers", { method: "POST" });
-      if (res.status === 429) {
-        setError("Monthly voucher limit reached.");
-        return;
+      let codes: string[];
+      let discountLabel = "";
+
+      if (count === 1) {
+        const res = await fetch("/api/promoter/vouchers", { method: "POST" });
+        if (res.status === 429) { setError("Monthly voucher limit reached."); return; }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(body.error ?? "Failed to generate voucher.");
+          return;
+        }
+        const data = await res.json();
+        codes = [data.voucher?.code ?? ""];
+        discountLabel = formatDiscountFromRaw(
+          data.voucher?.discountType ?? "",
+          data.voucher?.discountPct ?? null,
+          data.voucher?.discountFixed ?? null,
+          data.voucher?.passDays ?? null,
+        );
+      } else {
+        const res = await fetch("/api/promoter/vouchers/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count }),
+        });
+        if (res.status === 422 || res.status === 429) {
+          const body = await res.json().catch(() => ({}));
+          setError(body.error ?? "Quota exceeded.");
+          return;
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(body.error ?? "Failed to generate vouchers.");
+          return;
+        }
+        const data = await res.json();
+        codes = data.codes ?? [];
+        discountLabel = formatDiscountFromRaw(
+          data.discountType ?? "",
+          data.discountPct,
+          data.discountFixed,
+          data.passDays,
+        );
       }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Failed to generate voucher.");
-        return;
-      }
-      const data = await res.json();
-      const code: string = data.voucher?.code ?? "";
-      setNewCode(code);
+
+      setGeneratedCodes(codes);
+      setGeneratedDiscount(discountLabel);
 
       const [vRes, pRes] = await Promise.all([
         fetch("/api/promoter/vouchers"),
@@ -307,7 +381,7 @@ function VouchersTab({ profile, vouchers, onGenerated }: {
       ]);
       const updatedVouchers = vRes.ok ? (await vRes.json()).vouchers ?? [] : vouchers;
       const updatedProfile = pRes.ok ? await pRes.json() : profile;
-      onGenerated(code, updatedVouchers, updatedProfile);
+      onGenerated(codes, updatedVouchers, updatedProfile);
     } catch {
       setError("An unexpected error occurred.");
     } finally {
@@ -315,34 +389,117 @@ function VouchersTab({ profile, vouchers, onGenerated }: {
     }
   };
 
+  const stem = `vouchers-${new Date().toISOString().split("T")[0]}`;
+
   return (
     <div className="space-y-6">
       {/* Generator */}
       <Card variant="glass">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="mb-1 text-sm font-semibold text-text-primary">Generate Voucher</h2>
+            <h2 className="mb-1 text-sm font-semibold text-text-primary">Generate Vouchers</h2>
             <p className="text-xs text-text-secondary">{quotaLabel}</p>
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={atLimit || generating}
-            onClick={handleGenerate}
-          >
-            {generating ? "Generating..." : atLimit ? "Limit reached" : "Generate Voucher"}
-          </Button>
+
+          <div className="flex items-center gap-3">
+            {/* Count stepper */}
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-input-bg px-1">
+              <button
+                type="button"
+                disabled={count <= 1}
+                onClick={() => setCount((c) => Math.max(1, c - 1))}
+                className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:text-text-primary disabled:opacity-30"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={maxCount || 1}
+                value={count}
+                onChange={(e) => {
+                  const v = Math.min(maxCount || 1, Math.max(1, parseInt(e.target.value, 10) || 1));
+                  setCount(v);
+                }}
+                className="w-10 bg-transparent text-center text-sm font-medium text-text-primary focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={count >= (maxCount || 1)}
+                onClick={() => setCount((c) => Math.min(maxCount || 1, c + 1))}
+                className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:text-text-primary disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={atLimit || generating}
+              onClick={handleGenerate}
+            >
+              {generating
+                ? "Generating..."
+                : atLimit
+                ? "Limit reached"
+                : count === 1
+                ? "Generate"
+                : `Generate ${count}`}
+            </Button>
+          </div>
         </div>
 
         {error && <p className="mt-3 text-xs text-danger-fg">{error}</p>}
 
-        {newCode && (
-          <div className="mt-4 flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
-            <span className="text-xs text-text-secondary">New voucher code:</span>
-            <span className="font-mono text-base font-bold tracking-widest text-accent-fg">
-              {newCode}
-            </span>
-            <CopyButton text={newCode} />
+        {generatedCodes.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {generatedCodes.length === 1 ? (
+              <div className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
+                <span className="text-xs text-text-secondary">New voucher code:</span>
+                <span className="font-mono text-base font-bold tracking-widest text-accent-fg">
+                  {generatedCodes[0]}
+                </span>
+                <CopyButton text={generatedCodes[0]} />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border-subtle bg-surface-elevated">
+                <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2.5">
+                  <span className="text-xs font-medium text-text-secondary">
+                    {generatedCodes.length} codes generated
+                    {generatedDiscount && (
+                      <span className="ml-1.5 text-accent-fg">· {generatedDiscount}</span>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <CopyButton text={generatedCodes.join("\n")} label="Copy all" />
+                    <button
+                      type="button"
+                      onClick={() => downloadTxt(generatedCodes, stem)}
+                      className="rounded px-2.5 py-1 text-xs border border-border text-text-tertiary hover:text-text-primary hover:border-border transition-colors"
+                    >
+                      TXT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadCsv(generatedCodes, generatedDiscount, stem)}
+                      className="rounded px-2.5 py-1 text-xs border border-border text-text-tertiary hover:text-text-primary hover:border-border transition-colors"
+                    >
+                      CSV
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-48 overflow-y-auto px-4 py-2">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3 md:grid-cols-4">
+                    {generatedCodes.map((c) => (
+                      <span key={c} className="font-mono text-sm tracking-wider text-accent-fg">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -910,7 +1067,7 @@ export function PromoterDashboard() {
         <VouchersTab
           profile={profile}
           vouchers={vouchers}
-          onGenerated={(code, updatedVouchers, updatedProfile) => {
+          onGenerated={(_codes, updatedVouchers, updatedProfile) => {
             setVouchers(updatedVouchers);
             setProfile(updatedProfile);
           }}

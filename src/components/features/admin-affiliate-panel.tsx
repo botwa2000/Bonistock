@@ -809,6 +809,99 @@ function VouchersTab() {
     fetchVouchers();
   };
 
+  // ── Bulk generation state ──
+  const [showBulkForm, setShowBulkForm] = useState(false);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<{
+    codes: string[];
+    discountType: string;
+    discountPct: number | null;
+    discountFixed: number | null;
+    passDays: number | null;
+  } | null>(null);
+
+  const [bulkCount, setBulkCount] = useState("10");
+  const [bulkDiscountType, setBulkDiscountType] = useState<"PERCENT" | "FIXED_AMOUNT" | "FREE_PASS">("PERCENT");
+  const [bulkDiscountPct, setBulkDiscountPct] = useState("");
+  const [bulkDiscountFixed, setBulkDiscountFixed] = useState("");
+  const [bulkPassDays, setBulkPassDays] = useState("");
+  const [bulkMaxUses, setBulkMaxUses] = useState("1");
+  const [bulkValidUntil, setBulkValidUntil] = useState("");
+  const [bulkDescription, setBulkDescription] = useState("");
+  const [bulkPrefix, setBulkPrefix] = useState("");
+
+  function bulkDiscountLabel(): string {
+    if (bulkDiscountType === "PERCENT" && bulkDiscountPct) return `${bulkDiscountPct}% off`;
+    if (bulkDiscountType === "FIXED_AMOUNT" && bulkDiscountFixed)
+      return `$${parseFloat(bulkDiscountFixed).toFixed(2)} off`;
+    if (bulkDiscountType === "FREE_PASS" && bulkPassDays) return `${bulkPassDays}-day pass`;
+    return "";
+  }
+
+  function triggerDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleBulkDownloadTxt() {
+    if (!bulkResult) return;
+    triggerDownload(
+      new Blob([bulkResult.codes.join("\n")], { type: "text/plain" }),
+      `vouchers-${new Date().toISOString().split("T")[0]}.txt`
+    );
+  }
+
+  function handleBulkDownloadCsv() {
+    if (!bulkResult) return;
+    const discStr = bulkDiscountLabel();
+    const date = new Date().toISOString().split("T")[0];
+    const rows = ["code,discount,generated_at", ...bulkResult.codes.map((c) => `${c},${discStr},${date}`)];
+    triggerDownload(
+      new Blob([rows.join("\n")], { type: "text/csv" }),
+      `vouchers-${date}.csv`
+    );
+  }
+
+  const handleBulkCreate = async () => {
+    setBulkGenerating(true);
+    setBulkError(null);
+    setBulkResult(null);
+    try {
+      const body: Record<string, unknown> = {
+        count: parseInt(bulkCount, 10) || 1,
+        discountType: bulkDiscountType,
+        maxUses: parseInt(bulkMaxUses, 10) || 1,
+      };
+      if (bulkValidUntil) body.validUntil = new Date(bulkValidUntil).toISOString();
+      if (bulkDescription) body.description = bulkDescription;
+      if (bulkPrefix) body.prefix = bulkPrefix.toUpperCase();
+      if (bulkDiscountType === "PERCENT") body.discountPct = parseFloat(bulkDiscountPct);
+      if (bulkDiscountType === "FIXED_AMOUNT") body.discountFixed = Math.round(parseFloat(bulkDiscountFixed) * 100);
+      if (bulkDiscountType === "FREE_PASS") body.passDays = parseInt(bulkPassDays, 10);
+
+      const res = await fetch("/api/admin/vouchers/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBulkResult(data);
+        fetchVouchers();
+      } else {
+        const data = await res.json();
+        setBulkError(data.error ?? "Failed to generate vouchers");
+      }
+    } finally {
+      setBulkGenerating(false);
+    }
+  };
+
   const discountLabel = (v: Voucher) => {
     if (v.discountType === "PERCENT") return `${v.discountPct}%`;
     if (v.discountType === "FIXED_AMOUNT") return formatCents(v.discountFixed ?? 0);
@@ -820,10 +913,176 @@ function VouchersTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-text-tertiary">{vouchers.length} voucher(s)</p>
-        <Button variant="primary" size="sm" onClick={() => { resetForm(); setShowForm(!showForm); }}>
-          {showForm ? "Cancel" : "New Voucher"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setBulkResult(null);
+              setBulkError(null);
+              setShowBulkForm(!showBulkForm);
+              if (showForm) setShowForm(false);
+            }}
+          >
+            {showBulkForm ? "Cancel Bulk" : "Generate Bulk"}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => {
+            resetForm();
+            setShowForm(!showForm);
+            if (showBulkForm) setShowBulkForm(false);
+          }}>
+            {showForm ? "Cancel" : "New Voucher"}
+          </Button>
+        </div>
       </div>
+
+      {showBulkForm && (
+        <div className="rounded-lg border border-border bg-surface-elevated p-4 space-y-4">
+          <h3 className="text-sm font-semibold text-text-primary">Bulk Voucher Generator</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Count (max 500)</label>
+              <input
+                type="number" min="1" max="500"
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                value={bulkCount}
+                onChange={(e) => setBulkCount(e.target.value)}
+                placeholder="10"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Discount Type</label>
+              <select
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                value={bulkDiscountType}
+                onChange={(e) => setBulkDiscountType(e.target.value as typeof bulkDiscountType)}
+              >
+                <option value="PERCENT" className="bg-surface-elevated text-text-primary">Percent</option>
+                <option value="FIXED_AMOUNT" className="bg-surface-elevated text-text-primary">Fixed Amount</option>
+                <option value="FREE_PASS" className="bg-surface-elevated text-text-primary">Free Pass</option>
+              </select>
+            </div>
+            {bulkDiscountType === "PERCENT" && (
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Discount %</label>
+                <input
+                  type="number" min="1" max="100"
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                  value={bulkDiscountPct}
+                  onChange={(e) => setBulkDiscountPct(e.target.value)}
+                  placeholder="25"
+                />
+              </div>
+            )}
+            {bulkDiscountType === "FIXED_AMOUNT" && (
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Amount ($)</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                  value={bulkDiscountFixed}
+                  onChange={(e) => setBulkDiscountFixed(e.target.value)}
+                  placeholder="5.00"
+                />
+              </div>
+            )}
+            {bulkDiscountType === "FREE_PASS" && (
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Pass Days</label>
+                <input
+                  type="number" min="1"
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                  value={bulkPassDays}
+                  onChange={(e) => setBulkPassDays(e.target.value)}
+                  placeholder="7"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Uses per code</label>
+              <input
+                type="number" min="1"
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                value={bulkMaxUses}
+                onChange={(e) => setBulkMaxUses(e.target.value)}
+                placeholder="1"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Valid Until (blank = never)</label>
+              <input
+                type="date"
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                value={bulkValidUntil}
+                onChange={(e) => setBulkValidUntil(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Code Prefix (optional)</label>
+              <input
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary uppercase"
+                value={bulkPrefix}
+                onChange={(e) => setBulkPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                maxLength={8}
+                placeholder="LAUNCH"
+              />
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label className="block text-xs text-text-secondary mb-1">Description (shown to user)</label>
+              <input
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                value={bulkDescription}
+                onChange={(e) => setBulkDescription(e.target.value)}
+                placeholder="Spring launch offer"
+              />
+            </div>
+          </div>
+
+          {bulkError && <p className="text-xs text-danger-fg">{bulkError}</p>}
+
+          <Button variant="primary" size="sm" disabled={bulkGenerating} onClick={handleBulkCreate}>
+            {bulkGenerating ? "Generating..." : `Generate ${bulkCount || "?"} Vouchers`}
+          </Button>
+
+          {bulkResult && (
+            <div className="rounded-lg border border-border-subtle bg-surface">
+              <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2.5">
+                <span className="text-xs font-medium text-text-secondary">
+                  {bulkResult.codes.length} codes generated
+                  {bulkDiscountLabel() && (
+                    <span className="ml-1.5 text-accent-fg">· {bulkDiscountLabel()}</span>
+                  )}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBulkDownloadTxt}
+                    className="rounded px-2.5 py-1 text-xs border border-border text-text-tertiary hover:text-text-primary transition-colors"
+                  >
+                    Download TXT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkDownloadCsv}
+                    className="rounded px-2.5 py-1 text-xs border border-border text-text-tertiary hover:text-text-primary transition-colors"
+                  >
+                    Download CSV
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-48 overflow-y-auto px-4 py-2">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {bulkResult.codes.map((c) => (
+                    <span key={c} className="font-mono text-xs tracking-wider text-accent-fg">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <div className="rounded-lg border border-border bg-surface-elevated p-4 space-y-3">
