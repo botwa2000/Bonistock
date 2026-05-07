@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   // Retrieve stored challenge
   const challengeRecord = await db.verificationToken.findFirst({
-    where: { identifier: session.user.id },
+    where: { identifier: session.user.id, type: "WEBAUTHN_CHALLENGE" },
     orderBy: { expires: "desc" },
   });
 

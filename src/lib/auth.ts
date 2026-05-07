@@ -9,7 +9,7 @@ import { db } from "./db";
 import { verifyPassword } from "./password";
 import { isLockedOut, recordFailedLogin, resetFailedLogins } from "./lockout";
 import { logAudit } from "./audit";
-import { notifyAdmins } from "./admin-notify";
+import { notifyAdmins, escapeHtml } from "./admin-notify";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -97,7 +97,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Facebook({
       clientId: process.env.FACEBOOK_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
+      // Disabled: Facebook has weaker email verification — account takeover risk
+      allowDangerousEmailAccountLinking: false,
     }),
     Apple({
       clientId: process.env.APPLE_OAUTH_CLIENT_ID,
@@ -148,8 +149,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   events: {
     async createUser({ user }) {
-      const name = user.name ?? "Unknown";
-      const email = user.email ?? "no-email";
+      const name = escapeHtml(user.name ?? "Unknown");
+      const email = escapeHtml(user.email ?? "no-email");
       await notifyAdmins(
         `New signup: ${name} (${email})`,
         `<h2>New User Registration (OAuth)</h2><p><strong>Name:</strong> ${name}</p><p><strong>Email:</strong> ${email}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`

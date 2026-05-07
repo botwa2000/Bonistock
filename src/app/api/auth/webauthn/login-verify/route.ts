@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const { userId } = parsed.data;
 
   const challengeRecord = await db.verificationToken.findFirst({
-    where: { identifier: userId },
+    where: { identifier: userId, type: "WEBAUTHN_CHALLENGE" },
     orderBy: { expires: "desc" },
   });
 

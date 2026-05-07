@@ -18,7 +18,7 @@ async function generateRefCode(): Promise<string> {
 }
 
 function getUserId(req: NextRequest): string {
-  return req.nextUrl.pathname.split("/").pop()!;
+  return req.nextUrl.pathname.split("/").filter(Boolean).at(-1)!;
 }
 
 const assignSchema = z.object({

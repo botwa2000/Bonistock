@@ -4,7 +4,7 @@ import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
-import { notifyAdmins } from "@/lib/admin-notify";
+import { notifyAdmins, escapeHtml } from "@/lib/admin-notify";
 import { getAppleVerifier, getAppleEnvironments, Environment } from "@/lib/apple-server";
 
 /**
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "expired", source: "APPLE" });
         await notifyAdmins(
           "Subscription expired (Apple)",
-          `<h2>Subscription Expired (Apple)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
+          `<h2>Subscription Expired (Apple)</h2><p><strong>User:</strong> ${escapeHtml(user.name ?? "Unknown")} (${escapeHtml(user.email)})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
         );
         break;
       }
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: notificationType === "REFUND" ? "refund" : "revoke", source: "APPLE" });
         await notifyAdmins(
           `Subscription ${notificationType === "REFUND" ? "refunded" : "revoked"} (Apple)`,
-          `<h2>Subscription ${notificationType === "REFUND" ? "Refunded" : "Revoked"} (Apple)</h2><p><strong>User:</strong> ${user.name ?? "Unknown"} (${user.email})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
+          `<h2>Subscription ${notificationType === "REFUND" ? "Refunded" : "Revoked"} (Apple)</h2><p><strong>User:</strong> ${escapeHtml(user.name ?? "Unknown")} (${escapeHtml(user.email)})</p><p><strong>Product:</strong> ${productId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`,
         );
         log.info("apple/webhook", `${notificationType} processed for user ${userId}`);
         break;

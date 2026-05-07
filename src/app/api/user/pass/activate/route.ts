@@ -22,9 +22,7 @@ export async function POST() {
     orderBy: { purchasedAt: "desc" },
   });
 
-  const pass = passes.find(
-    (p) => p.activationsUsed < p.activationsTotal
-  );
+  const pass = passes.find((p) => p.activationsUsed < p.activationsTotal);
 
   if (!pass) {
     return NextResponse.json(
@@ -33,36 +31,54 @@ export async function POST() {
     );
   }
 
-  // Check if there's already an active (unexpired) activation
-  const lastActivation = pass.activations[0];
-  if (lastActivation && new Date() < lastActivation.expiresAt) {
-    return NextResponse.json(
-      { error: "An activation is already active", expiresAt: lastActivation.expiresAt.toISOString() },
-      { status: 400 }
-    );
-  }
-
-  // Create activation with 24h expiry in a transaction
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  const [activation] = await db.$transaction([
-    db.passActivation.create({
-      data: {
-        passPurchaseId: pass.id,
-        activatedAt: now,
-        expiresAt,
-      },
-    }),
-    db.passPurchase.update({
-      where: { id: pass.id },
-      data: { activationsUsed: { increment: 1 } },
-    }),
-  ]);
+  try {
+    const activation = await db.$transaction(async (tx) => {
+      // Atomic guard: only succeeds if activationsUsed < activationsTotal at update time,
+      // preventing double-activation from concurrent requests
+      const updated = await tx.passPurchase.updateMany({
+        where: { id: pass.id, activationsUsed: { lt: pass.activationsTotal } },
+        data: { activationsUsed: { increment: 1 } },
+      });
+      if (updated.count === 0) {
+        throw Object.assign(new Error("No pass with remaining activations"), { code: "NO_PASS" });
+      }
 
-  return NextResponse.json({
-    activatedAt: activation.activatedAt.toISOString(),
-    expiresAt: activation.expiresAt.toISOString(),
-    activationsRemaining: pass.activationsTotal - pass.activationsUsed - 1,
-  });
+      // Re-check for an active window inside the transaction
+      const current = await tx.passActivation.findFirst({
+        where: { passPurchaseId: pass.id },
+        orderBy: { activatedAt: "desc" },
+      });
+      if (current && now < current.expiresAt) {
+        throw Object.assign(
+          new Error("An activation is already active"),
+          { code: "ALREADY_ACTIVE", expiresAt: current.expiresAt.toISOString() }
+        );
+      }
+
+      return tx.passActivation.create({
+        data: { passPurchaseId: pass.id, activatedAt: now, expiresAt },
+      });
+    });
+
+    return NextResponse.json({
+      activatedAt: activation.activatedAt.toISOString(),
+      expiresAt: activation.expiresAt.toISOString(),
+      activationsRemaining: pass.activationsTotal - pass.activationsUsed - 1,
+    });
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    if (code === "ALREADY_ACTIVE") {
+      return NextResponse.json(
+        { error: (err as Error).message, expiresAt: (err as { expiresAt?: string }).expiresAt },
+        { status: 400 }
+      );
+    }
+    if (code === "NO_PASS") {
+      return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+    }
+    throw err;
+  }
 }

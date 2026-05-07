@@ -608,6 +608,15 @@ enum TokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
   EMAIL_CHANGE
+  WEBAUTHN_CHALLENGE
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime @map("reset_at")
+
+  @@map("rate_limits")
 }
 
 // ──── Affiliate / Promoter models ────

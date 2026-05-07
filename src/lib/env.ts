@@ -17,6 +17,8 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().min(1),
   ENCRYPTION_KEY: z.string().length(64), // 32 bytes hex-encoded
   FMP_API_KEY: z.string().min(1),
+  APPLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  APPLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
 });
 
 export function validateEnv(): void {

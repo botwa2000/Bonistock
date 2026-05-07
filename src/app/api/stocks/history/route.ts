@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { authenticatedRoute } from "@/lib/api-utils";
 import { getUserTier, hasActivePassWindow } from "@/lib/tier";
 import { db } from "@/lib/db";
@@ -60,7 +61,7 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
   }
 
   // ── Stock-centric view (default) ──
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const page = Math.min(Math.max(1, parseInt(searchParams.get("page") ?? "1", 10)), 9999);
   const search = searchParams.get("search") ?? "";
   const sector = searchParams.get("sector") ?? "";
   const dateRange = searchParams.get("dateRange") ?? "all";
@@ -76,58 +77,46 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
     dateFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   }
 
-  // Use raw SQL for efficient groupBy with filters
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-  let paramIdx = 1;
-
+  // Build parameterized WHERE clause using Prisma.sql
+  const conditions: Prisma.Sql[] = [];
   if (dateFilter) {
-    conditions.push(`date >= $${paramIdx}`);
-    params.push(dateFilter);
-    paramIdx++;
+    conditions.push(Prisma.sql`date >= ${dateFilter}`);
   }
   if (search) {
-    conditions.push(`(symbol ILIKE $${paramIdx} OR name ILIKE $${paramIdx})`);
-    params.push(`%${search}%`);
-    paramIdx++;
+    const like = `%${search}%`;
+    conditions.push(Prisma.sql`(symbol ILIKE ${like} OR name ILIKE ${like})`);
   }
   if (sector) {
-    conditions.push(`sector = $${paramIdx}`);
-    params.push(sector);
-    paramIdx++;
+    conditions.push(Prisma.sql`sector = ${sector}`);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where: Prisma.Sql =
+    conditions.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
+      : Prisma.sql``;
 
-  // Determine sort column
-  let orderClause: string;
-  switch (sortBy) {
-    case "latestUpside":
-      orderClause = '"latestUpside" DESC';
-      break;
-    case "avgUpside":
-      orderClause = '"avgUpside" DESC';
-      break;
-    case "name":
-      orderClause = "name ASC";
-      break;
-    default:
-      orderClause = "appearances DESC";
-  }
+  // ORDER BY uses Prisma.raw — values come only from a whitelist switch, never raw user input
+  const orderCol: Prisma.Sql = (() => {
+    switch (sortBy) {
+      case "latestUpside": return Prisma.raw('"latestUpside" DESC');
+      case "avgUpside":    return Prisma.raw('"avgUpside" DESC');
+      case "name":         return Prisma.raw("name ASC");
+      default:             return Prisma.raw("appearances DESC");
+    }
+  })();
 
   const offset = (page - 1) * ITEMS_PER_PAGE;
 
   // Count total unique symbols
-  const countResult = await db.$queryRawUnsafe<[{ count: bigint }]>(
-    `SELECT COUNT(*) as count FROM (
-      SELECT symbol FROM stock_snapshots ${whereClause} GROUP BY symbol
-    ) sub`,
-    ...params
-  );
+  const countResult = await db.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) as count FROM (
+      SELECT symbol FROM stock_snapshots ${where} GROUP BY symbol
+    ) sub
+  `;
   const totalItems = Number(countResult[0]?.count ?? 0);
 
   // Grouped query
-  const stocks = await db.$queryRawUnsafe<Array<{
+  const stocks = await db.$queryRaw<Array<{
     symbol: string;
     name: string;
     sector: string;
@@ -137,8 +126,8 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
     latestUpside: number;
     firstDate: Date;
     lastDate: Date;
-  }>>(
-    `SELECT
+  }>>`
+    SELECT
       symbol,
       MAX(name) as name,
       MAX(sector) as sector,
@@ -149,17 +138,16 @@ export const GET = authenticatedRoute(async (req: NextRequest, { userId }) => {
       MIN(date) as "firstDate",
       MAX(date) as "lastDate"
     FROM stock_snapshots
-    ${whereClause}
+    ${where}
     GROUP BY symbol
-    ORDER BY ${orderClause}
-    LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`,
-    ...params
-  );
+    ORDER BY ${orderCol}
+    LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+  `;
 
   // Get distinct sectors for filter dropdown
-  const sectors = await db.$queryRawUnsafe<Array<{ sector: string }>>(
-    `SELECT DISTINCT sector FROM stock_snapshots WHERE sector != '' ORDER BY sector`
-  );
+  const sectors = await db.$queryRaw<Array<{ sector: string }>>`
+    SELECT DISTINCT sector FROM stock_snapshots WHERE sector != '' ORDER BY sector
+  `;
 
   // Recurring: top 5 most-frequently-picked stocks (always across all data)
   const recurringRaw = await db.stockSnapshot.groupBy({

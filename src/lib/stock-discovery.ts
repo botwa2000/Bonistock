@@ -145,7 +145,7 @@ export async function discoverAndPopulateStocks(): Promise<{
   console.log(`[discovery] ${existingMap.size} existing, ${newSymbols.length} new symbols to quote`);
 
   for (const sym of newSymbols) {
-    if (getRemainingRequests() < 60) {
+    if (await getRemainingRequests() < 60) {
       console.log(`[discovery] Saving budget for price targets, quoted ${quoteMap.size} new symbols`);
       break;
     }
@@ -183,7 +183,7 @@ export async function discoverAndPopulateStocks(): Promise<{
   // 4. Fetch price targets for all candidates with prices
   const targetMap = new Map<string, { targetConsensus: number; targetHigh: number; targetLow: number }>();
   for (const sym of allCandidates.keys()) {
-    if (getRemainingRequests() < 15) {
+    if (await getRemainingRequests() < 15) {
       console.log("[discovery] Rate limit approaching, stopping target fetches");
       break;
     }
@@ -302,7 +302,7 @@ export async function discoverAndPopulateStocks(): Promise<{
   });
   let enriched = 0;
   for (const stock of unknownSector) {
-    if (getRemainingRequests() < 5) break;
+    if (await getRemainingRequests() < 5) break;
     try {
       const profile = await fetchStockProfile(stock.symbol);
       if (profile) {
@@ -343,7 +343,7 @@ export async function refreshStockData(): Promise<void> {
   console.log(`[refresh] Refreshing ${stocks.length} stocks`);
 
   for (const stock of stocks) {
-    if (getRemainingRequests() < 20) {
+    if (await getRemainingRequests() < 20) {
       console.log("[refresh] FMP rate limit approaching, stopping refresh");
       break;
     }
@@ -374,7 +374,7 @@ export async function refreshStockData(): Promise<void> {
   const unknownSector = stocks.filter((s) => s.sector === "Unknown");
   let enriched = 0;
   for (const stock of unknownSector) {
-    if (getRemainingRequests() < 5) break;
+    if (await getRemainingRequests() < 5) break;
     try {
       const profile = await fetchStockProfile(stock.symbol);
       if (profile) {

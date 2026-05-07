@@ -1,39 +1,33 @@
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
+import { db } from "./db";
 
-const store = new Map<string, RateLimitEntry>();
-
-// Cleanup stale entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (entry.resetAt < now) {
-      store.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
-
-export function rateLimit(
+export async function rateLimit(
   key: string,
   limit: number,
   windowMs: number
-): { success: boolean; remaining: number; resetAt: number } {
-  const now = Date.now();
-  const entry = store.get(key);
+): Promise<{ success: boolean; remaining: number; resetAt: number }> {
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + windowMs);
 
-  if (!entry || entry.resetAt < now) {
-    // New window
-    const resetAt = now + windowMs;
-    store.set(key, { count: 1, resetAt });
-    return { success: true, remaining: limit - 1, resetAt };
-  }
+  const result = await db.$queryRaw<[{ count: number; reset_at: Date }]>`
+    INSERT INTO rate_limits (key, count, reset_at)
+    VALUES (${key}, 1, ${windowEnd})
+    ON CONFLICT (key) DO UPDATE SET
+      count = CASE
+        WHEN rate_limits.reset_at < ${now} THEN 1
+        ELSE rate_limits.count + 1
+      END,
+      reset_at = CASE
+        WHEN rate_limits.reset_at < ${now} THEN ${windowEnd}
+        ELSE rate_limits.reset_at
+      END
+    RETURNING count, reset_at
+  `;
 
-  if (entry.count >= limit) {
-    return { success: false, remaining: 0, resetAt: entry.resetAt };
-  }
-
-  entry.count++;
-  return { success: true, remaining: limit - entry.count, resetAt: entry.resetAt };
+  const entry = result[0];
+  const count = Number(entry.count);
+  return {
+    success: count <= limit,
+    remaining: Math.max(0, limit - count),
+    resetAt: entry.reset_at.getTime(),
+  };
 }

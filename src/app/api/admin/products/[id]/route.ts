@@ -20,7 +20,7 @@ const updateProductSchema = z.object({
 });
 
 export const PATCH = adminRoute(async (req: NextRequest) => {
-  const id = req.nextUrl.pathname.split("/").pop()!;
+  const id = req.nextUrl.pathname.split("/").filter(Boolean).at(-1)!;
 
   const raw = await req.json();
   const parsed = updateProductSchema.safeParse(raw);

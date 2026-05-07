@@ -12,9 +12,25 @@ function timestamp(): string {
   return new Date().toISOString();
 }
 
+const REDACT_KEYS = new Set([
+  "password", "passwordhash", "token", "secret", "apikey", "api_key",
+  "authorization", "cookie", "encrypteddata", "privatekey", "accesstoken",
+  "refreshtoken", "clientsecret",
+]);
+
+function redactObject(obj: unknown, depth = 0): unknown {
+  if (depth > 4 || obj === null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map((v) => redactObject(v, depth + 1));
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    result[k] = REDACT_KEYS.has(k.toLowerCase()) ? "[REDACTED]" : redactObject(v, depth + 1);
+  }
+  return result;
+}
+
 function formatArgs(args: unknown[]): string {
   return args
-    .map((a) => (typeof a === "object" ? JSON.stringify(a, null, 0) : String(a)))
+    .map((a) => (typeof a === "object" ? JSON.stringify(redactObject(a), null, 0) : String(a)))
     .join(" ");
 }
 

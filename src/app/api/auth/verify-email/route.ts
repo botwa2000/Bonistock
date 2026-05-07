@@ -10,28 +10,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing token", code: "MISSING_TOKEN" }, { status: 400 });
   }
 
-  const record = await db.verificationToken.findUnique({
-    where: { token, type: "EMAIL_VERIFICATION" },
-  });
+  let user: { email: string; name: string | null } | null = null;
 
-  if (!record) {
-    return NextResponse.json({ error: "Invalid or expired token", code: "INVALID_TOKEN" }, { status: 400 });
+  try {
+    user = await db.$transaction(async (tx) => {
+      const record = await tx.verificationToken.findUnique({
+        where: { token, type: "EMAIL_VERIFICATION" },
+      });
+
+      if (!record) throw Object.assign(new Error("Invalid or expired token"), { code: "INVALID_TOKEN" });
+
+      if (record.expires < new Date()) {
+        await tx.verificationToken.delete({ where: { token } });
+        throw Object.assign(new Error("Token expired"), { code: "TOKEN_EXPIRED" });
+      }
+
+      // Atomic delete — if two concurrent requests race, only one succeeds
+      const deleted = await tx.verificationToken.deleteMany({ where: { token } });
+      if (deleted.count === 0) {
+        throw Object.assign(new Error("Invalid or expired token"), { code: "INVALID_TOKEN" });
+      }
+
+      return tx.user.update({
+        where: { email: record.identifier },
+        data: { emailVerified: new Date() },
+        select: { email: true, name: true },
+      });
+    });
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? "INVALID_TOKEN";
+    return NextResponse.json({ error: (err as Error).message, code }, { status: 400 });
   }
 
-  if (record.expires < new Date()) {
-    await db.verificationToken.delete({ where: { token } });
-    return NextResponse.json({ error: "Token expired", code: "TOKEN_EXPIRED" }, { status: 400 });
-  }
-
-  const user = await db.user.update({
-    where: { email: record.identifier },
-    data: { emailVerified: new Date() },
-    select: { email: true, name: true },
-  });
-
-  await db.verificationToken.delete({ where: { token } });
-
-  // Send welcome email
+  // Send welcome email (non-critical)
   try {
     const { subject, html } = await renderTemplate("welcome", {
       userName: user.name ?? "there",

@@ -21,7 +21,7 @@ const updateTierSchema = z.object({
 });
 
 function getId(req: NextRequest): string {
-  return req.nextUrl.pathname.split("/").pop()!;
+  return req.nextUrl.pathname.split("/").filter(Boolean).at(-1)!;
 }
 
 export const PUT = adminRoute(async (req: NextRequest) => {

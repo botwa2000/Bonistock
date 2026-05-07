@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       identifier: user.id,
       token: options.challenge,
       expires: new Date(Date.now() + 5 * 60 * 1000),
-      type: "EMAIL_VERIFICATION",
+      type: "WEBAUTHN_CHALLENGE",
     },
   });
 

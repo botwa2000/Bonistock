@@ -10,7 +10,7 @@ const updateUserSchema = z.object({
 });
 
 export const PATCH = adminRoute(async (req: NextRequest, context) => {
-  const id = req.nextUrl.pathname.split("/").pop()!;
+  const id = req.nextUrl.pathname.split("/").filter(Boolean).at(-1)!;
 
   const raw = await req.json();
   const parsed = updateUserSchema.safeParse(raw);

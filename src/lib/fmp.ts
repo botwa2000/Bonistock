@@ -1,8 +1,7 @@
 import { z } from "zod";
+import { rateLimit } from "./rate-limit";
 
 const DAILY_LIMIT = 250;
-let requestCount = 0;
-let lastResetDate = new Date().toDateString();
 
 function getApiKey(): string {
   const key = process.env.FMP_API_KEY;
@@ -10,20 +9,16 @@ function getApiKey(): string {
   return key;
 }
 
-function checkRateLimit(): void {
-  const today = new Date().toDateString();
-  if (today !== lastResetDate) {
-    requestCount = 0;
-    lastResetDate = today;
-  }
-  if (requestCount >= DAILY_LIMIT) {
+async function checkRateLimit(): Promise<void> {
+  const key = `fmp:${new Date().toISOString().split("T")[0]}`;
+  const result = await rateLimit(key, DAILY_LIMIT, 24 * 60 * 60 * 1000);
+  if (!result.success) {
     throw new Error("FMP daily rate limit reached (250 requests/day)");
   }
-  requestCount++;
 }
 
 async function fmpFetch<T>(path: string, schema: z.ZodSchema<T>, extraParams?: Record<string, string>): Promise<T> {
-  checkRateLimit();
+  await checkRateLimit();
   const params = new URLSearchParams({ apikey: getApiKey(), ...extraParams });
   const url = `https://financialmodelingprep.com/stable${path}?${params}`;
   const res = await fetch(url);
@@ -88,7 +83,7 @@ export async function fetchPriceTarget(symbol: string) {
 export async function fetchBatchQuotes(symbols: string[]) {
   const results: Array<{ symbol: string; price: number; changePercentage?: number; priceAvg200?: number; marketCap?: number; exchange?: string; name?: string }> = [];
   for (const symbol of symbols) {
-    if (getRemainingRequests() < 10) break;
+    if (await getRemainingRequests() < 10) break;
     try {
       const quote = await fetchStockQuote(symbol);
       if (quote) results.push(quote);
@@ -110,7 +105,7 @@ const gradeSchema = z.array(z.object({
 }));
 
 export async function fetchAnalystConsensus(symbol: string) {
-  checkRateLimit();
+  await checkRateLimit();
   const params = new URLSearchParams({ symbol, limit: "100", apikey: getApiKey() });
   const url = `https://financialmodelingprep.com/stable/grades?${params}`;
   const res = await fetch(url);
@@ -167,8 +162,13 @@ export function getStockUniverse(): string[] {
   return [...STOCK_UNIVERSE];
 }
 
-export function getRemainingRequests(): number {
-  const today = new Date().toDateString();
-  if (today !== lastResetDate) return DAILY_LIMIT;
-  return Math.max(0, DAILY_LIMIT - requestCount);
+export async function getRemainingRequests(): Promise<number> {
+  const { db } = await import("./db");
+  const key = `fmp:${new Date().toISOString().split("T")[0]}`;
+  const rows = await db.$queryRaw<[{ count: number; reset_at: Date }?]>`
+    SELECT count, reset_at FROM rate_limits WHERE key = ${key}
+  `;
+  const row = rows[0];
+  if (!row || row.reset_at < new Date()) return DAILY_LIMIT;
+  return Math.max(0, DAILY_LIMIT - Number(row.count));
 }

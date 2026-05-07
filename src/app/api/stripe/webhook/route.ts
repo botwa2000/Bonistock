@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { sendEmail, type EmailAttachment } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { renderTemplate } from "@/lib/email-renderer";
-import { notifyAdmins } from "@/lib/admin-notify";
+import { notifyAdmins, escapeHtml } from "@/lib/admin-notify";
 import { sendPushToUser } from "@/lib/push";
 
 const PASS_ACTIVATIONS: Record<string, { type: "ONE_DAY" | "THREE_DAY" | "TWELVE_DAY"; count: number }> = {
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
         await logAudit(userId, "SUBSCRIPTION_CHANGE", { action: "subscribe", tier: "PLUS" });
         await notifyAdmins(
           "New Plus subscription",
-          `<h2>New Plus Subscription</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Amount:</strong> ${session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "N/A"}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          `<h2>New Plus Subscription</h2><p><strong>User:</strong> ${escapeHtml(user?.name ?? "Unknown")} (${escapeHtml(user?.email ?? userId)})</p><p><strong>Amount:</strong> ${session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "N/A"}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
         sendPushToUser(userId, {
           title: "Welcome to Plus!",
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
         const passNames = { ONE_DAY: "1-Day Pass", THREE_DAY: "3-Day Pass", TWELVE_DAY: "12-Day Pass" };
         await notifyAdmins(
           `Day Pass purchased: ${passNames[passConfig.type]}`,
-          `<h2>Day Pass Purchased</h2><p><strong>User:</strong> ${user?.name ?? "Unknown"} (${user?.email ?? userId})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          `<h2>Day Pass Purchased</h2><p><strong>User:</strong> ${escapeHtml(user?.name ?? "Unknown")} (${escapeHtml(user?.email ?? userId)})</p><p><strong>Pass:</strong> ${passNames[passConfig.type]} (${passConfig.count} activations)</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
         sendPushToUser(userId, {
           title: "Pass Activated!",
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
           await sendEmail(sub.user.email, pfSubject, pfHtml);
           await notifyAdmins(
             "Payment failed",
-            `<h2>Payment Failed</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Subscription:</strong> ${pfSubscriptionId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+            `<h2>Payment Failed</h2><p><strong>User:</strong> ${escapeHtml(sub.user.name ?? "Unknown")} (${escapeHtml(sub.user.email)})</p><p><strong>Subscription:</strong> ${pfSubscriptionId}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
           );
         }
       }
@@ -361,13 +361,13 @@ export async function POST(req: NextRequest) {
           await sendEmail(updSub.user.email, cancelSubject, cancelHtml);
           await logAudit(updSub.userId, "SUBSCRIPTION_CHANGE", { action: "cancel_scheduled" });
           await notifyAdmins(
-            `Cancellation requested: ${updSub.user.name ?? "Unknown"}`,
-            `<h2>Subscription Cancellation Requested</h2><p><strong>User:</strong> ${updSub.user.name ?? "Unknown"} (${updSub.user.email})</p><p><strong>Access until:</strong> ${endDate}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+            `Cancellation requested: ${escapeHtml(updSub.user.name ?? "Unknown")}`,
+            `<h2>Subscription Cancellation Requested</h2><p><strong>User:</strong> ${escapeHtml(updSub.user.name ?? "Unknown")} (${escapeHtml(updSub.user.email)})</p><p><strong>Access until:</strong> ${endDate}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
           );
         } else {
           await notifyAdmins(
             `Subscription updated: ${statusMap[subscription.status] ?? subscription.status}`,
-            `<h2>Subscription Updated</h2><p><strong>User:</strong> ${updSub.user.name ?? "Unknown"} (${updSub.user.email})</p><p><strong>Status:</strong> ${statusMap[subscription.status] ?? subscription.status}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+            `<h2>Subscription Updated</h2><p><strong>User:</strong> ${escapeHtml(updSub.user.name ?? "Unknown")} (${escapeHtml(updSub.user.email)})</p><p><strong>Status:</strong> ${statusMap[subscription.status] ?? subscription.status}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
           );
         }
       }
@@ -444,7 +444,7 @@ export async function POST(req: NextRequest) {
         await logAudit(sub.userId, "SUBSCRIPTION_CHANGE", { action: wasWithin14Days ? "cancel_refund" : "cancel" });
         await notifyAdmins(
           wasWithin14Days ? "Subscription canceled (14-day refund)" : "Subscription canceled",
-          `<h2>Subscription Canceled${wasWithin14Days ? ` (Refund: ${(refundedAmount / 100).toFixed(2)} ${refundedCurrency.toUpperCase()})` : ""}</h2><p><strong>User:</strong> ${sub.user.name ?? "Unknown"} (${sub.user.email})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
+          `<h2>Subscription Canceled${wasWithin14Days ? ` (Refund: ${(refundedAmount / 100).toFixed(2)} ${refundedCurrency.toUpperCase()})` : ""}</h2><p><strong>User:</strong> ${escapeHtml(sub.user.name ?? "Unknown")} (${escapeHtml(sub.user.email)})</p><p><strong>Time:</strong> ${new Date().toISOString()}</p>`
         );
       }
       break;

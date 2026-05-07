@@ -32,6 +32,9 @@ export const POST = adminRoute(async () => {
   // Hard-delete the user records (cascades Account, Session, Authenticator, Subscription, PassPurchase, PushToken)
   const result = await db.user.deleteMany({ where: { id: { in: ids } } });
 
+  // Purge expired rate limit entries to prevent table bloat
+  await db.$executeRaw`DELETE FROM rate_limits WHERE reset_at < NOW()`;
+
   log.info("admin:cleanup", `Purged ${result.count} soft-deleted user(s) past ${GRACE_PERIOD_DAYS}-day grace period`);
 
   return NextResponse.json({

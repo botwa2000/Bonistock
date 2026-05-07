@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = rateLimit(`change-email:${session.user.id}`, 3, 60 * 60 * 1000);
+  const rl = await rateLimit(`change-email:${session.user.id}`, 3, 60 * 60 * 1000);
   if (!rl.success) {
     return NextResponse.json({ error: "Too many requests. Try again later.", code: "RATE_LIMITED" }, { status: 429 });
   }

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 
 // GET — single template by slug
 export const GET = adminRoute(async (req: NextRequest) => {
-  const slug = req.nextUrl.pathname.split("/").pop();
+  const slug = req.nextUrl.pathname.split("/").filter(Boolean).at(-1);
   if (!slug) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }
@@ -25,7 +25,7 @@ const updateSchema = z.object({
 
 // PATCH — update subject and/or body
 export const PATCH = adminRoute(async (req: NextRequest) => {
-  const slug = req.nextUrl.pathname.split("/").pop();
+  const slug = req.nextUrl.pathname.split("/").filter(Boolean).at(-1);
   if (!slug) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }

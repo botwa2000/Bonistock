@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
@@ -46,12 +48,12 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-export function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Dev: log all API requests
   if (isDev && pathname.startsWith("/api/")) {
-    console.log(`[proxy] ${req.method} ${pathname}`);
+    console.log(`[middleware] ${req.method} ${pathname}`);
   }
 
   // Rate limiting for API routes
@@ -68,11 +70,11 @@ export function proxy(req: NextRequest) {
       pathname !== "/api/auth/providers";
     const limit = isStrictAuthRoute ? AUTH_LIMIT : API_LIMIT;
     const window = isStrictAuthRoute ? AUTH_WINDOW : API_WINDOW;
-    const key = `${ip}:${isStrictAuthRoute ? "auth" : "api"}`;
+    const key = `rl:${ip}:${isStrictAuthRoute ? "auth" : "api"}`;
 
-    const result = rateLimit(key, limit, window);
+    const result = await rateLimit(key, limit, window);
     if (!result.success) {
-      console.warn(`[proxy] RATE_LIMITED ip=${ip} path=${pathname} bucket=${isStrictAuthRoute ? "auth" : "api"}`);
+      console.warn(`[middleware] RATE_LIMITED ip=${ip} path=${pathname} bucket=${isStrictAuthRoute ? "auth" : "api"}`);
       return new NextResponse(
         JSON.stringify({ error: "Too many requests", code: "RATE_LIMITED" }),
         {
@@ -89,12 +91,12 @@ export function proxy(req: NextRequest) {
 
   // CSRF protection for mutating requests
   if (pathname.startsWith("/api/") && ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    // Skip webhook route (Stripe sends its own signature)
-    if (!pathname.startsWith("/api/stripe/webhook")) {
+    // Skip webhook routes (Stripe/Apple send their own signatures)
+    if (!pathname.startsWith("/api/stripe/webhook") && !pathname.startsWith("/api/apple/webhook")) {
       const origin = req.headers.get("origin");
       const appUrl = process.env.NEXT_PUBLIC_APP_URL;
       if (origin && appUrl && !origin.startsWith(appUrl)) {
-        console.warn(`[proxy] CSRF_REJECTED origin=${origin} expected=${appUrl} path=${pathname}`);
+        console.warn(`[middleware] CSRF_REJECTED origin=${origin} expected=${appUrl} path=${pathname}`);
         return new NextResponse(
           JSON.stringify({ error: "CSRF validation failed", code: "CSRF_REJECTED" }),
           { status: 403, headers: { "Content-Type": "application/json", ...SECURITY_HEADERS } }

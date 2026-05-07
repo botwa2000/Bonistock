@@ -3,6 +3,15 @@ import { sendEmail } from "@/lib/email";
 import { layout } from "@/lib/email-templates";
 import { log } from "@/lib/logger";
 
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 export async function notifyAdmins(subject: string, body: string): Promise<void> {
   log.debug("admin-notify", `notifyAdmins called — subject="${subject}"`);
   try {

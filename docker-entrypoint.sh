@@ -19,4 +19,8 @@ if [ -d "$SECRETS_DIR" ]; then
   done
 fi
 
+# Apply pending database migrations automatically on each deployment.
+# DATABASE_URL is now set from secrets above, so this runs against production DB.
+node_modules/.bin/prisma migrate deploy
+
 exec "$@"

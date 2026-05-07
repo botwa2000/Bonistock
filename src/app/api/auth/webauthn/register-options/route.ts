@@ -48,7 +48,7 @@ export async function POST() {
       identifier: user.id,
       token: options.challenge,
       expires: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-      type: "EMAIL_VERIFICATION", // Reuse type; it's just a temp challenge
+      type: "WEBAUTHN_CHALLENGE",
     },
   });
 
