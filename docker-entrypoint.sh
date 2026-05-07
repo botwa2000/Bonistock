@@ -21,6 +21,7 @@ fi
 
 # Apply pending database migrations automatically on each deployment.
 # DATABASE_URL is now set from secrets above, so this runs against production DB.
-node_modules/.bin/prisma migrate deploy
+# Run from the package root so WASM files in node_modules/prisma/build/ resolve correctly
+node node_modules/prisma/build/index.js migrate deploy
 
 exec "$@"
