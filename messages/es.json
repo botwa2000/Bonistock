@@ -43,7 +43,8 @@
     "account": "Cuenta",
     "admin": "Administración",
     "history": "Historial de selecciones",
-    "performance": "Rendimiento"
+    "performance": "Rendimiento",
+    "portfolios": "Portfolios"
   },
   "landing": {
     "heroTitle": "Acciones clasificadas por consenso de analistas. ETFs clasificados por rendimientos reales.",
@@ -779,11 +780,11 @@
     "recurring": "Selecciones más recurrentes",
     "pickedTimes": "Seleccionada {count} veces",
     "avgUpside": "Potencial de subida promedio: {value}%",
-    "nthTime": "\u21BB {count}x",
+    "nthTime": "↻ {count}x",
     "loadMore": "Mostrar más",
     "noHistory": "Aún no hay historial de selecciones disponible. Vuelva a consultar después de la próxima actualización de acciones.",
     "promoBanner": "Explorar historial de selecciones",
-    "promoSubtitle": "Vea qué acciones selecciona nuestro algoritmo repetidamente \u2014 una señal de convicción persistente de los analistas.",
+    "promoSubtitle": "Vea qué acciones selecciona nuestro algoritmo repetidamente — una señal de convicción persistente de los analistas.",
     "promoCtaFree": "Mejorar a Plus",
     "promoCtaPaid": "Ver historial",
     "searchPlaceholder": "Buscar por símbolo o nombre...",

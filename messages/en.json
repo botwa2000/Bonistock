@@ -43,7 +43,8 @@
     "account": "Account",
     "admin": "Admin",
     "history": "Pick History",
-    "performance": "Performance"
+    "performance": "Performance",
+    "portfolios": "Portfolios"
   },
   "landing": {
     "heroTitle": "Stock picks ranked by analyst consensus. ETFs ranked by real returns.",

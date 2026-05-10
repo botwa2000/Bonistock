@@ -43,7 +43,8 @@
     "account": "Account",
     "admin": "Admin",
     "history": "Storico selezioni",
-    "performance": "Performance"
+    "performance": "Performance",
+    "portfolios": "Portfolios"
   },
   "landing": {
     "heroTitle": "Azioni classificate per consenso degli analisti. ETF classificati per rendimenti reali.",
@@ -779,7 +780,7 @@
     "recurring": "Selezioni più ricorrenti",
     "pickedTimes": "Selezionata {count} volte",
     "avgUpside": "Rialzo medio: {value}%",
-    "nthTime": "\u21BB {count}x",
+    "nthTime": "↻ {count}x",
     "loadMore": "Mostra altri",
     "noHistory": "Nessuno storico selezioni disponibile al momento. Ricontrolli dopo il prossimo aggiornamento delle azioni.",
     "promoBanner": "Esplori lo Storico selezioni",
