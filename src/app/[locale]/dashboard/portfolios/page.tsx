@@ -146,6 +146,31 @@ function AddHoldingForm({
   );
 }
 
+interface PerfSummary {
+  rangeReturn: number;
+  weightedUpside: number;
+  weightedBuyPct: number;
+}
+
+function MiniSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const W = 120;
+  const H = 40;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const toX = (i: number) => (i / (values.length - 1)) * W;
+  const toY = (v: number) => H - ((v - min) / range) * H;
+  const pts = values.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(" ");
+  const positive = values[values.length - 1] >= values[0];
+  const color = positive ? "var(--success-fg)" : "var(--danger-fg)";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: 60, height: 24 }} aria-hidden="true">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function PortfolioCard({
   portfolio,
   onDeleted,
@@ -157,8 +182,22 @@ function PortfolioCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [perf, setPerf] = useState<{ values: number[]; summary: PerfSummary } | null>(null);
 
   const totalWeight = portfolio.holdings.reduce((s, h) => s + h.weight, 0);
+
+  useEffect(() => {
+    const hasStocks = portfolio.holdings.some((h) => h.assetType === "STOCK");
+    if (!hasStocks || portfolio.holdings.length < 2) return;
+    fetch(`/api/user/portfolios/${portfolio.id}/performance?range=3m`)
+      .then((r) => r.json())
+      .then((data: { portfolioValues?: number[]; summary?: PerfSummary }) => {
+        if (data.portfolioValues && data.summary) {
+          setPerf({ values: data.portfolioValues, summary: data.summary });
+        }
+      })
+      .catch(() => {});
+  }, [portfolio.id, portfolio.holdings]);
 
   async function deleteHolding(symbol: string) {
     await fetch(
@@ -178,16 +217,29 @@ function PortfolioCard({
   return (
     <Card variant="glass">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-text-primary">{portfolio.name}</h3>
           <p className="mt-0.5 text-xs text-text-tertiary">
             {portfolio.holdings.length} holdings ·{" "}
             <span className={totalWeight > 100.01 ? "text-warning-fg" : "text-text-tertiary"}>
               {totalWeight.toFixed(1)}% allocated
             </span>
+            {perf && (
+              <>
+                {" "}·{" "}
+                <span className={perf.summary.rangeReturn >= 0 ? "text-success-fg" : "text-danger-fg"}>
+                  {perf.summary.rangeReturn >= 0 ? "+" : ""}{perf.summary.rangeReturn.toFixed(1)}% 3M
+                </span>
+                {" "}·{" "}
+                <span className="text-text-tertiary">
+                  {perf.summary.weightedUpside.toFixed(1)}% upside
+                </span>
+              </>
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {perf && <MiniSparkline values={perf.values} />}
           <button
             onClick={() => setExpanded((x) => !x)}
             className="text-xs text-link-fg hover:text-accent-fg transition-colors"
