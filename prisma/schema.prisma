@@ -230,8 +230,7 @@ model DemoPortfolio {
   strategy    Strategy
   name        String
   description String
-  initialAmount Float
-  holdings    Json     // Array of { symbol, weight }
+  holdings    Json     // Array of { symbol, assetType, weight }
   createdAt   DateTime @default(now())
 
   snapshots DemoPortfolioSnapshot[]
@@ -254,11 +253,14 @@ model DemoPortfolioSnapshot {
 }
 
 model UserPortfolio {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String     @id @default(cuid())
+  userId       String
+  name         String
+  strategy     Strategy   @default(CUSTOM)
+  weightMode   WeightMode @default(EQUAL)
+  filterConfig Json?      // { risk?, sector?, region?, minUpside?, minAnalysts?, dividendOnly?, belowSma200? }
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   holdings UserPortfolioHolding[]
@@ -267,12 +269,11 @@ model UserPortfolio {
 }
 
 model UserPortfolioHolding {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   portfolioId String
   symbol      String
-  shares      Float
-  avgCost     Float
-  addedAt     DateTime @default(now())
+  assetType   AssetType @default(STOCK)
+  weight      Float     // 0-100, server validates sum = 100
 
   portfolio UserPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
@@ -304,6 +305,10 @@ model Stock {
   description   String
   whyThisPick   String
   belowSma200   Boolean  @default(false)
+  beta          Float?
+  pe            Float?
+  weekHigh52    Float?
+  weekLow52     Float?
   isin          String?
   wkn           String?
   createdAt     DateTime @default(now())
@@ -598,10 +603,24 @@ enum RiskLevel {
 }
 
 enum Strategy {
-  BUY_AND_HOLD
-  ACTIVE_ROTATION
-  DIVIDEND_FOCUS
-  BALANCED_GROWTH
+  ANALYST_CONVICTION
+  BALANCED
+  GROWTH
+  VALUE_INCOME
+  ETF_CORE
+  SECTOR_FOCUS
+  CUSTOM
+}
+
+enum WeightMode {
+  EQUAL
+  UPSIDE_WEIGHTED
+  CUSTOM
+}
+
+enum AssetType {
+  STOCK
+  ETF
 }
 
 enum TokenType {
@@ -617,6 +636,14 @@ model RateLimit {
   resetAt DateTime @map("reset_at")
 
   @@map("rate_limits")
+}
+
+model EtfPriceCache {
+  symbol    String   @id
+  data      Json     // Array of { date: string, close: number }
+  fetchedAt DateTime @default(now()) @updatedAt
+
+  @@map("etf_price_cache")
 }
 
 // ──── Affiliate / Promoter models ────
