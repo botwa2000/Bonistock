@@ -216,53 +216,120 @@ async function seedDemoPortfolios() {
     await db.demoPortfolioSnapshot.deleteMany({ where: { demoPortfolioId: portfolio.id } });
 
     if (tpl.assetType === "STOCK") {
-      // Compute real performance from StockSnapshot history
-      const allSnaps = await db.stockSnapshot.findMany({
+      // Check how many snapshots each symbol has — need ≥ 2 for meaningful returns
+      const symbolCounts = await db.stockSnapshot.groupBy({
+        by: ["symbol"],
         where: { symbol: { in: symbols } },
-        select: { symbol: true, price: true, date: true },
-        orderBy: { date: "asc" },
+        _count: { symbol: true },
       });
+      const richSymbols = new Set(
+        symbolCounts.filter((s) => s._count.symbol >= 2).map((s) => s.symbol)
+      );
 
-      // Group by date
-      const byDate = new Map<string, Map<string, number>>();
-      for (const s of allSnaps) {
-        const key = s.date.toISOString().split("T")[0];
-        if (!byDate.has(key)) byDate.set(key, new Map());
-        byDate.get(key)!.set(s.symbol, s.price);
-      }
-
-      const dates = [...byDate.keys()].sort();
-      if (dates.length === 0) continue;
-
-      // Baseline: first date prices
-      const basePrices = byDate.get(dates[0])!;
-
-      const rows: { demoPortfolioId: string; date: Date; totalValue: number; returnPct: number; holdings: object }[] = [];
-      for (const dateStr of dates) {
-        const dayPrices = byDate.get(dateStr)!;
-        let portfolioReturn = 0;
-        let coveredWeight = 0;
-        for (const h of holdings) {
-          const base = basePrices.get(h.symbol);
-          const cur = dayPrices.get(h.symbol);
-          if (base && cur && base > 0) {
-            portfolioReturn += (h.weight / 100) * ((cur - base) / base) * 100;
-            coveredWeight += h.weight;
-          }
-        }
-        if (coveredWeight > 0 && coveredWeight < 99) {
-          portfolioReturn = (portfolioReturn / coveredWeight) * 100;
-        }
-        rows.push({
-          demoPortfolioId: portfolio.id,
-          date: new Date(dateStr + "T00:00:00.000Z"),
-          totalValue: 10000 * (1 + portfolioReturn / 100),
-          returnPct: parseFloat(portfolioReturn.toFixed(4)),
-          holdings,
+      if (richSymbols.size >= 2) {
+        // Real data path: use per-symbol baselines so different discovery dates don't poison the series
+        const allSnaps = await db.stockSnapshot.findMany({
+          where: { symbol: { in: [...richSymbols] } },
+          select: { symbol: true, price: true, date: true },
+          orderBy: { date: "asc" },
         });
+
+        // Per-symbol baseline: first recorded price for that symbol
+        const symbolBaselines = new Map<string, number>();
+        for (const s of allSnaps) {
+          if (!symbolBaselines.has(s.symbol)) symbolBaselines.set(s.symbol, s.price);
+        }
+
+        // Group by date
+        const byDate = new Map<string, Map<string, number>>();
+        for (const s of allSnaps) {
+          const key = s.date.toISOString().split("T")[0];
+          if (!byDate.has(key)) byDate.set(key, new Map());
+          byDate.get(key)!.set(s.symbol, s.price);
+        }
+
+        const dates = [...byDate.keys()].sort();
+        if (dates.length < 2) {
+          console.log(`  [${tpl.name}] Skipping — fewer than 2 dates`);
+          continue;
+        }
+
+        const rows: { demoPortfolioId: string; date: Date; totalValue: number; returnPct: number; holdings: object }[] = [];
+        for (const dateStr of dates) {
+          const dayPrices = byDate.get(dateStr)!;
+          let weightedReturn = 0;
+          let coveredWeight = 0;
+          for (const h of holdings) {
+            if (!richSymbols.has(h.symbol)) continue;
+            const base = symbolBaselines.get(h.symbol);
+            const cur = dayPrices.get(h.symbol);
+            if (base && cur && base > 0) {
+              weightedReturn += (h.weight / 100) * ((cur / base - 1) * 100);
+              coveredWeight += h.weight;
+            }
+          }
+          // Scale to covered weight so partial data doesn't drag toward 0
+          const returnPct = coveredWeight > 0
+            ? parseFloat(((weightedReturn / coveredWeight) * 100).toFixed(4))
+            : rows.length > 0 ? rows[rows.length - 1].returnPct : 0;
+          rows.push({
+            demoPortfolioId: portfolio.id,
+            date: new Date(dateStr + "T00:00:00.000Z"),
+            totalValue: parseFloat((100 * (1 + returnPct / 100)).toFixed(4)),
+            returnPct,
+            holdings,
+          });
+        }
+        await db.demoPortfolioSnapshot.createMany({ data: rows });
+        console.log(`  [${tpl.name}] ${rows.length} real snapshots from StockSnapshot`);
+      } else {
+        // Sparse DB (dev / fresh install): generate deterministic synthetic series
+        // Strategy-specific parameters so each portfolio looks distinct
+        const STRATEGY_PARAMS: Record<string, { annualReturn: number; dailyVol: number }> = {
+          ANALYST_CONVICTION: { annualReturn: 0.18, dailyVol: 0.011 },
+          BALANCED:           { annualReturn: 0.11, dailyVol: 0.007 },
+          GROWTH:             { annualReturn: 0.27, dailyVol: 0.018 },
+          VALUE_INCOME:       { annualReturn: 0.09, dailyVol: 0.005 },
+          SECTOR_FOCUS:       { annualReturn: 0.22, dailyVol: 0.015 },
+        };
+        const params = STRATEGY_PARAMS[tpl.strategy] ?? { annualReturn: 0.14, dailyVol: 0.010 };
+
+        // Deterministic LCG so re-seeding produces the same chart
+        let rngState = tpl.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 42);
+        const rand = () => {
+          rngState = Math.imul(rngState, 1664525) + 1013904223;
+          return (rngState >>> 0) / 0x100000000;
+        };
+        // Box-Muller for approximate N(0,1)
+        const randn = () => {
+          const u = rand() || 1e-9;
+          const v = rand() || 1e-9;
+          return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+        };
+
+        const now = new Date();
+        const rows: { demoPortfolioId: string; date: Date; totalValue: number; returnPct: number; holdings: object }[] = [];
+        let value = 100;
+        const dailyMu = params.annualReturn / 252;
+
+        for (let daysAgo = 365; daysAgo >= 0; daysAgo--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - daysAgo);
+          date.setUTCHours(0, 0, 0, 0);
+          if (daysAgo < 365) {
+            value = value * (1 + dailyMu + params.dailyVol * randn());
+          }
+          rows.push({
+            demoPortfolioId: portfolio.id,
+            date,
+            totalValue: parseFloat(value.toFixed(4)),
+            returnPct: parseFloat((value - 100).toFixed(4)),
+            holdings,
+          });
+        }
+        await db.demoPortfolioSnapshot.createMany({ data: rows });
+        console.log(`  [${tpl.name}] 366 synthetic snapshots (sparse-DB fallback)`);
       }
-      await db.demoPortfolioSnapshot.createMany({ data: rows });
-      console.log(`  [${tpl.name}] ${rows.length} real snapshots from StockSnapshot`);
     } else {
       // ETF portfolio: approximate from CAGR stored in DB
       const etfData = await db.etf.findMany({
