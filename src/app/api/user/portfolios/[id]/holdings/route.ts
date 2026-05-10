@@ -4,9 +4,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const addSchema = z.object({
-  symbol: z.string().min(1).max(10),
-  shares: z.number().positive(),
-  avgCost: z.number().positive(),
+  symbol: z.string().min(1).max(20),
+  assetType: z.enum(["STOCK", "ETF"]).default("STOCK"),
+  weight: z.number().positive().max(100),
 });
 
 export async function POST(
@@ -20,9 +20,9 @@ export async function POST(
 
   const { id } = await params;
 
-  // Verify portfolio ownership
   const portfolio = await db.userPortfolio.findFirst({
     where: { id, userId: session.user.id },
+    include: { holdings: true },
   });
   if (!portfolio) {
     return NextResponse.json({ error: "Portfolio not found", code: "NOT_FOUND" }, { status: 404 });
@@ -33,14 +33,18 @@ export async function POST(
     return NextResponse.json({ error: "Invalid input", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
+  if (portfolio.holdings.length >= 20) {
+    return NextResponse.json({ error: "Maximum 20 holdings per portfolio", code: "LIMIT_REACHED" }, { status: 400 });
+  }
+
   const holding = await db.userPortfolioHolding.upsert({
     where: { portfolioId_symbol: { portfolioId: id, symbol: parsed.data.symbol } },
-    update: { shares: parsed.data.shares, avgCost: parsed.data.avgCost },
+    update: { weight: parsed.data.weight, assetType: parsed.data.assetType },
     create: {
       portfolioId: id,
       symbol: parsed.data.symbol,
-      shares: parsed.data.shares,
-      avgCost: parsed.data.avgCost,
+      assetType: parsed.data.assetType,
+      weight: parsed.data.weight,
     },
   });
 
@@ -62,7 +66,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Missing symbol", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  // Verify portfolio ownership
   const portfolio = await db.userPortfolio.findFirst({
     where: { id, userId: session.user.id },
   });

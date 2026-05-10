@@ -123,6 +123,179 @@ async function seedCurrencies() {
   console.log(`Seeded ${regionMappings.length} region-currency mappings`);
 }
 
+async function seedDemoPortfolios() {
+  const templates = [
+    {
+      id: "ANALYST_CONVICTION",
+      strategy: "ANALYST_CONVICTION" as const,
+      name: "Analyst Conviction",
+      description: "The stocks analysts are most bullish on — highest upside with strong buy consensus",
+      candidates: ["IONQ", "TTD", "ZS", "RBRK", "DUOL", "SMMT", "PRAX", "GTLB"],
+      assetType: "STOCK" as const,
+    },
+    {
+      id: "BALANCED",
+      strategy: "BALANCED" as const,
+      name: "Balanced",
+      description: "Diversified across risk levels and sectors, grounded in analyst consensus",
+      candidates: ["ZS", "NOW", "EL.PA", "MSTR", "EXO.AS", "4568.T", "000720.KS"],
+      assetType: "STOCK" as const,
+    },
+    {
+      id: "GROWTH",
+      strategy: "GROWTH" as const,
+      name: "Growth",
+      description: "High-upside growth picks for investors comfortable with volatility",
+      candidates: ["TTD", "DUOL", "GTLB", "GLOB", "CHWY", "AUR", "RBRK"],
+      assetType: "STOCK" as const,
+    },
+    {
+      id: "VALUE_INCOME",
+      strategy: "VALUE_INCOME" as const,
+      name: "Value & Income",
+      description: "Lower-risk stocks with dividends, trading below analyst targets",
+      candidates: ["HEIO.AS", "WKL.AS", "4568.T", "000720.KS", "6613.HK", "1698.HK"],
+      assetType: "STOCK" as const,
+    },
+    {
+      id: "ETF_CORE",
+      strategy: "ETF_CORE" as const,
+      name: "ETF Core",
+      description: "Diversified ETF basket for steady, low-cost long-term exposure",
+      candidates: ["SOXX", "VGT", "XBI", "EEM", "IS3N.DE", "SMH", "XLK"],
+      assetType: "ETF" as const,
+    },
+    {
+      id: "SECTOR_FOCUS",
+      strategy: "SECTOR_FOCUS" as const,
+      name: "Tech Focus",
+      description: "Concentrated technology exposure with the highest analyst upside",
+      candidates: ["IONQ", "TTD", "ZS", "RBRK", "DUOL", "GTLB", "AUR"],
+      assetType: "STOCK" as const,
+    },
+  ];
+
+  for (const tpl of templates) {
+    let availableSymbols: string[] = [];
+
+    if (tpl.assetType === "ETF") {
+      const etfs = await db.etf.findMany({
+        where: { symbol: { in: tpl.candidates } },
+        select: { symbol: true },
+      });
+      availableSymbols = etfs.map((e) => e.symbol);
+    } else {
+      const snaps = await db.stockSnapshot.findMany({
+        where: { symbol: { in: tpl.candidates } },
+        select: { symbol: true },
+        distinct: ["symbol"],
+      });
+      availableSymbols = snaps.map((s) => s.symbol);
+    }
+
+    if (availableSymbols.length === 0) {
+      console.log(`  [${tpl.name}] No symbols found, skipping`);
+      continue;
+    }
+
+    const n = Math.min(availableSymbols.length, 6);
+    const symbols = availableSymbols.slice(0, n);
+    const equalWeight = parseFloat((100 / n).toFixed(4));
+    const holdings = symbols.map((symbol, i) => ({
+      symbol,
+      assetType: tpl.assetType,
+      weight: i === n - 1 ? parseFloat((100 - equalWeight * (n - 1)).toFixed(4)) : equalWeight,
+    }));
+
+    const portfolio = await db.demoPortfolio.upsert({
+      where: { id: tpl.id },
+      update: { name: tpl.name, description: tpl.description, holdings, strategy: tpl.strategy },
+      create: { id: tpl.id, strategy: tpl.strategy, name: tpl.name, description: tpl.description, holdings },
+    });
+
+    await db.demoPortfolioSnapshot.deleteMany({ where: { demoPortfolioId: portfolio.id } });
+
+    if (tpl.assetType === "STOCK") {
+      // Compute real performance from StockSnapshot history
+      const allSnaps = await db.stockSnapshot.findMany({
+        where: { symbol: { in: symbols } },
+        select: { symbol: true, price: true, date: true },
+        orderBy: { date: "asc" },
+      });
+
+      // Group by date
+      const byDate = new Map<string, Map<string, number>>();
+      for (const s of allSnaps) {
+        const key = s.date.toISOString().split("T")[0];
+        if (!byDate.has(key)) byDate.set(key, new Map());
+        byDate.get(key)!.set(s.symbol, s.price);
+      }
+
+      const dates = [...byDate.keys()].sort();
+      if (dates.length === 0) continue;
+
+      // Baseline: first date prices
+      const basePrices = byDate.get(dates[0])!;
+
+      const rows: { demoPortfolioId: string; date: Date; totalValue: number; returnPct: number; holdings: object }[] = [];
+      for (const dateStr of dates) {
+        const dayPrices = byDate.get(dateStr)!;
+        let portfolioReturn = 0;
+        let coveredWeight = 0;
+        for (const h of holdings) {
+          const base = basePrices.get(h.symbol);
+          const cur = dayPrices.get(h.symbol);
+          if (base && cur && base > 0) {
+            portfolioReturn += (h.weight / 100) * ((cur - base) / base) * 100;
+            coveredWeight += h.weight;
+          }
+        }
+        if (coveredWeight > 0 && coveredWeight < 99) {
+          portfolioReturn = (portfolioReturn / coveredWeight) * 100;
+        }
+        rows.push({
+          demoPortfolioId: portfolio.id,
+          date: new Date(dateStr + "T00:00:00.000Z"),
+          totalValue: 10000 * (1 + portfolioReturn / 100),
+          returnPct: parseFloat(portfolioReturn.toFixed(4)),
+          holdings,
+        });
+      }
+      await db.demoPortfolioSnapshot.createMany({ data: rows });
+      console.log(`  [${tpl.name}] ${rows.length} real snapshots from StockSnapshot`);
+    } else {
+      // ETF portfolio: approximate from CAGR stored in DB
+      const etfData = await db.etf.findMany({
+        where: { symbol: { in: symbols } },
+        select: { symbol: true, cagr1y: true },
+      });
+      const cagrMap = new Map(etfData.map((e) => [e.symbol, e.cagr1y / 100 / 365]));
+      const now = new Date();
+      const rows: { demoPortfolioId: string; date: Date; totalValue: number; returnPct: number; holdings: object }[] = [];
+      for (let daysAgo = 90; daysAgo >= 0; daysAgo--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        date.setUTCHours(0, 0, 0, 0);
+        let portfolioReturn = 0;
+        for (const h of holdings) {
+          const dailyRate = cagrMap.get(h.symbol) ?? 0;
+          portfolioReturn += (h.weight / 100) * dailyRate * (90 - daysAgo) * 100;
+        }
+        rows.push({
+          demoPortfolioId: portfolio.id,
+          date,
+          totalValue: 10000 * (1 + portfolioReturn / 100),
+          returnPct: parseFloat(portfolioReturn.toFixed(4)),
+          holdings,
+        });
+      }
+      await db.demoPortfolioSnapshot.createMany({ data: rows });
+      console.log(`  [${tpl.name}] 91 ETF snapshots (CAGR approx)`);
+    }
+  }
+  console.log(`Demo portfolios seeded`);
+}
+
 async function main() {
   console.log("Seeding database...");
 
@@ -173,40 +346,7 @@ async function main() {
   }
 
   // ── Demo Portfolios ──
-  const demoPortfolios = [
-    { strategy: "BUY_AND_HOLD" as const, name: "Buy & Hold", description: "Top 5 by conviction score, held for 12 months", initialAmount: 10000, holdings: [{ symbol: "MSFT", weight: 0.2 }, { symbol: "AMZN", weight: 0.2 }, { symbol: "NVDA", weight: 0.2 }, { symbol: "LLY", weight: 0.2 }, { symbol: "AVGO", weight: 0.2 }] },
-    { strategy: "ACTIVE_ROTATION" as const, name: "Active Rotation", description: "Monthly rotation to current top 5 stocks", initialAmount: 10000, holdings: [{ symbol: "NVDA", weight: 0.2 }, { symbol: "CRWD", weight: 0.2 }, { symbol: "LULU", weight: 0.2 }, { symbol: "SHOP", weight: 0.2 }, { symbol: "TSM", weight: 0.2 }] },
-    { strategy: "DIVIDEND_FOCUS" as const, name: "Dividend Focus", description: "Top 5 dividend-yielding stocks for income", initialAmount: 10000, holdings: [{ symbol: "ALV", weight: 0.2 }, { symbol: "DTE", weight: 0.2 }, { symbol: "MUV2", weight: 0.2 }, { symbol: "MCD", weight: 0.2 }, { symbol: "AVGO", weight: 0.2 }] },
-    { strategy: "BALANCED_GROWTH" as const, name: "Balanced Growth", description: "Mix of growth + income stocks with 2 ETFs", initialAmount: 10000, holdings: [{ symbol: "MSFT", weight: 0.15 }, { symbol: "AMZN", weight: 0.15 }, { symbol: "MCD", weight: 0.1 }, { symbol: "ALV", weight: 0.1 }] },
-  ];
-
-  for (const dp of demoPortfolios) {
-    const portfolio = await db.demoPortfolio.upsert({
-      where: { id: dp.strategy },
-      update: { name: dp.name, description: dp.description, initialAmount: dp.initialAmount, holdings: dp.holdings },
-      create: { id: dp.strategy, strategy: dp.strategy, name: dp.name, description: dp.description, initialAmount: dp.initialAmount, holdings: dp.holdings },
-    });
-
-    // Generate 12 months of synthetic snapshots
-    const now = new Date();
-    const annualizedReturn = { BUY_AND_HOLD: 0.15, ACTIVE_ROTATION: 0.18, DIVIDEND_FOCUS: 0.10, BALANCED_GROWTH: 0.12 }[dp.strategy] ?? 0.12;
-    const volatility = { BUY_AND_HOLD: 0.02, ACTIVE_ROTATION: 0.04, DIVIDEND_FOCUS: 0.015, BALANCED_GROWTH: 0.025 }[dp.strategy] ?? 0.02;
-
-    let cumulativeReturn = 0;
-    for (let month = 11; month >= 0; month--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - month, 1);
-      const monthlyReturn = (annualizedReturn / 12) + (Math.random() - 0.5) * volatility;
-      cumulativeReturn += monthlyReturn;
-      const totalValue = dp.initialAmount * (1 + cumulativeReturn);
-
-      await db.demoPortfolioSnapshot.upsert({
-        where: { demoPortfolioId_date: { demoPortfolioId: portfolio.id, date } },
-        update: { totalValue, returnPct: cumulativeReturn * 100, holdings: dp.holdings },
-        create: { demoPortfolioId: portfolio.id, date, totalValue, returnPct: cumulativeReturn * 100, holdings: dp.holdings },
-      });
-    }
-  }
-  console.log(`Seeded ${demoPortfolios.length} demo portfolios with snapshots`);
+  await seedDemoPortfolios();
 
   // ── Products ──
   await seedProducts();
