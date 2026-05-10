@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -183,15 +182,20 @@ function StatItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function DemoPortfoliosContent() {
-  const searchParams = useSearchParams();
-  const initialId = searchParams.get("portfolio") ?? "";
-
+export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPortfolioId?: string }) {
   const [portfolios, setPortfolios] = useState<DemoPortfolio[]>([]);
-  const [activeId, setActiveId] = useState(initialId);
+  const [portfoliosLoading, setPortfoliosLoading] = useState(true);
+  const [activeId, setActiveId] = useState(initialPortfolioId);
   const [range, setRange] = useState<Range>("3m");
-  const [perf, setPerf] = useState<PerformanceData | null>(null);
-  const [perfLoading, setPerfLoading] = useState(false);
+  // Track fetch params alongside data so we can derive loading state
+  const [perfState, setPerfState] = useState<{
+    data: PerformanceData | null;
+    forId: string;
+    forRange: string;
+  }>({ data: null, forId: "", forRange: "" });
+
+  const perf = perfState.data;
+  const perfLoading = !!(activeId && (perfState.forId !== activeId || perfState.forRange !== range));
 
   useEffect(() => {
     fetch("/api/demo-portfolios")
@@ -199,30 +203,30 @@ export function DemoPortfoliosContent() {
       .then((data: DemoPortfolio[]) => {
         if (Array.isArray(data) && data.length > 0) {
           setPortfolios(data);
-          if (!initialId || !data.find((p) => p.id === initialId)) {
+          if (!initialPortfolioId || !data.find((p) => p.id === initialPortfolioId)) {
             setActiveId(data[0].id);
           }
         }
       })
-      .catch(() => {});
-  }, [initialId]);
-
-  const loadPerformance = useCallback(
-    (id: string, r: Range) => {
-      if (!id) return;
-      setPerfLoading(true);
-      fetch(`/api/demo-portfolios/${id}/performance?range=${r}`)
-        .then((res) => res.json())
-        .then((data: PerformanceData) => setPerf(data))
-        .catch(() => setPerf(null))
-        .finally(() => setPerfLoading(false));
-    },
-    []
-  );
+      .catch(() => {})
+      .finally(() => setPortfoliosLoading(false));
+  }, [initialPortfolioId]);
 
   useEffect(() => {
-    if (activeId) loadPerformance(activeId, range);
-  }, [activeId, range, loadPerformance]);
+    if (!activeId) return;
+    let cancelled = false;
+    const fetchId = activeId;
+    const fetchRange = range;
+    fetch(`/api/demo-portfolios/${activeId}/performance?range=${range}`)
+      .then((res) => res.json())
+      .then((data: PerformanceData) => {
+        if (!cancelled) setPerfState({ data, forId: fetchId, forRange: fetchRange });
+      })
+      .catch(() => {
+        if (!cancelled) setPerfState({ data: null, forId: fetchId, forRange: fetchRange });
+      });
+    return () => { cancelled = true; };
+  }, [activeId, range]);
 
   const activePortfolio = portfolios.find((p) => p.id === activeId);
 
@@ -240,7 +244,12 @@ export function DemoPortfoliosContent() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
           {/* Portfolio list */}
           <div className="space-y-2">
-            {portfolios.map((p) => {
+            {portfoliosLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-xl bg-surface" />
+                ))
+              : null}
+            {!portfoliosLoading && portfolios.map((p) => {
               const snap = p.snapshots?.[0];
               const ret = snap?.returnPct ?? 0;
               const icon = STRATEGY_ICON[p.strategy] ?? "◆";

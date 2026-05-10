@@ -296,7 +296,7 @@ function PortfolioCard({
 export default function PortfoliosPage() {
   const { user } = useAuth();
   const tier = user?.tier ?? "free";
-  const isPaid = tier === "plus" || tier === "pass";
+  const isPaid = tier === "plus" || (tier === "pass" && !!user?.passWindowActive);
 
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);

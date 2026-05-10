@@ -16,11 +16,14 @@ export const revalidate = 3600;
 
 export default async function DemoPortfoliosPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ portfolio?: string }>;
 }) {
   const { locale } = await params;
+  const { portfolio: initialPortfolioId = "" } = await searchParams;
   setRequestLocale(locale);
 
-  return <DemoPortfoliosContent />;
+  return <DemoPortfoliosContent initialPortfolioId={initialPortfolioId} />;
 }
