@@ -31,13 +31,15 @@ interface PerformanceData {
   } | null;
 }
 
-type Range = "1m" | "3m" | "6m" | "1y";
+type Range = "1m" | "3m" | "6m" | "1y" | "3y" | "5y";
 
 const RANGES: { label: string; value: Range }[] = [
   { label: "1M", value: "1m" },
   { label: "3M", value: "3m" },
   { label: "6M", value: "6m" },
   { label: "1Y", value: "1y" },
+  { label: "3Y", value: "3y" },
+  { label: "5Y", value: "5y" },
 ];
 
 const STRATEGY_ICON: Record<string, string> = {
@@ -173,6 +175,10 @@ function PerformanceChart({
   );
 }
 
+function fmtDate(iso: string) {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
@@ -251,9 +257,14 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
               : null}
             {!portfoliosLoading && portfolios.map((p) => {
               const snap = p.snapshots?.[0];
-              const ret = snap?.returnPct ?? 0;
               const icon = STRATEGY_ICON[p.strategy] ?? "◆";
               const isActive = p.id === activeId;
+
+              // Active portfolio: show the selected-range return (updates as range changes).
+              // Inactive portfolios: show snapshot return (since tracking started).
+              const displayReturn = isActive
+                ? (perf?.summary?.rangeReturn ?? snap?.returnPct ?? null)
+                : (snap?.returnPct ?? null);
 
               return (
                 <button
@@ -265,12 +276,19 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                       : "border-border bg-surface hover:border-border hover:bg-surface-elevated"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-text-primary">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-text-primary truncate">
                       <span className="mr-1.5 text-accent-fg">{icon}</span>
                       {p.name}
                     </span>
-                    {snap && <ReturnTag value={ret} />}
+                    {displayReturn != null && (
+                      <span className={`flex items-center gap-1 shrink-0 ${isActive && perfLoading ? "opacity-50" : ""}`}>
+                        <ReturnTag value={displayReturn} />
+                        <span className="text-xs text-text-tertiary">
+                          {isActive ? range.toUpperCase() : "all"}
+                        </span>
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-text-tertiary line-clamp-1">
                     {p.description}
@@ -328,11 +346,11 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
                     <StatItem
                       label={`${range.toUpperCase()} Return`}
-                      value={`${perf.summary.rangeReturn >= 0 ? "+" : ""}${perf.summary.rangeReturn.toFixed(1)}%`}
+                      value={`${perf.summary.rangeReturn >= 0 ? "+" : ""}${perf.summary.rangeReturn.toFixed(2)}%`}
                     />
                     <StatItem
                       label="Analyst Upside"
-                      value={`+${perf.summary.weightedUpside.toFixed(1)}%`}
+                      value={`${perf.summary.weightedUpside >= 0 ? "+" : ""}${perf.summary.weightedUpside.toFixed(1)}%`}
                     />
                     <StatItem
                       label="Buy Consensus"
@@ -346,7 +364,9 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                 )}
 
                 <p className="mt-3 text-xs text-text-tertiary">
-                  Normalised index starting at 100 · EOD prices · statistical illustration only
+                  {perf?.dates && perf.dates.length >= 2
+                    ? `${fmtDate(perf.dates[0])} – ${fmtDate(perf.dates[perf.dates.length - 1])} · normalised to 100 · EOD prices · not investment advice`
+                    : "Normalised to 100 · EOD prices · not investment advice"}
                 </p>
               </Card>
             )}

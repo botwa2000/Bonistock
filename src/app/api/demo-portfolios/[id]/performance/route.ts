@@ -7,6 +7,8 @@ const RANGE_DAYS: Record<string, number> = {
   "3m": 90,
   "6m": 180,
   "1y": 365,
+  "3y": 1095,
+  "5y": 1825,
 };
 
 export async function GET(
