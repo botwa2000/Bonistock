@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Portfolios — Bonistock</title>
+  <meta name="description" content="See how analyst-backed model portfolios have performed historically. Built on predefined transparent criteria using daily EOD price data. For illustration purposes only.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent:#38e8a5; --accent-fg:#6ee7b7;
+      --text-primary:#f4f7fb; --text-secondary:rgba(255,255,255,0.60); --text-tertiary:rgba(255,255,255,0.38);
+      --surface:rgba(255,255,255,0.05); --surface-glass:rgba(0,0,0,0.30); --surface-elev:rgba(0,0,0,0.42);
+      --border:rgba(255,255,255,0.10); --border-sub:rgba(255,255,255,0.05);
+      --success-fg:#6ee7b7; --warning-fg:#fde68a; --danger-fg:#fca5a5;
+    }
+    body {
+      font-family:'Space Grotesk',sans-serif; color:var(--text-primary);
+      background: radial-gradient(circle at 22% 18%,#102641 0,rgba(16,38,65,0) 36%), radial-gradient(circle at 78% 8%,#183349 0,rgba(24,51,73,0) 32%), linear-gradient(140deg,#0b111c 0%,#0d1221 60%,#0a0f1b 100%);
+      min-height:100vh;
+    }
+    /* Nav */
+    nav { position:sticky;top:0;z-index:20;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(11,17,28,0.86);border-bottom:1px solid var(--border);backdrop-filter:blur(14px); }
+    .logo { font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit; }
+    .logo-dot { width:8px;height:8px;border-radius:50%;background:var(--accent); }
+    .nav-links { display:flex;gap:24px; }
+    .nav-link { font-size:13px;color:var(--text-secondary);text-decoration:none;transition:color .15s; }
+    .nav-link:hover { color:var(--text-primary); }
+    .nav-link.active { color:var(--accent-fg); }
+    .nav-right { display:flex;gap:10px;align-items:center; }
+    .btn { font-family:inherit;cursor:pointer;border-radius:10px;font-size:13px;font-weight:500;transition:all .15s;border:none; }
+    .btn-ghost { background:transparent;color:var(--text-secondary);padding:6px 14px; }
+    .btn-ghost:hover { color:var(--text-primary);background:var(--surface); }
+    .btn-outline { background:var(--surface);color:var(--text-primary);border:1px solid var(--border);padding:6px 16px; }
+    .btn-primary { background:var(--accent);color:#0a0f1b;padding:7px 18px;font-weight:600; }
+    .btn-primary:hover { background:#5ef2b5; }
+    .btn-primary-lg { background:var(--accent);color:#0a0f1b;padding:12px 28px;font-size:14px;font-weight:700;border-radius:12px;cursor:pointer;font-family:inherit;border:none;transition:background .15s; }
+    .btn-primary-lg:hover { background:#5ef2b5; }
+    .btn-outline-lg { background:var(--surface);color:var(--text-primary);border:1px solid var(--border);padding:12px 24px;font-size:14px;font-weight:500;border-radius:12px;cursor:pointer;font-family:inherit;transition:border-color .15s; }
+    .btn-outline-lg:hover { border-color:rgba(56,232,165,0.35); }
+    @media (max-width:640px) { .nav-links { display:none; } }
+    /* Disclaimer bar */
+    .disc-bar { background:rgba(96,165,250,0.08);border-bottom:1px solid rgba(96,165,250,0.15);padding:9px 28px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:rgba(147,197,253,0.85);text-align:center;flex-wrap:wrap;line-height:1.5; }
+    .disc-bar strong { color:#bfdbfe;font-weight:600; }
+    /* Layout */
+    .page { max-width:1180px;margin:0 auto;padding:56px 24px 72px; }
+    /* Header */
+    .section-header { text-align:center;margin-bottom:44px; }
+    .eyebrow { display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:var(--accent-fg);margin-bottom:14px; }
+    .eyebrow-dot { width:5px;height:5px;border-radius:50%;background:var(--accent-fg); }
+    .section-title { font-size:34px;font-weight:700;line-height:1.2;margin-bottom:14px; }
+    .section-title span { color:var(--accent-fg); }
+    .section-sub { font-size:15px;color:var(--text-secondary);max-width:540px;margin:0 auto;line-height:1.65; }
+    .section-note { margin-top:10px;font-size:12px;color:var(--text-tertiary); }
+    /* Explainer */
+    .explainer-row { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px; }
+    @media (max-width:700px) { .explainer-row { grid-template-columns:1fr; } }
+    .exp-card { background:rgba(255,255,255,0.03);border:1px solid var(--border-sub);border-radius:12px;padding:16px;display:flex;gap:12px;align-items:flex-start; }
+    .exp-icon { width:34px;height:34px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px; }
+    .exp-icon.blue  { background:rgba(96,165,250,0.12); }
+    .exp-icon.green { background:rgba(56,232,165,0.10); }
+    .exp-icon.amber { background:rgba(251,191,36,0.10); }
+    .exp-title { font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px; }
+    .exp-desc  { font-size:11px;color:var(--text-secondary);line-height:1.55; }
+    /* Tabs */
+    .tabs { display:flex;gap:3px;flex-wrap:wrap;justify-content:center;background:rgba(255,255,255,0.04);border:1px solid var(--border);padding:4px;border-radius:14px;width:fit-content;margin:0 auto 28px; }
+    .tab { font-family:inherit;font-size:13px;font-weight:500;padding:8px 18px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--text-secondary);cursor:pointer;transition:all .18s;white-space:nowrap; }
+    .tab:hover:not(.active) { color:var(--text-primary);background:rgba(255,255,255,0.04); }
+    .tab.active { background:rgba(56,232,165,0.12);color:var(--accent-fg);border-color:rgba(56,232,165,0.28); }
+    /* Cards */
+    .card { background:var(--surface-glass);border:1px solid var(--border);border-radius:16px;backdrop-filter:blur(14px);padding:20px; }
+    .card-sm { padding:16px; }
+    .card-title { font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:14px; }
+    /* Main grid */
+    .main-grid { display:grid;grid-template-columns:1fr 320px;gap:18px;margin-bottom:22px;align-items:start; }
+    @media (max-width:860px) { .main-grid { grid-template-columns:1fr; } }
+    /* Chart */
+    .chart-card { display:flex;flex-direction:column;gap:14px; }
+    .chart-top { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+    .chart-return-label { font-size:11px;color:var(--text-tertiary);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em; }
+    .chart-return-val { font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--accent-fg);line-height:1; }
+    .chart-return-sub { font-size:11px;color:var(--text-tertiary);margin-top:4px; }
+    .chart-top-right { display:flex;flex-direction:column;align-items:flex-end;gap:8px; }
+    .eod-badge { display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text-tertiary);background:rgba(255,255,255,0.04);border:1px solid var(--border-sub);padding:3px 8px;border-radius:6px; }
+    .eod-dot { width:5px;height:5px;border-radius:50%;background:var(--accent-fg);opacity:.7; }
+    .time-sel { display:flex;gap:2px;background:var(--surface-elev);border:1px solid var(--border);padding:3px;border-radius:8px; }
+    .time-btn { font-family:inherit;font-size:11px;font-weight:500;padding:4px 11px;border-radius:5px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;transition:all .12s; }
+    .time-btn.active { background:var(--surface);color:var(--text-primary); }
+    .chart-svg { width:100%;height:200px;display:block;overflow:visible; }
+    .chart-legend { display:flex;gap:18px; }
+    .leg-item { display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-secondary); }
+    .leg-line { width:22px;height:2px;border-radius:2px; }
+    .leg-line.port { background:var(--accent); }
+    .leg-line.bench { background:repeating-linear-gradient(90deg,rgba(255,255,255,0.3) 0 4px,transparent 4px 8px); }
+    .chart-note { font-size:10px;color:var(--text-tertiary);line-height:1.4;padding-top:8px;border-top:1px solid var(--border-sub); }
+    /* Sidebar */
+    .sidebar { display:flex;flex-direction:column;gap:14px; }
+    .upside-card { text-align:center;background:rgba(56,232,165,0.06);border-color:rgba(56,232,165,0.20); }
+    .upside-header { display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:8px; }
+    .upside-lbl { font-size:10px;text-transform:uppercase;letter-spacing:.10em;color:var(--text-tertiary); }
+    .info-tip { position:relative;display:inline-flex;cursor:pointer; }
+    .info-tip-icon { width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,0.12);color:var(--text-tertiary);font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700; }
+    .info-tip:hover .tip-popup { display:block; }
+    .tip-popup { display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a2535;border:1px solid var(--border);border-radius:8px;padding:8px 10px;width:200px;font-size:11px;color:var(--text-secondary);line-height:1.5;z-index:100;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+    .upside-val { font-family:'JetBrains Mono',monospace;font-size:46px;font-weight:700;color:var(--accent-fg);line-height:1;margin-bottom:6px; }
+    .upside-sub { font-size:11px;color:var(--text-tertiary); }
+    .stats-grid { display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:16px;overflow:hidden; }
+    .stat-cell { background:var(--surface-glass);backdrop-filter:blur(14px);padding:14px 16px; }
+    .stat-lbl { font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--text-tertiary);margin-bottom:5px; }
+    .stat-val { font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--text-primary);line-height:1; }
+    .stat-val.pos { color:var(--success-fg); } .stat-val.low { color:var(--success-fg); } .stat-val.med { color:var(--warning-fg); } .stat-val.high { color:var(--danger-fg); }
+    .donut-row { display:flex;align-items:center;gap:14px; }
+    .donut-legend { flex:1;display:flex;flex-direction:column;gap:7px;min-width:0; }
+    .dleg-row { display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-secondary);min-width:0; }
+    .dleg-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+    .dleg-name { flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .dleg-pct { font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-tertiary);flex-shrink:0; }
+    /* Holdings */
+    .holdings-hdr { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px; }
+    .holdings-lbl { font-size:15px;font-weight:600; }
+    .holdings-sub { font-size:11px;color:var(--text-tertiary); }
+    .holdings-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px; }
+    @media (max-width:860px) { .holdings-grid { grid-template-columns:repeat(2,1fr); } }
+    .tile { background:var(--surface-glass);border:1px solid var(--border-sub);border-radius:12px;padding:14px;backdrop-filter:blur(14px);position:relative;overflow:hidden;transition:border-color .18s,transform .18s; }
+    .tile:not(.locked):hover { border-color:rgba(255,255,255,0.16);transform:translateY(-1px); }
+    .tile-bar { position:absolute;top:0;left:0;right:0;height:3px; }
+    .tile-hdr { display:flex;align-items:flex-start;justify-content:space-between;margin-top:8px;margin-bottom:4px; }
+    .tile-cap { font-size:10px;color:var(--text-tertiary); }
+    .tile-badge { font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.07);color:var(--text-tertiary); }
+    .tile-badge.etf { background:rgba(96,165,250,0.14);color:#93c5fd; }
+    .tile-sector { font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:10px;line-height:1.3; }
+    .tile-upside { font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent-fg);margin-bottom:7px;line-height:1; }
+    .conv-row { display:flex;align-items:center;gap:4px;margin-bottom:10px; }
+    .conv-dot { width:6px;height:6px;border-radius:50%; }
+    .conv-dot.on { background:var(--accent-fg); } .conv-dot.off { background:rgba(255,255,255,0.12); }
+    .conv-lbl { font-size:10px;color:var(--text-tertiary);margin-left:3px; }
+    .w-bar-bg { height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-bottom:4px; }
+    .w-bar-fill { height:100%;border-radius:2px; }
+    .w-lbl { font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-tertiary); }
+    .tile-lock { position:absolute;inset:0;background:rgba(11,17,28,0.72);backdrop-filter:blur(6px);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px; }
+    .lock-icon { width:26px;height:26px;color:rgba(255,255,255,0.28); }
+    .lock-txt { font-size:11px;color:var(--text-tertiary);text-align:center;padding:0 14px;line-height:1.4; }
+    .tile-ghost { height:108px; }
+    /* Features */
+    .features-section { margin-bottom:48px; }
+    .feat-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
+    @media (max-width:700px) { .feat-grid { grid-template-columns:1fr; } }
+    .feat-card { background:rgba(255,255,255,0.03);border:1px solid var(--border-sub);border-radius:14px;padding:20px; }
+    .feat-icon { font-size:22px;margin-bottom:10px; }
+    .feat-title { font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px; }
+    .feat-desc { font-size:12px;color:var(--text-secondary);line-height:1.6; }
+    /* CTA */
+    .cta-section { background:rgba(56,232,165,0.05);border:1px solid rgba(56,232,165,0.18);border-radius:20px;padding:40px 36px;text-align:center; }
+    .cta-title { font-size:24px;font-weight:700;margin-bottom:10px; }
+    .cta-sub { font-size:14px;color:var(--text-secondary);line-height:1.6;max-width:500px;margin:0 auto 28px; }
+    .feat-list { display:flex;flex-wrap:wrap;justify-content:center;gap:10px 20px;margin-bottom:32px; }
+    .feat-item { display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-secondary); }
+    .feat-check { color:var(--accent-fg);font-size:14px;font-weight:700;flex-shrink:0; }
+    .cta-btns { display:flex;gap:12px;justify-content:center;flex-wrap:wrap; }
+    .cta-note { margin-top:14px;font-size:11px;color:var(--text-tertiary); }
+    /* Footer */
+    .footer-disc { margin-top:40px;padding-top:24px;border-top:1px solid var(--border-sub);font-size:11px;color:var(--text-tertiary);line-height:1.7;text-align:center;max-width:760px;margin-left:auto;margin-right:auto; }
+    /* Anim */
+    .fade { animation:fadeUp .18s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="https://bonistock.com" class="logo"><span class="logo-dot"></span>Bonistock</a>
+  <div class="nav-links">
+    <a href="https://bonistock.com" class="nav-link">Stocks</a>
+    <a href="https://bonistock.com" class="nav-link">ETFs</a>
+    <span class="nav-link active">Portfolios</span>
+    <a href="https://bonistock.com/pricing" class="nav-link">Pricing</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://bonistock.com/sign-in"><button class="btn btn-ghost">Sign in</button></a>
+    <a href="https://bonistock.com/sign-up"><button class="btn btn-primary">Get started</button></a>
+  </div>
+</nav>
+
+<div class="disc-bar">
+  <span>ℹ</span>
+  <span>These portfolios are <strong>statistical illustrations</strong> based on predefined, transparent criteria — not personalised recommendations. Prices use <strong>end-of-day (EOD) data, updated daily after market close</strong>. <strong>Not financial advice.</strong></span>
+</div>
+
+<div class="page">
+
+  <div class="section-header">
+    <div class="eyebrow"><span class="eyebrow-dot"></span>Model Portfolios</div>
+    <h1 class="section-title">How analyst-backed portfolios<br><span>have performed historically</span></h1>
+    <p class="section-sub">Five predefined portfolio strategies, each built from our curated universe of stocks and ETFs. Explore historical performance, sector exposure, and analyst upside potential.</p>
+    <p class="section-note">All data is historical · EOD closing prices · Fixed weights at period start · For illustration purposes only</p>
+  </div>
+
+  <div class="explainer-row">
+    <div class="exp-card">
+      <div class="exp-icon blue">📊</div>
+      <div>
+        <div class="exp-title">What is Analyst Upside?</div>
+        <div class="exp-desc">Independent analysts at banks and research firms set price targets for stocks. The upside % is the gap between today's price and the consensus target — how much room analysts collectively think there is to grow.</div>
+      </div>
+    </div>
+    <div class="exp-card">
+      <div class="exp-icon green">📈</div>
+      <div>
+        <div class="exp-title">What does the performance chart show?</div>
+        <div class="exp-desc">Each portfolio starts indexed at 100. The line shows how the basket of stocks and ETFs moved historically using official end-of-day closing prices. This is a historical look-back, not a forecast of future returns.</div>
+      </div>
+    </div>
+    <div class="exp-card">
+      <div class="exp-icon amber">⭐</div>
+      <div>
+        <div class="exp-title">What is Conviction?</div>
+        <div class="exp-desc">The filled dots show what share of covering analysts rate the instrument a Buy or Strong Buy. Five out of five means near-unanimous buy recommendation across all analysts following that stock or ETF.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabRow">
+    <button class="tab active" data-p="balanced">Balanced</button>
+    <button class="tab"        data-p="growth">Growth</button>
+    <button class="tab"        data-p="value">Value &amp; Income</button>
+    <button class="tab"        data-p="etf">ETF Core</button>
+    <button class="tab"        data-p="conviction">High Conviction</button>
+  </div>
+
+  <div class="main-grid">
+    <div class="card chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-return-label">Historical performance · Indexed to 100 · EOD prices</div>
+          <div class="chart-return-val" id="chartVal">+13.2%</div>
+          <div class="chart-return-sub" id="chartSub">vs S&amp;P 500 +11.8% · 1Y · illustration only</div>
+        </div>
+        <div class="chart-top-right">
+          <div class="eod-badge"><span class="eod-dot"></span>EOD · Updated daily</div>
+          <div class="time-sel">
+            <button class="time-btn"        data-t="1m">1M</button>
+            <button class="time-btn"        data-t="3m">3M</button>
+            <button class="time-btn active" data-t="1y">1Y</button>
+          </div>
+        </div>
+      </div>
+      <svg id="mainChart" class="chart-svg" viewBox="0 0 700 200" preserveAspectRatio="none"></svg>
+      <div class="chart-legend">
+        <div class="leg-item"><div class="leg-line port"></div><span>Portfolio (indexed to 100)</span></div>
+        <div class="leg-item"><div class="leg-line bench"></div><span>S&amp;P 500 benchmark</span></div>
+      </div>
+      <div class="chart-note">Past performance does not guarantee future results. Portfolios use predefined criteria and fixed weights at the start of each period. Prices sourced from financial data providers, updated once daily after market close (EOD).</div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card upside-card card-sm">
+        <div class="upside-header">
+          <div class="upside-lbl">Analyst Upside Potential</div>
+          <div class="info-tip">
+            <div class="info-tip-icon">i</div>
+            <div class="tip-popup">Weighted average of analyst price targets across all positions, expressed as % above current prices. Based on consensus from covering analysts. This is a statistical measure, not a return guarantee.</div>
+          </div>
+        </div>
+        <div class="upside-val" id="upsideVal">+18.3%</div>
+        <div class="upside-sub">Forward consensus · Analyst targets only</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-cell"><div class="stat-lbl">Positions</div><div class="stat-val" id="sPos">8</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Sectors</div><div class="stat-val" id="sSec">5</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Historical 1Y</div><div class="stat-val pos" id="s1y">+13.2%</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Risk Profile</div><div class="stat-val med" id="sRisk">Medium</div></div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Sector Allocation</div>
+        <div class="donut-row">
+          <svg id="donut" width="110" height="110" viewBox="0 0 110 110"></svg>
+          <div class="donut-legend" id="donutLeg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="holdings-hdr">
+    <span class="holdings-lbl">Portfolio Holdings</span>
+    <span class="holdings-sub">Instrument names visible to subscribers only</span>
+  </div>
+  <div class="holdings-grid" id="holdingsGrid"></div>
+
+  <div class="features-section">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="eyebrow"><span class="eyebrow-dot"></span>What's inside</div>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:8px;">Everything behind these portfolios, <span style="color:var(--accent-fg)">available to you</span></h2>
+      <p style="font-size:14px;color:var(--text-secondary);max-width:480px;margin:0 auto;line-height:1.6;">Subscribers see the actual instruments, full analyst breakdowns, and can build their own portfolios using the same data shown above.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🎯</div>
+        <div class="feat-title">Hand-picked stocks with analyst data</div>
+        <div class="feat-desc">Every stock comes with analyst price targets, buy/hold/sell breakdown, and conviction score. Sourced from major financial data providers and updated daily with EOD prices.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🗂️</div>
+        <div class="feat-title">ETFs from major global providers</div>
+        <div class="feat-desc">Compare ETFs by 1Y, 3Y, and 5Y CAGR, max drawdown, Sharpe ratio, and expense fee. All in one place — no spreadsheet or separate tool needed.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">Build your own model portfolio</div>
+        <div class="feat-desc">Combine any stocks and ETFs, set your own weights, and see your combined analyst upside potential as a single number — refreshed daily with the latest data.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-section">
+    <div class="cta-title">Ready to find your next investment idea?</div>
+    <div class="cta-sub">Join investors already using Bonistock to cut through market noise. See the actual instruments, analyst data, and build portfolios tailored to your own strategy.</div>
+    <div class="feat-list">
+      <div class="feat-item"><span class="feat-check">✓</span>100+ hand-picked stocks with analyst price targets</div>
+      <div class="feat-item"><span class="feat-check">✓</span>ETFs from major global providers</div>
+      <div class="feat-item"><span class="feat-check">✓</span>Portfolio builder with combined upside tracking</div>
+      <div class="feat-item"><span class="feat-check">✓</span>Analyst consensus — buys, holds, sells</div>
+      <div class="feat-item"><span class="feat-check">✓</span>Daily EOD price updates</div>
+      <div class="feat-item"><span class="feat-check">✓</span>Risk profiles and sector breakdowns</div>
+    </div>
+    <div class="cta-btns">
+      <a href="https://bonistock.com/pricing"><button class="btn-outline-lg">See pricing</button></a>
+      <a href="https://bonistock.com/sign-up"><button class="btn-primary-lg">Start for free →</button></a>
+    </div>
+    <div class="cta-note">No credit card required to get started</div>
+  </div>
+
+  <div class="footer-disc">
+    <strong>Important:</strong> The model portfolios shown on this page are provided for statistical and illustrative purposes only. They are based on predefined, transparent selection criteria and historical end-of-day (EOD) closing prices sourced from financial data providers. Nothing on this page constitutes financial advice, an investment recommendation, or a solicitation to buy or sell any security. Past performance does not guarantee future results. Portfolio compositions, weightings, and criteria are fixed and do not reflect any individual's personal financial situation or risk tolerance. Prices are updated once daily after market close. Bonistock is a data and analytics platform, not a regulated investment adviser.
+  </div>
+
+</div>
+
+<script>
+function mkRng(seed){let s=seed>>>0;return()=>{s=(Math.imul(1664525,s)+1013904223)>>>0;return s/0xFFFFFFFF};}
+function series(seed,drift,vol,n=52){const r=mkRng(seed),d=[100];for(let i=1;i<n;i++)d.push(Math.max(72,d[i-1]+drift+(r()-0.47)*vol));return d;}
+const BENCH=series(77,0.35,1.9);
+const SC={'Technology':'#818cf8','Healthcare':'#34d399','Financials':'#fbbf24','Consumer Disc.':'#f472b6','Energy':'#fb923c','Consumer Staples':'#a3e635','Utilities':'#94a3b8','Semiconductors':'#c084fc','Software':'#22d3ee','Biotech':'#f87171','Global Equity':'#60a5fa','US Broad Market':'#38bdf8','European Equity':'#818cf8','Emerging Markets':'#fb7185','Dividend Global':'#a78bfa','US Bonds':'#64748b','Tech Sector ETF':'#67e8f9'};
+const col=s=>SC[s]||'#94a3b8';
+const P={
+  balanced:{upside:18.3,risk:'medium',pos:8,sec:5,ret:13.2,seed:42,drift:0.26,vol:1.4,alloc:[{n:'Global Equity',w:28},{n:'Technology',w:22},{n:'Healthcare',w:18},{n:'Financials',w:14},{n:'Consumer Disc.',w:9},{n:'US Broad Market',w:9}],h:[{type:'etf',cap:'ETF',s:'Global Equity',up:9,cv:5,w:20},{type:'stock',cap:'Large Cap',s:'Technology',up:34,cv:5,w:18},{type:'stock',cap:'Large Cap',s:'Healthcare',up:28,cv:4,w:16},{type:'etf',cap:'ETF',s:'US Broad Market',up:8,cv:5,w:13},{type:'stock',cap:'Mid Cap',s:'Financials',up:22,cv:4,w:14},{type:'stock',cap:'Large Cap',s:'Consumer Disc.',up:19,cv:4,w:12},{lock:true},{lock:true}]},
+  growth:{upside:34.7,risk:'high',pos:8,sec:4,ret:26.4,seed:137,drift:0.53,vol:3.7,alloc:[{n:'Technology',w:36},{n:'Semiconductors',w:23},{n:'Software',w:19},{n:'Biotech',w:12},{n:'Tech Sector ETF',w:10}],h:[{type:'stock',cap:'Large Cap',s:'Technology',up:48,cv:5,w:20},{type:'stock',cap:'Mid Cap',s:'Semiconductors',up:54,cv:5,w:18},{type:'stock',cap:'Mid Cap',s:'Software',up:41,cv:4,w:17},{type:'stock',cap:'Small Cap',s:'Biotech',up:52,cv:3,w:10},{type:'stock',cap:'Large Cap',s:'Technology',up:38,cv:5,w:15},{type:'etf',cap:'ETF',s:'Tech Sector ETF',up:18,cv:4,w:10},{lock:true},{lock:true}]},
+  value:{upside:12.1,risk:'low',pos:8,sec:5,ret:8.4,seed:256,drift:0.16,vol:0.9,alloc:[{n:'Dividend Global',w:25},{n:'Financials',w:22},{n:'Energy',w:18},{n:'Consumer Staples',w:15},{n:'Utilities',w:10},{n:'US Bonds',w:10}],h:[{type:'etf',cap:'ETF',s:'Dividend Global',up:11,cv:5,w:20},{type:'stock',cap:'Large Cap',s:'Financials',up:18,cv:4,w:18},{type:'stock',cap:'Large Cap',s:'Energy',up:15,cv:5,w:17},{type:'etf',cap:'ETF',s:'US Bonds',up:5,cv:5,w:13},{type:'stock',cap:'Large Cap',s:'Consumer Staples',up:14,cv:5,w:14},{type:'stock',cap:'Large Cap',s:'Utilities',up:9,cv:4,w:10},{lock:true},{lock:true}]},
+  etf:{upside:9.2,risk:'low',pos:6,sec:5,ret:11.8,seed:512,drift:0.22,vol:0.8,alloc:[{n:'Global Equity',w:30},{n:'US Broad Market',w:25},{n:'European Equity',w:20},{n:'Emerging Markets',w:15},{n:'US Bonds',w:10}],h:[{type:'etf',cap:'ETF',s:'Global Equity',up:9,cv:5,w:30},{type:'etf',cap:'ETF',s:'US Broad Market',up:8,cv:5,w:25},{type:'etf',cap:'ETF',s:'European Equity',up:10,cv:4,w:20},{type:'etf',cap:'ETF',s:'Emerging Markets',up:12,cv:3,w:15},{lock:true},{lock:true}]},
+  conviction:{upside:42.1,risk:'high',pos:6,sec:4,ret:31.8,seed:999,drift:0.63,vol:5.0,alloc:[{n:'Technology',w:38},{n:'Healthcare',w:24},{n:'Semiconductors',w:20},{n:'Software',w:18}],h:[{type:'stock',cap:'Large Cap',s:'Technology',up:61,cv:5,w:24},{type:'stock',cap:'Mid Cap',s:'Semiconductors',up:54,cv:5,w:20},{type:'stock',cap:'Large Cap',s:'Healthcare',up:47,cv:5,w:20},{type:'stock',cap:'Mid Cap',s:'Software',up:38,cv:4,w:18},{lock:true},{lock:true}]}
+};
+const N={'1m':21,'3m':13,'1y':52};
+const ns=t=>document.createElementNS('http://www.w3.org/2000/svg',t);
+const sa=(el,a)=>{Object.entries(a).forEach(([k,v])=>el.setAttribute(k,v));return el;};
+function smooth(pts){let d=`M ${pts[0].x} ${pts[0].y}`;for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],mx=(a.x+b.x)/2;d+=` C ${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`;}return d;}
+function drawChart(pKey,period){
+  const svg=document.getElementById('mainChart');svg.innerHTML='';
+  const p=P[pKey],n=N[period],W=700,H=200,pad={t:14,r:54,b:26,l:38},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const ps=series(p.seed,p.drift,p.vol).slice(-n),bs=BENCH.slice(-n);
+  const pn=ps.map(v=>(v/ps[0])*100),bn=bs.map(v=>(v/bs[0])*100);
+  const all=[...pn,...bn],lo=Math.min(...all)*0.996,hi=Math.max(...all)*1.006;
+  const xf=i=>pad.l+(i/(pn.length-1))*cW,yf=v=>pad.t+(1-(v-lo)/(hi-lo))*cH;
+  const defs=ns('defs'),g=ns('linearGradient');
+  sa(g,{id:'fg',x1:'0',y1:'0',x2:'0',y2:'1'});
+  g.append(sa(ns('stop'),{offset:'0%','stop-color':'#38e8a5','stop-opacity':'0.28'}));
+  g.append(sa(ns('stop'),{offset:'100%','stop-color':'#38e8a5','stop-opacity':'0.01'}));
+  defs.append(g);svg.append(defs);
+  [0,.25,.5,.75,1].forEach(t=>{
+    const yp=pad.t+t*cH,v=hi-t*(hi-lo);
+    svg.append(sa(ns('line'),{x1:pad.l,x2:W-pad.r,y1:yp,y2:yp,stroke:'rgba(255,255,255,0.05)','stroke-width':'1'}));
+    const lbl=sa(ns('text'),{x:pad.l-6,y:yp+4,'text-anchor':'end','font-size':'9',fill:'rgba(255,255,255,0.28)','font-family':'JetBrains Mono,monospace'});
+    lbl.textContent=v.toFixed(0);svg.append(lbl);
+  });
+  const y100=yf(100);
+  if(y100>pad.t&&y100<pad.t+cH)svg.append(sa(ns('line'),{x1:pad.l,x2:W-pad.r,y1:y100,y2:y100,stroke:'rgba(255,255,255,0.14)','stroke-width':'1','stroke-dasharray':'3 3'}));
+  const xL={'1y':['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],'3m':['Wk1','Wk4','Wk8','Wk13'],'1m':['Wk1','Wk2','Wk3','Wk4','Now']};
+  (xL[period]||[]).forEach((lbl,i,a)=>{const xi=pad.l+(i/(a.length-1))*cW,t=sa(ns('text'),{x:xi,y:H-6,'text-anchor':'middle','font-size':'9',fill:'rgba(255,255,255,0.22)','font-family':'Space Grotesk,sans-serif'});t.textContent=lbl;svg.append(t);});
+  const pPts=pn.map((v,i)=>({x:xf(i),y:yf(v)})),bPts=bn.map((v,i)=>({x:xf(i),y:yf(v)}));
+  const pPath=smooth(pPts),bPath=smooth(bPts),bot=pad.t+cH;
+  svg.append(sa(ns('path'),{d:`${pPath} L ${xf(pn.length-1)},${bot} L ${xf(0)},${bot} Z`,fill:'url(#fg)'}));
+  svg.append(sa(ns('path'),{d:bPath,fill:'none',stroke:'rgba(255,255,255,0.22)','stroke-width':'1.5','stroke-dasharray':'5 5','stroke-linecap':'round'}));
+  svg.append(sa(ns('path'),{d:pPath,fill:'none',stroke:'#38e8a5','stroke-width':'2.5','stroke-linecap':'round','stroke-linejoin':'round'}));
+  const ex=xf(pn.length-1),ey=yf(pn[pn.length-1]);
+  svg.append(sa(ns('circle'),{cx:ex,cy:ey,r:'7',fill:'rgba(56,232,165,0.18)'}));
+  svg.append(sa(ns('circle'),{cx:ex,cy:ey,r:'3.5',fill:'#38e8a5'}));
+  const pRet=(pn[pn.length-1]-100).toFixed(1),bRet=(bn[bn.length-1]-100).toFixed(1);
+  const retLbl=sa(ns('text'),{x:ex+10,y:ey+4,'font-size':'11','font-weight':'700',fill:'#6ee7b7','font-family':'JetBrains Mono,monospace'});
+  retLbl.textContent=`+${pRet}%`;svg.append(retLbl);
+  document.getElementById('chartVal').textContent=`+${pRet}%`;
+  const periodLabel = {'1y':'1Y','3m':'3M','1m':'1M'}[period] || '1Y';
+  document.getElementById('chartSub').textContent=`vs S&P 500 +${bRet}% · ${periodLabel} · illustration only`;
+}
+function drawDonut(alloc){
+  const svg=document.getElementById('donut');svg.innerHTML='';
+  const leg=document.getElementById('donutLeg');leg.innerHTML='';
+  const R=44,r=26,cx=55,cy=55,total=alloc.reduce((s,a)=>s+a.w,0);
+  let ang=-Math.PI/2;
+  alloc.forEach((a,idx)=>{
+    const sw=(a.w/total)*Math.PI*2,c=col(a.n);
+    if(alloc.length===1){svg.append(sa(ns('circle'),{cx,cy,r:R,fill:c}));svg.append(sa(ns('circle'),{cx,cy,r:r,fill:'#0b111c'}));}
+    else{const x1=cx+R*Math.cos(ang),y1=cy+R*Math.sin(ang),x2=cx+R*Math.cos(ang+sw),y2=cy+R*Math.sin(ang+sw),ix1=cx+r*Math.cos(ang),iy1=cy+r*Math.sin(ang),ix2=cx+r*Math.cos(ang+sw),iy2=cy+r*Math.sin(ang+sw),lg=sw>Math.PI?1:0;svg.append(sa(ns('path'),{d:`M ${x1} ${y1} A ${R} ${R} 0 ${lg} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${r} ${r} 0 ${lg} 0 ${ix1} ${iy1} Z`,fill:c,opacity:idx===0?'1':'0.88'}));}
+    ang+=sw;
+    if(idx<5){const row=document.createElement('div');row.className='dleg-row';row.innerHTML=`<div class="dleg-dot" style="background:${c}"></div><span class="dleg-name">${a.n}</span><span class="dleg-pct">${a.w}%</span>`;leg.append(row);}
+  });
+}
+const convLabel=cv=>['','Mixed','Mixed','Moderate','High','V.High'][cv]||'';
+function drawHoldings(holdings){
+  const grid=document.getElementById('holdingsGrid');grid.innerHTML='';
+  holdings.forEach(h=>{
+    const tile=document.createElement('div');tile.className='tile';
+    if(h.lock){tile.classList.add('locked');tile.innerHTML=`<div class="tile-lock"><svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><div class="lock-txt">Visible to subscribers</div></div><div class="tile-ghost"></div>`;grid.append(tile);return;}
+    const c=col(h.s),dots=Array.from({length:5},(_,i)=>`<div class="conv-dot ${i<h.cv?'on':'off'}"></div>`).join('');
+    tile.innerHTML=`<div class="tile-bar" style="background:${c}"></div><div class="tile-hdr"><div class="tile-cap">${h.cap}</div><div class="tile-badge ${h.type==='etf'?'etf':''}">${h.type.toUpperCase()}</div></div><div class="tile-sector">${h.s}</div><div class="tile-upside">&#9650;&thinsp;${h.up}%</div><div class="conv-row">${dots}<span class="conv-lbl">${convLabel(h.cv)}</span></div><div class="w-bar-bg"><div class="w-bar-fill" style="width:${h.w}%;background:${c}60"></div></div><div class="w-lbl">${h.w}% allocation</div>`;
+    grid.append(tile);
+  });
+}
+function update(pKey,period){
+  const p=P[pKey];
+  document.getElementById('upsideVal').textContent=`+${p.upside}%`;
+  document.getElementById('sPos').textContent=p.pos;
+  document.getElementById('sSec').textContent=p.sec;
+  const s1y=document.getElementById('s1y');s1y.textContent=`+${p.ret}%`;
+  const sr=document.getElementById('sRisk');sr.textContent=p.risk.charAt(0).toUpperCase()+p.risk.slice(1);sr.className=`stat-val ${p.risk}`;
+  drawChart(pKey,period);drawDonut(p.alloc);drawHoldings(p.h);
+  const g=document.getElementById('holdingsGrid');g.classList.remove('fade');void g.offsetWidth;g.classList.add('fade');
+}
+let curP='balanced',curT='1y';
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');curP=t.dataset.p;update(curP,curT);}));
+document.querySelectorAll('.time-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.time-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');curT=b.dataset.t;update(curP,curT);}));
+update('balanced','1y');
+</script>
+</body>
+</html>
