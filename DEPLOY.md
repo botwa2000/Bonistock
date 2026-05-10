@@ -166,12 +166,26 @@ $SSH "psql '\$( docker exec \$(docker ps -q --filter name=bonistock-prod_app) ca
 When you change the Prisma schema:
 
 1. Edit `prisma/schema.prisma`
-2. Run `npx prisma generate` locally (regenerates client types)
-3. Fix any TypeScript errors from schema changes
-4. `npm run build` (verify build passes)
-5. Commit, push, deploy (see deploy commands above)
-6. After deploy, run `db push` on the server (see above)
+2. Create a migration: `npx prisma migrate dev --name <description>` (adds file to `prisma/migrations/`)
+3. Run `npx prisma generate` locally (regenerates client types)
+4. Fix any TypeScript errors from schema changes
+5. `npm run build` (verify build passes)
+6. Commit, push, deploy (deploy commands run `prisma migrate deploy` automatically)
 7. Optionally run seed if new seed data was added
+
+### Baselining (one-time fix for P3005 error)
+
+If `migrate deploy` throws **P3005** ("The database schema is not empty"), the DB was set up with `db push` and has no migration history. Fix:
+
+```bash
+# Mark migrations that are already applied (without re-running them)
+$SSH "cd /home/deploy/bonistock && DATABASE_URL=\"\$(docker exec \$(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL | sed 's/172\\.18\\.0\\.1/127.0.0.1/')\" npx prisma migrate resolve --applied <migration_name>"
+
+# Then run deploy — will only apply unapplied migrations
+$SSH "cd /home/deploy/bonistock && DATABASE_URL=\"\$(docker exec \$(docker ps -q --filter name=bonistock-prod_app) cat /run/secrets/bonistock_prod_DATABASE_URL | sed 's/172\\.18\\.0\\.1/127.0.0.1/')\" npx prisma migrate deploy"
+```
+
+Use `ls prisma/migrations/` to list all migration names. Mark as applied those whose tables already exist in the DB.
 
 ---
 
