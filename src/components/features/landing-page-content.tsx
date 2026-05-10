@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Hero } from "@/components/features/hero";
+import { DemoPortfolioSection } from "@/components/features/demo-portfolio-section";
 import { HowItWorks } from "@/components/features/how-it-works";
 import { PricingCards } from "@/components/features/pricing-cards";
 import { FaqSection } from "@/components/features/faq-section";
@@ -244,6 +245,9 @@ export default function LandingPageContent() {
       <Hero />
 
       <Container className="space-y-20 pb-24">
+        {/* Demo Portfolios — analyst-driven model portfolios */}
+        <DemoPortfolioSection />
+
         {/* Investment Preview (stocks + ETFs from API) */}
         <InvestmentPreviewSection />
 
