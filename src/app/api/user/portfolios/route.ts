@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       name: parsed.data.name,
     },
+    include: { holdings: true },
   });
 
   return NextResponse.json(portfolio, { status: 201 });

@@ -22,7 +22,7 @@ interface Portfolio {
   strategy: string;
   weightMode: string;
   createdAt: string;
-  holdings: Holding[];
+  holdings?: Holding[];
 }
 
 function NewPortfolioForm({ onCreated }: { onCreated: (p: Portfolio) => void }) {
@@ -184,11 +184,12 @@ function PortfolioCard({
   const [deleting, setDeleting] = useState(false);
   const [perf, setPerf] = useState<{ values: number[]; summary: PerfSummary } | null>(null);
 
-  const totalWeight = portfolio.holdings.reduce((s, h) => s + h.weight, 0);
+  const totalWeight = (portfolio.holdings ?? []).reduce((s, h) => s + h.weight, 0);
 
   useEffect(() => {
-    const hasStocks = portfolio.holdings.some((h) => h.assetType === "STOCK");
-    if (!hasStocks || portfolio.holdings.length < 2) return;
+    const holdings = portfolio.holdings ?? [];
+    const hasStocks = holdings.some((h) => h.assetType === "STOCK");
+    if (!hasStocks || holdings.length < 2) return;
     fetch(`/api/user/portfolios/${portfolio.id}/performance?range=3m`)
       .then((r) => r.json())
       .then((data: { portfolioValues?: number[]; summary?: PerfSummary }) => {
@@ -220,7 +221,7 @@ function PortfolioCard({
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-text-primary">{portfolio.name}</h3>
           <p className="mt-0.5 text-xs text-text-tertiary">
-            {portfolio.holdings.length} holdings ·{" "}
+            {(portfolio.holdings ?? []).length} holdings ·{" "}
             <span className={totalWeight > 100.01 ? "text-warning-fg" : "text-text-tertiary"}>
               {totalWeight.toFixed(1)}% allocated
             </span>
@@ -256,9 +257,9 @@ function PortfolioCard({
         </div>
       </div>
 
-      {portfolio.holdings.length > 0 && (
+      {(portfolio.holdings ?? []).length > 0 && (
         <div className="mt-3 space-y-1">
-          {portfolio.holdings.map((h) => (
+          {(portfolio.holdings ?? []).map((h) => (
             <div
               key={h.id}
               className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5"
