@@ -56,11 +56,17 @@ const STRATEGY_ICON: Record<string, string> = {
   SECTOR_FOCUS: "◎",
 };
 
-// Returns true when we have enough data to report a meaningful return for the range.
-// Market days ≈ 72% of calendar days; we require at least 65% of that to be covered.
-function hasSufficientCoverage(dateCount: number, range: Range): boolean {
-  const expectedMarketDays = RANGE_CALENDAR_DAYS[range] * 0.72;
-  return dateCount >= expectedMarketDays * 0.65;
+// Returns true when the returned dates span ≥70% of the requested range in calendar days.
+// Using actual span (first→last date) instead of count distinguishes "sparse trading days
+// within a full 1M window" from "portfolio simply doesn't have 3Y of history yet".
+function hasSufficientCoverage(dates: string[], range: Range): boolean {
+  if (dates.length < 2) return false;
+  const calDays = RANGE_CALENDAR_DAYS[range];
+  if (!calDays) return true;
+  const spanMs = new Date(dates[dates.length - 1] + "T00:00:00Z").getTime()
+    - new Date(dates[0] + "T00:00:00Z").getTime();
+  const spanDays = spanMs / (1000 * 60 * 60 * 24);
+  return spanDays >= calDays * 0.70;
 }
 
 function fmtDays(n: number): string {
@@ -181,7 +187,7 @@ function DataCoverageNote({
   dates: string[];
 }) {
   if (dates.length < 2) return null;
-  if (hasSufficientCoverage(dates.length, range)) return null;
+  if (hasSufficientCoverage(dates, range)) return null;
 
   const actualDays = Math.round(
     (new Date(dates[dates.length - 1]).getTime() - new Date(dates[0]).getTime()) / (1000 * 60 * 60 * 24)
@@ -217,9 +223,7 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
   const perf = perfState.data;
   const perfLoading = !!(activeId && (perfState.forId !== activeId || perfState.forRange !== range));
 
-  const rangeInsufficient = !!(
-    perf && perf.dates.length >= 2 && !hasSufficientCoverage(perf.dates.length, range)
-  );
+  const rangeInsufficient = !!(perf && !hasSufficientCoverage(perf.dates, range));
 
   useEffect(() => {
     fetch("/api/demo-portfolios")
