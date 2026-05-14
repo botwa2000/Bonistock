@@ -218,7 +218,7 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
     forRange: string;
   }>({ data: null, forId: "", forRange: "" });
   // Pre-fetched 1M perf for sidebar sparklines — always 1M regardless of selected range
-  const [sidebarPerf, setSidebarPerf] = useState<Map<string, { values: number[]; ret: number }>>(new Map());
+  const [sidebarPerf, setSidebarPerf] = useState<Map<string, { values: number[]; ret: number } | null>>(new Map());
 
   const perf = perfState.data;
   const perfLoading = !!(activeId && (perfState.forId !== activeId || perfState.forRange !== range));
@@ -239,14 +239,15 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
             fetch(`/api/demo-portfolios/${p.id}/performance?range=1m`)
               .then((r) => r.json())
               .then((d: PerformanceData) => {
-                if (d.portfolioValues?.length && d.summary) {
-                  setSidebarPerf((prev) => new Map(prev).set(p.id, {
-                    values: d.portfolioValues,
-                    ret: d.summary!.rangeReturn,
-                  }));
-                }
+                setSidebarPerf((prev) => new Map(prev).set(p.id,
+                  d.portfolioValues?.length && d.summary
+                    ? { values: d.portfolioValues, ret: d.summary.rangeReturn }
+                    : null
+                ));
               })
-              .catch(() => {});
+              .catch(() => {
+                setSidebarPerf((prev) => new Map(prev).set(p.id, null));
+              });
           });
         }
       })
@@ -294,11 +295,8 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
             {!portfoliosLoading && portfolios.map((p) => {
               const icon = STRATEGY_ICON[p.strategy] ?? "◆";
               const isActive = p.id === activeId;
-              const sidebar1m = sidebarPerf.get(p.id);
-
-              // Sidebar always shows 1M return for consistent cross-portfolio comparison.
-              // The selected-range return is already shown prominently in the stats below the chart.
-              const displayReturn = sidebar1m?.ret ?? null;
+              const sidebar1m = sidebarPerf.get(p.id); // undefined = loading, null = no data
+              const sidebarFetched = sidebarPerf.has(p.id);
 
               return (
                 <button
@@ -316,16 +314,18 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                       {p.name}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
-                      {sidebar1m ? (
+                      {!sidebarFetched ? (
+                        <div className="h-3 w-10 animate-pulse rounded bg-surface-elevated" />
+                      ) : sidebar1m ? (
                         <>
                           {!isActive && <SidebarSparkline values={sidebar1m.values} />}
                           <span className="flex items-center gap-1">
-                            <ReturnTag value={displayReturn!} />
+                            <ReturnTag value={sidebar1m.ret} />
                             <span className="text-xs text-text-tertiary">1M</span>
                           </span>
                         </>
                       ) : (
-                        <div className="h-3 w-10 animate-pulse rounded bg-surface-elevated" />
+                        <span className="text-xs text-text-tertiary">N/A</span>
                       )}
                     </div>
                   </div>
