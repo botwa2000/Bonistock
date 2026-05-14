@@ -4,8 +4,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 
-const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost").hostname;
-const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost";
+const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://localhost").hostname;
+const origin = process.env.NEXT_PUBLIC_APP_URL || "https://localhost";
 
 export async function POST(req: NextRequest) {
   const session = await auth();

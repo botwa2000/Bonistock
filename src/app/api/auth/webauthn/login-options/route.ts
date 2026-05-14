@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import type { Authenticator } from "@prisma/client";
 
-const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost").hostname;
+const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://localhost").hostname;
 
 const schema = z.object({
   email: z.string().email(),

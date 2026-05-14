@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import type { Authenticator } from "@prisma/client";
 
 const rpName = "Bonistock";
-const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost").hostname;
+const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://localhost").hostname;
 
 export async function POST() {
   const session = await auth();

@@ -4,8 +4,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 
-const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost").hostname;
-const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost";
+const rpID = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://localhost").hostname;
+const origin = process.env.NEXT_PUBLIC_APP_URL || "https://localhost";
 
 const schema = z.object({
   userId: z.string().min(1),
