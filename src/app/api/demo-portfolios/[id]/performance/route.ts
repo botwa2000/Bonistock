@@ -38,8 +38,7 @@ export async function GET(
   since.setHours(0, 0, 0, 0);
 
   // Compute returns directly from StockSnapshot price history.
-  // This bypasses DemoPortfolioSnapshot (which can have stale totalValue=100 rows)
-  // and stays consistent with the user portfolio performance API.
+  // Consistent with the user portfolio performance API.
   const snaps = await db.stockSnapshot.findMany({
     where: { symbol: { in: symbols }, date: { gte: since } },
     select: { symbol: true, price: true, date: true },
@@ -57,7 +56,27 @@ export async function GET(
     byDate.get(key)!.set(s.symbol, s.price);
   }
 
-  const dates = [...byDate.keys()].sort();
+  const allDates = [...byDate.keys()].sort();
+
+  // Find the first date with ≥70% weight coverage.
+  // Without this, sparse early data (only 1 symbol on the oldest date) would
+  // produce 0% returns because most holdings have no baseline price.
+  const totalWeight = stockHoldings.reduce((sum, h) => sum + h.weight, 0);
+  let baseIdx = 0;
+  for (let i = 0; i < allDates.length; i++) {
+    const dayPrices = byDate.get(allDates[i])!;
+    const coveredWeight = stockHoldings.reduce(
+      (sum, h) => sum + (dayPrices.has(h.symbol) ? h.weight : 0),
+      0
+    );
+    if (coveredWeight >= totalWeight * 0.7) {
+      baseIdx = i;
+      break;
+    }
+    baseIdx = i; // fall through to last date if none meet threshold
+  }
+
+  const dates = allDates.slice(baseIdx);
   if (dates.length < 2) {
     return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
   }
@@ -85,7 +104,7 @@ export async function GET(
   let weightedUpside = 0;
   let weightedBuyPct = 0;
   let winCount = 0;
-  let totalWeight = 0;
+  let coveredWeight = 0;
 
   const stocks = await db.stock.findMany({
     where: { symbol: { in: symbols } },
@@ -101,12 +120,12 @@ export async function GET(
     weightedUpside += h.weight * s.upside;
     weightedBuyPct += h.weight * buyPct;
     if (s.upside > 0) winCount++;
-    totalWeight += h.weight;
+    coveredWeight += h.weight;
   }
 
-  if (totalWeight > 0) {
-    weightedUpside /= totalWeight;
-    weightedBuyPct /= totalWeight;
+  if (coveredWeight > 0) {
+    weightedUpside /= coveredWeight;
+    weightedBuyPct /= coveredWeight;
   }
 
   const summary = {
