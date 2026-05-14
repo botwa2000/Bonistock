@@ -42,6 +42,11 @@ const RANGES: { label: string; value: Range }[] = [
   { label: "5Y", value: "5y" },
 ];
 
+// Approximate calendar days per range (used for coverage check)
+const RANGE_CALENDAR_DAYS: Record<Range, number> = {
+  "1m": 30, "3m": 90, "6m": 180, "1y": 365, "3y": 1095, "5y": 1825,
+};
+
 const STRATEGY_ICON: Record<string, string> = {
   ANALYST_CONVICTION: "◆",
   BALANCED: "◈",
@@ -50,6 +55,19 @@ const STRATEGY_ICON: Record<string, string> = {
   ETF_CORE: "⬡",
   SECTOR_FOCUS: "◎",
 };
+
+// Returns true when we have enough data to report a meaningful return for the range.
+// Market days ≈ 72% of calendar days; we require at least 65% of that to be covered.
+function hasSufficientCoverage(dateCount: number, range: Range): boolean {
+  const expectedMarketDays = RANGE_CALENDAR_DAYS[range] * 0.72;
+  return dateCount >= expectedMarketDays * 0.65;
+}
+
+function fmtDays(n: number): string {
+  if (n >= 365) return `${(n / 365).toFixed(1).replace(".0", "")}y`;
+  if (n >= 30) return `${Math.round(n / 30)}mo`;
+  return `${n}d`;
+}
 
 function ReturnTag({ value }: { value: number }) {
   const cls = value >= 0 ? "text-success-fg" : "text-danger-fg";
@@ -76,13 +94,7 @@ function SidebarSparkline({ values }: { values: number[] }) {
   );
 }
 
-function PerformanceChart({
-  dates,
-  values,
-}: {
-  dates: string[];
-  values: number[];
-}) {
+function PerformanceChart({ dates, values }: { dates: string[]; values: number[] }) {
   if (dates.length < 2) {
     return (
       <div className="flex h-48 items-center justify-center text-sm text-text-tertiary">
@@ -97,96 +109,50 @@ function PerformanceChart({
 
   const minV = Math.min(...values);
   const maxV = Math.max(...values);
-  const range = maxV - minV || 1;
+  const r = maxV - minV || 1;
 
   const toX = (i: number) =>
     PAD.left + (i / (values.length - 1)) * (W - PAD.left - PAD.right);
   const toY = (v: number) =>
-    PAD.top + ((maxV - v) / range) * (H - PAD.top - PAD.bottom);
+    PAD.top + ((maxV - v) / r) * (H - PAD.top - PAD.bottom);
 
   const pts = values.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(" ");
   const positive = values[values.length - 1] >= values[0];
   const lineColor = positive ? "var(--success-fg)" : "var(--danger-fg)";
   const fillId = `grad-${positive ? "pos" : "neg"}`;
 
-  // Baseline at 100
   const baseY = toY(100);
   const showBaseline = baseY > PAD.top && baseY < H - PAD.bottom;
 
-  // Y-axis labels
   const yLabels = [minV, 100, maxV].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
-
-  // X-axis ticks (up to 5)
   const xTicks = [0, Math.floor(dates.length / 4), Math.floor(dates.length / 2), Math.floor((3 * dates.length) / 4), dates.length - 1]
     .filter((i) => i >= 0 && i < dates.length)
     .filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
-      style={{ height: "180px" }}
-      aria-hidden="true"
-    >
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: "180px" }} aria-hidden="true">
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={lineColor} stopOpacity="0.3" />
           <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
         </linearGradient>
       </defs>
-
-      {/* Baseline */}
       {showBaseline && (
-        <line
-          x1={PAD.left}
-          y1={baseY}
-          x2={W - PAD.right}
-          y2={baseY}
-          stroke="var(--border)"
-          strokeWidth="1"
-          strokeDasharray="4 3"
-        />
+        <line x1={PAD.left} y1={baseY} x2={W - PAD.right} y2={baseY}
+          stroke="var(--border)" strokeWidth="1" strokeDasharray="4 3" />
       )}
-
-      {/* Fill */}
       <polygon
         points={`${toX(0).toFixed(1)},${H - PAD.bottom} ${pts} ${toX(values.length - 1).toFixed(1)},${H - PAD.bottom}`}
         fill={`url(#${fillId})`}
       />
-
-      {/* Line */}
-      <polyline
-        points={pts}
-        fill="none"
-        stroke={lineColor}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-
-      {/* Y-axis labels */}
+      <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinejoin="round" />
       {yLabels.map((v) => (
-        <text
-          key={v}
-          x={PAD.left - 4}
-          y={toY(v) + 4}
-          textAnchor="end"
-          fontSize="9"
-          fill="var(--text-tertiary)"
-        >
+        <text key={v} x={PAD.left - 4} y={toY(v) + 4} textAnchor="end" fontSize="9" fill="var(--text-tertiary)">
           {v.toFixed(0)}
         </text>
       ))}
-
-      {/* X-axis labels */}
       {xTicks.map((i) => (
-        <text
-          key={i}
-          x={toX(i)}
-          y={H - 4}
-          textAnchor="middle"
-          fontSize="9"
-          fill="var(--text-tertiary)"
-        >
+        <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" fontSize="9" fill="var(--text-tertiary)">
           {dates[i]?.slice(5)}
         </text>
       ))}
@@ -198,11 +164,39 @@ function fmtDate(iso: string) {
   return new Date(iso + "T00:00:00Z").toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function StatItem({ label, value }: { label: string; value: string }) {
+function StatItem({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
     <div className="text-center">
-      <div className="text-lg font-bold text-text-primary">{value}</div>
+      <div className={`text-lg font-bold ${muted ? "text-text-tertiary" : "text-text-primary"}`}>{value}</div>
       <div className="mt-0.5 text-xs text-text-tertiary">{label}</div>
+    </div>
+  );
+}
+
+function DataCoverageNote({
+  range,
+  dates,
+}: {
+  range: Range;
+  dates: string[];
+}) {
+  if (dates.length < 2) return null;
+  if (hasSufficientCoverage(dates.length, range)) return null;
+
+  const actualDays = Math.round(
+    (new Date(dates[dates.length - 1]).getTime() - new Date(dates[0]).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const since = fmtDate(dates[0]);
+  const rangeLabel = range.toUpperCase();
+  const actualLabel = fmtDays(actualDays);
+
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-lg border border-border-subtle bg-surface px-3 py-2.5 text-xs text-text-secondary">
+      <span className="mt-0.5 shrink-0 text-text-tertiary">ⓘ</span>
+      <span>
+        <span className="font-medium text-text-primary">{rangeLabel} data not yet available.</span>
+        {" "}This portfolio has {actualLabel} of history (since {since}). Return and chart reflect available data only — history grows daily.
+      </span>
     </div>
   );
 }
@@ -212,17 +206,20 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
   const [portfoliosLoading, setPortfoliosLoading] = useState(true);
   const [activeId, setActiveId] = useState(initialPortfolioId);
   const [range, setRange] = useState<Range>("1m");
-  // Track fetch params alongside data so we can derive loading state
   const [perfState, setPerfState] = useState<{
     data: PerformanceData | null;
     forId: string;
     forRange: string;
   }>({ data: null, forId: "", forRange: "" });
-  // Sidebar sparklines: 1m portfolioValues + rangeReturn per portfolio id
+  // Pre-fetched 1M perf for sidebar sparklines — always 1M regardless of selected range
   const [sidebarPerf, setSidebarPerf] = useState<Map<string, { values: number[]; ret: number }>>(new Map());
 
   const perf = perfState.data;
   const perfLoading = !!(activeId && (perfState.forId !== activeId || perfState.forRange !== range));
+
+  const rangeInsufficient = !!(
+    perf && perf.dates.length >= 2 && !hasSufficientCoverage(perf.dates.length, range)
+  );
 
   useEffect(() => {
     fetch("/api/demo-portfolios")
@@ -233,7 +230,7 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
           if (!initialPortfolioId || !data.find((p) => p.id === initialPortfolioId)) {
             setActiveId(data[0].id);
           }
-          // Pre-fetch 1m performance for all portfolios (sidebar sparklines + returns)
+          // Pre-fetch 1M for all portfolios (sidebar sparklines + consistent comparison metric)
           data.forEach((p) => {
             fetch(`/api/demo-portfolios/${p.id}/performance?range=1m`)
               .then((r) => r.json())
@@ -283,7 +280,7 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
         />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
-          {/* Portfolio list */}
+          {/* Sidebar portfolio list */}
           <div className="space-y-2">
             {portfoliosLoading
               ? Array.from({ length: 5 }).map((_, i) => (
@@ -291,17 +288,13 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                 ))
               : null}
             {!portfoliosLoading && portfolios.map((p) => {
-              const snap = p.snapshots?.[0];
               const icon = STRATEGY_ICON[p.strategy] ?? "◆";
               const isActive = p.id === activeId;
               const sidebar1m = sidebarPerf.get(p.id);
 
-              // Active: show the selected-range return (live, updates with range picker).
-              // Inactive: show the pre-fetched 1m return so users always see meaningful numbers.
-              const displayReturn = isActive
-                ? (perf?.summary?.rangeReturn ?? sidebar1m?.ret ?? snap?.returnPct ?? null)
-                : (sidebar1m?.ret ?? snap?.returnPct ?? null);
-              const displayLabel = isActive ? range.toUpperCase() : "1M";
+              // Sidebar always shows 1M return for consistent cross-portfolio comparison.
+              // The selected-range return is already shown prominently in the stats below the chart.
+              const displayReturn = sidebar1m?.ret ?? null;
 
               return (
                 <button
@@ -319,14 +312,16 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                       {p.name}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
-                      {!isActive && sidebar1m && (
-                        <SidebarSparkline values={sidebar1m.values} />
-                      )}
-                      {displayReturn != null && (
-                        <span className={`flex items-center gap-1 ${isActive && perfLoading ? "opacity-50" : ""}`}>
-                          <ReturnTag value={displayReturn} />
-                          <span className="text-xs text-text-tertiary">{displayLabel}</span>
-                        </span>
+                      {sidebar1m ? (
+                        <>
+                          {!isActive && <SidebarSparkline values={sidebar1m.values} />}
+                          <span className="flex items-center gap-1">
+                            <ReturnTag value={displayReturn!} />
+                            <span className="text-xs text-text-tertiary">1M</span>
+                          </span>
+                        </>
+                      ) : (
+                        <div className="h-3 w-10 animate-pulse rounded bg-surface-elevated" />
                       )}
                     </div>
                   </div>
@@ -386,7 +381,8 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
                     <StatItem
                       label={`${range.toUpperCase()} Return`}
-                      value={`${perf.summary.rangeReturn >= 0 ? "+" : ""}${perf.summary.rangeReturn.toFixed(2)}%`}
+                      value={rangeInsufficient ? "N/A" : `${perf.summary.rangeReturn >= 0 ? "+" : ""}${perf.summary.rangeReturn.toFixed(2)}%`}
+                      muted={rangeInsufficient}
                     />
                     <StatItem
                       label="Analyst Upside"
@@ -401,6 +397,11 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                       value={String(perf.summary.holdingsCount)}
                     />
                   </div>
+                )}
+
+                {/* Coverage note — only shown when selected range exceeds available history */}
+                {!perfLoading && perf && (
+                  <DataCoverageNote range={range} dates={perf.dates} />
                 )}
 
                 <p className="mt-3 text-xs text-text-tertiary">
