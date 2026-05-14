@@ -24,116 +24,74 @@ export async function GET(
     return NextResponse.json({ error: "Portfolio not found", code: "NOT_FOUND" }, { status: 404 });
   }
 
-  type Holding = { symbol: string; weight: number; assetType: string };
-  const holdings = (portfolio.holdings as Holding[]) ?? [];
-  const stockHoldings = holdings.filter((h) => h.assetType === "STOCK" || !h.assetType);
-
-  if (stockHoldings.length === 0) {
-    return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
-  }
-
-  const symbols = stockHoldings.map((h) => h.symbol);
   const since = new Date();
   since.setDate(since.getDate() - days);
   since.setHours(0, 0, 0, 0);
 
-  // Compute returns directly from StockSnapshot price history.
-  // Consistent with the user portfolio performance API.
-  const snaps = await db.stockSnapshot.findMany({
-    where: { symbol: { in: symbols }, date: { gte: since } },
-    select: { symbol: true, price: true, date: true },
+  const snapshots = await db.demoPortfolioSnapshot.findMany({
+    where: { demoPortfolioId: id, date: { gte: since } },
     orderBy: { date: "asc" },
+    select: { date: true, returnPct: true, totalValue: true },
   });
 
-  if (snaps.length === 0) {
+  if (snapshots.length === 0) {
     return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
   }
 
-  const byDate = new Map<string, Map<string, number>>();
-  for (const s of snaps) {
-    const key = s.date.toISOString().split("T")[0];
-    if (!byDate.has(key)) byDate.set(key, new Map());
-    byDate.get(key)!.set(s.symbol, s.price);
-  }
+  // Normalize to index = 100 at start of selected range
+  const baseValue = snapshots[0].totalValue;
+  const dates = snapshots.map((s) => s.date.toISOString().split("T")[0]);
+  const portfolioValues = snapshots.map((s) =>
+    parseFloat(((s.totalValue / baseValue) * 100).toFixed(4))
+  );
 
-  const allDates = [...byDate.keys()].sort();
+  const latestSnapshot = snapshots[snapshots.length - 1];
+  const rangeReturn = parseFloat(
+    (((latestSnapshot.totalValue - baseValue) / baseValue) * 100).toFixed(2)
+  );
 
-  // Find the first date with ≥70% weight coverage.
-  // Without this, sparse early data (only 1 symbol on the oldest date) would
-  // produce 0% returns because most holdings have no baseline price.
-  const totalWeight = stockHoldings.reduce((sum, h) => sum + h.weight, 0);
-  let baseIdx = 0;
-  for (let i = 0; i < allDates.length; i++) {
-    const dayPrices = byDate.get(allDates[i])!;
-    const coveredWeight = stockHoldings.reduce(
-      (sum, h) => sum + (dayPrices.has(h.symbol) ? h.weight : 0),
-      0
-    );
-    if (coveredWeight >= totalWeight * 0.7) {
-      baseIdx = i;
-      break;
-    }
-    baseIdx = i; // fall through to last date if none meet threshold
-  }
+  // Analyst stats from current Stock data for stock holdings
+  type Holding = { symbol: string; weight: number; assetType: string };
+  const holdings = (portfolio.holdings as Holding[]) ?? [];
+  const stockSymbols = holdings
+    .filter((h) => h.assetType === "STOCK" || !h.assetType)
+    .map((h) => h.symbol);
 
-  const dates = allDates.slice(baseIdx);
-  if (dates.length < 2) {
-    return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
-  }
-
-  const basePrices = byDate.get(dates[0])!;
-  const portfolioValues: number[] = [];
-
-  for (const dateStr of dates) {
-    const dayPrices = byDate.get(dateStr)!;
-    let weightedReturn = 0;
-    for (const h of stockHoldings) {
-      const base = basePrices.get(h.symbol);
-      const cur = dayPrices.get(h.symbol);
-      if (base && cur && base > 0) {
-        // Uncovered holdings contribute 0 (price assumed unchanged)
-        weightedReturn += (h.weight / 100) * ((cur / base - 1) * 100);
-      }
-    }
-    portfolioValues.push(parseFloat((100 + weightedReturn).toFixed(4)));
-  }
-
-  const rangeReturn = parseFloat((portfolioValues[portfolioValues.length - 1] - 100).toFixed(2));
-
-  // Analyst stats from current Stock data
   let weightedUpside = 0;
   let weightedBuyPct = 0;
   let winCount = 0;
-  let coveredWeight = 0;
+  let totalWeight = 0;
 
-  const stocks = await db.stock.findMany({
-    where: { symbol: { in: symbols } },
-    select: { symbol: true, upside: true, buys: true, holds: true, sells: true },
-  });
-  const stockMap = new Map(stocks.map((s) => [s.symbol, s]));
+  if (stockSymbols.length > 0) {
+    const stocks = await db.stock.findMany({
+      where: { symbol: { in: stockSymbols } },
+      select: { symbol: true, upside: true, buys: true, holds: true, sells: true },
+    });
+    const stockMap = new Map(stocks.map((s) => [s.symbol, s]));
 
-  for (const h of stockHoldings) {
-    const s = stockMap.get(h.symbol);
-    if (!s) continue;
-    const totalAnalysts = s.buys + s.holds + s.sells;
-    const buyPct = totalAnalysts > 0 ? (s.buys / totalAnalysts) * 100 : 0;
-    weightedUpside += h.weight * s.upside;
-    weightedBuyPct += h.weight * buyPct;
-    if (s.upside > 0) winCount++;
-    coveredWeight += h.weight;
-  }
+    for (const h of holdings.filter((h) => h.assetType === "STOCK" || !h.assetType)) {
+      const s = stockMap.get(h.symbol);
+      if (!s) continue;
+      const totalAnalysts = s.buys + s.holds + s.sells;
+      const buyPct = totalAnalysts > 0 ? (s.buys / totalAnalysts) * 100 : 0;
+      weightedUpside += h.weight * s.upside;
+      weightedBuyPct += h.weight * buyPct;
+      if (s.upside > 0) winCount++;
+      totalWeight += h.weight;
+    }
 
-  if (coveredWeight > 0) {
-    weightedUpside /= coveredWeight;
-    weightedBuyPct /= coveredWeight;
+    if (totalWeight > 0) {
+      weightedUpside /= totalWeight;
+      weightedBuyPct /= totalWeight;
+    }
   }
 
   const summary = {
     rangeReturn,
-    totalReturnPct: rangeReturn,
+    totalReturnPct: parseFloat(latestSnapshot.returnPct.toFixed(2)),
     weightedUpside: parseFloat(weightedUpside.toFixed(1)),
     weightedBuyPct: parseFloat(weightedBuyPct.toFixed(1)),
-    winRate: stockHoldings.length > 0 ? Math.round((winCount / stockHoldings.length) * 100) : 0,
+    winRate: holdings.length > 0 ? Math.round((winCount / stockSymbols.length) * 100) : 0,
     holdingsCount: holdings.length,
   };
 
