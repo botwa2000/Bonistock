@@ -79,17 +79,14 @@ export async function GET(
   for (const dateStr of dates) {
     const dayPrices = byDate.get(dateStr)!;
     let weightedReturn = 0;
-    let coveredWeight = 0;
     for (const h of stockHoldings) {
       const base = basePrices.get(h.symbol);
       const cur = dayPrices.get(h.symbol);
       if (base && cur && base > 0) {
+        // (weight / 100) * returnPct gives proportional contribution;
+        // uncovered holdings contribute 0 (price assumed unchanged)
         weightedReturn += (h.weight / 100) * ((cur / base - 1) * 100);
-        coveredWeight += h.weight;
       }
-    }
-    if (coveredWeight > 0 && coveredWeight < 99) {
-      weightedReturn = (weightedReturn / coveredWeight) * 100;
     }
     portfolioValues.push(parseFloat((100 + weightedReturn).toFixed(4)));
   }

@@ -65,19 +65,12 @@ async function refreshEtfData(): Promise<void> {
 }
 
 async function updateDemoPortfolioSnapshots(): Promise<void> {
-  const portfolios = await db.demoPortfolio.findMany({
-    include: {
-      snapshots: {
-        orderBy: { date: "asc" },
-        take: 1,
-      },
-    },
-  });
+  const portfolios = await db.demoPortfolio.findMany();
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
-  // Collect all stock symbols across all portfolios for a bulk price fetch
+  // Collect all stock symbols across all portfolios for bulk fetches
   type Holding = { symbol: string; weight: number; assetType: string };
   const allSymbols = new Set<string>();
   for (const portfolio of portfolios) {
@@ -91,12 +84,23 @@ async function updateDemoPortfolioSnapshots(): Promise<void> {
 
   const symbolList = [...allSymbols];
 
-  // Today's prices from Stock table (always current)
+  // Today's prices from Stock table (updated by discover.py)
   const todayStocks = await db.stock.findMany({
     where: { symbol: { in: symbolList } },
     select: { symbol: true, price: true },
   });
   const todayMap = new Map(todayStocks.map((s) => [s.symbol, s.price]));
+
+  // Per-symbol baseline: each symbol's earliest ever StockSnapshot price.
+  // This matches how the seed builds the series (per-symbol first-recorded price),
+  // so cron-added snapshots are consistent with the seed-created history.
+  const baselineRows = await db.stockSnapshot.findMany({
+    where: { symbol: { in: symbolList } },
+    orderBy: { date: "asc" },
+    distinct: ["symbol"],
+    select: { symbol: true, price: true },
+  });
+  const baselineMap = new Map(baselineRows.map((s) => [s.symbol, s.price]));
 
   for (const portfolio of portfolios) {
     // Skip if today's snapshot already exists
@@ -105,53 +109,37 @@ async function updateDemoPortfolioSnapshots(): Promise<void> {
     });
     if (existing) continue;
 
-    const firstSnapshot = portfolio.snapshots[0];
-    if (!firstSnapshot) continue;
-
     const holdings = (portfolio.holdings as Holding[]) ?? [];
     const stockHoldings = holdings.filter((h) => h.assetType === "STOCK" || !h.assetType);
     if (stockHoldings.length === 0) continue;
 
-    const holdingSymbols = stockHoldings.map((h) => h.symbol);
-
-    // Baseline prices from StockSnapshot on the first seeded date
-    const baselineDate = new Date(firstSnapshot.date);
-    baselineDate.setHours(0, 0, 0, 0);
-    const baselineDateEnd = new Date(baselineDate.getTime() + 24 * 60 * 60 * 1000);
-
-    const baselineSnapshots = await db.stockSnapshot.findMany({
-      where: {
-        symbol: { in: holdingSymbols },
-        date: { gte: baselineDate, lt: baselineDateEnd },
-      },
-      select: { symbol: true, price: true },
-    });
-    const baselineMap = new Map(baselineSnapshots.map((s) => [s.symbol, s.price]));
-
     let weightedReturn = 0;
-    let totalWeight = 0;
+    let coveredWeight = 0;
     for (const h of stockHoldings) {
       const basePrice = baselineMap.get(h.symbol);
       const curPrice = todayMap.get(h.symbol);
       if (!basePrice || !curPrice || basePrice === 0) continue;
-      weightedReturn += h.weight * ((curPrice / basePrice - 1) * 100);
-      totalWeight += h.weight;
+      weightedReturn += (h.weight / 100) * ((curPrice / basePrice - 1) * 100);
+      coveredWeight += h.weight;
     }
 
-    if (totalWeight === 0) continue;
+    if (coveredWeight === 0) continue;
 
-    const returnPct = weightedReturn / totalWeight;
+    // Normalize to covered weight so partial symbol coverage doesn't bias toward 0
+    const returnPct = (weightedReturn / coveredWeight) * 100;
     const totalValue = 100 * (1 + returnPct / 100);
 
     await db.demoPortfolioSnapshot.create({
       data: {
         demoPortfolioId: portfolio.id,
         date: today,
-        totalValue: Math.round(totalValue * 100) / 100,
-        returnPct: Math.round(returnPct * 100) / 100,
+        totalValue: parseFloat(totalValue.toFixed(4)),
+        returnPct: parseFloat(returnPct.toFixed(4)),
         holdings: portfolio.holdings as object,
       },
     });
+
+    console.log(`  [cron] ${portfolio.name}: returnPct=${returnPct.toFixed(2)}%, coveredWeight=${coveredWeight.toFixed(1)}`);
   }
 }
 

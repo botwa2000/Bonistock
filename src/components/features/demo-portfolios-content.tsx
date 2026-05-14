@@ -57,6 +57,25 @@ function ReturnTag({ value }: { value: number }) {
   return <span className={`font-semibold ${cls}`}>{sign}{value.toFixed(1)}%</span>;
 }
 
+function SidebarSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const W = 56;
+  const H = 20;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const r = max - min || 1;
+  const toX = (i: number) => (i / (values.length - 1)) * W;
+  const toY = (v: number) => H - ((v - min) / r) * (H - 2) - 1;
+  const pts = values.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(" ");
+  const positive = values[values.length - 1] >= values[0];
+  const color = positive ? "var(--success-fg)" : "var(--danger-fg)";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: W, height: H }} aria-hidden="true" className="opacity-70">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function PerformanceChart({
   dates,
   values,
@@ -192,13 +211,15 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
   const [portfolios, setPortfolios] = useState<DemoPortfolio[]>([]);
   const [portfoliosLoading, setPortfoliosLoading] = useState(true);
   const [activeId, setActiveId] = useState(initialPortfolioId);
-  const [range, setRange] = useState<Range>("3m");
+  const [range, setRange] = useState<Range>("1m");
   // Track fetch params alongside data so we can derive loading state
   const [perfState, setPerfState] = useState<{
     data: PerformanceData | null;
     forId: string;
     forRange: string;
   }>({ data: null, forId: "", forRange: "" });
+  // Sidebar sparklines: 1m portfolioValues + rangeReturn per portfolio id
+  const [sidebarPerf, setSidebarPerf] = useState<Map<string, { values: number[]; ret: number }>>(new Map());
 
   const perf = perfState.data;
   const perfLoading = !!(activeId && (perfState.forId !== activeId || perfState.forRange !== range));
@@ -212,6 +233,20 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
           if (!initialPortfolioId || !data.find((p) => p.id === initialPortfolioId)) {
             setActiveId(data[0].id);
           }
+          // Pre-fetch 1m performance for all portfolios (sidebar sparklines + returns)
+          data.forEach((p) => {
+            fetch(`/api/demo-portfolios/${p.id}/performance?range=1m`)
+              .then((r) => r.json())
+              .then((d: PerformanceData) => {
+                if (d.portfolioValues?.length && d.summary) {
+                  setSidebarPerf((prev) => new Map(prev).set(p.id, {
+                    values: d.portfolioValues,
+                    ret: d.summary!.rangeReturn,
+                  }));
+                }
+              })
+              .catch(() => {});
+          });
         }
       })
       .catch(() => {})
@@ -259,12 +294,14 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
               const snap = p.snapshots?.[0];
               const icon = STRATEGY_ICON[p.strategy] ?? "◆";
               const isActive = p.id === activeId;
+              const sidebar1m = sidebarPerf.get(p.id);
 
-              // Active portfolio: show the selected-range return (updates as range changes).
-              // Inactive portfolios: show snapshot return (since tracking started).
+              // Active: show the selected-range return (live, updates with range picker).
+              // Inactive: show the pre-fetched 1m return so users always see meaningful numbers.
               const displayReturn = isActive
-                ? (perf?.summary?.rangeReturn ?? snap?.returnPct ?? null)
-                : (snap?.returnPct ?? null);
+                ? (perf?.summary?.rangeReturn ?? sidebar1m?.ret ?? snap?.returnPct ?? null)
+                : (sidebar1m?.ret ?? snap?.returnPct ?? null);
+              const displayLabel = isActive ? range.toUpperCase() : "1M";
 
               return (
                 <button
@@ -281,14 +318,17 @@ export function DemoPortfoliosContent({ initialPortfolioId = "" }: { initialPort
                       <span className="mr-1.5 text-accent-fg">{icon}</span>
                       {p.name}
                     </span>
-                    {displayReturn != null && (
-                      <span className={`flex items-center gap-1 shrink-0 ${isActive && perfLoading ? "opacity-50" : ""}`}>
-                        <ReturnTag value={displayReturn} />
-                        <span className="text-xs text-text-tertiary">
-                          {isActive ? range.toUpperCase() : "all"}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!isActive && sidebar1m && (
+                        <SidebarSparkline values={sidebar1m.values} />
+                      )}
+                      {displayReturn != null && (
+                        <span className={`flex items-center gap-1 ${isActive && perfLoading ? "opacity-50" : ""}`}>
+                          <ReturnTag value={displayReturn} />
+                          <span className="text-xs text-text-tertiary">{displayLabel}</span>
                         </span>
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
                   <p className="mt-1 text-xs text-text-tertiary line-clamp-1">
                     {p.description}

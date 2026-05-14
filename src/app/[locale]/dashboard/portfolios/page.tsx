@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "@/i18n/navigation";
 import { Card } from "@/components/ui/card";
@@ -171,34 +171,109 @@ function MiniSparkline({ values }: { values: number[] }) {
   );
 }
 
+function RenameForm({
+  portfolioId,
+  currentName,
+  onRenamed,
+  onCancel,
+}: {
+  portfolioId: string;
+  currentName: string;
+  onRenamed: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(currentName);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.select(); }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || name.trim() === currentName) { onCancel(); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/user/portfolios/${portfolioId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (res.ok) onRenamed(name.trim());
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <input
+        ref={inputRef}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={100}
+        className="rounded-lg border border-input-border bg-input-bg px-2 py-0.5 text-base font-semibold text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-fg"
+        onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
+      />
+      <button type="submit" disabled={saving} className="text-xs text-accent-fg hover:opacity-80">Save</button>
+      <button type="button" onClick={onCancel} className="text-xs text-text-tertiary hover:opacity-80">Cancel</button>
+    </form>
+  );
+}
+
 function PortfolioCard({
   portfolio,
   onDeleted,
   onHoldingChanged,
+  onRenamed,
 }: {
   portfolio: Portfolio;
   onDeleted: (id: string) => void;
   onHoldingChanged: () => void;
+  onRenamed: (id: string, name: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [perf, setPerf] = useState<{ values: number[]; summary: PerfSummary } | null>(null);
 
-  const totalWeight = (portfolio.holdings ?? []).reduce((s, h) => s + h.weight, 0);
+  const holdings = portfolio.holdings ?? [];
+  const totalWeight = holdings.reduce((s, h) => s + h.weight, 0);
+  const weightOk = Math.abs(totalWeight - 100) < 0.1;
 
   useEffect(() => {
-    const holdings = portfolio.holdings ?? [];
     const hasStocks = holdings.some((h) => h.assetType === "STOCK");
-    if (!hasStocks || holdings.length < 2) return;
+    if (!hasStocks || holdings.length < 2) {
+      setPerf(null);
+      return;
+    }
+    let cancelled = false;
     fetch(`/api/user/portfolios/${portfolio.id}/performance?range=3m`)
       .then((r) => r.json())
       .then((data: { portfolioValues?: number[]; summary?: PerfSummary }) => {
-        if (data.portfolioValues && data.summary) {
+        if (!cancelled && data.portfolioValues && data.summary) {
           setPerf({ values: data.portfolioValues, summary: data.summary });
         }
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [portfolio.id, portfolio.holdings]);
+
+  async function normalizeWeights() {
+    if (holdings.length === 0) return;
+    const equalWeight = parseFloat((100 / holdings.length).toFixed(2));
+    const promises = holdings.map((h, i) => {
+      const w = i === holdings.length - 1
+        ? parseFloat((100 - equalWeight * (holdings.length - 1)).toFixed(2))
+        : equalWeight;
+      return fetch(`/api/user/portfolios/${portfolio.id}/holdings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol: h.symbol, weight: w, assetType: h.assetType }),
+      });
+    });
+    await Promise.all(promises);
+    onHoldingChanged();
+  }
 
   async function deleteHolding(symbol: string) {
     await fetch(
@@ -215,14 +290,35 @@ function PortfolioCard({
     onDeleted(portfolio.id);
   }
 
+  const weightColor = totalWeight > 100.1
+    ? "text-warning-fg"
+    : weightOk
+      ? "text-success-fg"
+      : "text-text-tertiary";
+
   return (
     <Card variant="glass">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-text-primary">{portfolio.name}</h3>
+          {renaming ? (
+            <RenameForm
+              portfolioId={portfolio.id}
+              currentName={portfolio.name}
+              onRenamed={(name) => { onRenamed(portfolio.id, name); setRenaming(false); }}
+              onCancel={() => setRenaming(false)}
+            />
+          ) : (
+            <h3
+              className="text-base font-semibold text-text-primary cursor-pointer hover:text-accent-fg transition-colors"
+              onClick={() => setRenaming(true)}
+              title="Click to rename"
+            >
+              {portfolio.name}
+            </h3>
+          )}
           <p className="mt-0.5 text-xs text-text-tertiary">
-            {(portfolio.holdings ?? []).length} holdings ·{" "}
-            <span className={totalWeight > 100.01 ? "text-warning-fg" : "text-text-tertiary"}>
+            {holdings.length} holding{holdings.length !== 1 ? "s" : ""} ·{" "}
+            <span className={weightColor}>
               {totalWeight.toFixed(1)}% allocated
             </span>
             {perf && (
@@ -233,7 +329,7 @@ function PortfolioCard({
                 </span>
                 {" "}·{" "}
                 <span className="text-text-tertiary">
-                  {perf.summary.weightedUpside.toFixed(1)}% upside
+                  {perf.summary.weightedUpside >= 0 ? "+" : ""}{perf.summary.weightedUpside.toFixed(1)}% analyst upside
                 </span>
               </>
             )}
@@ -257,9 +353,9 @@ function PortfolioCard({
         </div>
       </div>
 
-      {(portfolio.holdings ?? []).length > 0 && (
+      {holdings.length > 0 && (
         <div className="mt-3 space-y-1">
-          {(portfolio.holdings ?? []).map((h) => (
+          {holdings.map((h) => (
             <div
               key={h.id}
               className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5"
@@ -285,8 +381,18 @@ function PortfolioCard({
       )}
 
       {expanded && (
-        <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-2 text-xs text-text-tertiary">Add holding (max 20, weights should total 100%)</p>
+        <div className="mt-3 border-t border-border pt-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-text-tertiary">Add holding (max 20 · weights should total 100%)</p>
+            {holdings.length >= 2 && !weightOk && (
+              <button
+                onClick={normalizeWeights}
+                className="text-xs text-link-fg hover:text-accent-fg transition-colors"
+              >
+                Normalize to 100%
+              </button>
+            )}
+          </div>
           <AddHoldingForm portfolioId={portfolio.id} onAdded={onHoldingChanged} />
         </div>
       )}
@@ -366,6 +472,9 @@ export default function PortfoliosPage() {
                   portfolio={p}
                   onDeleted={(id) => setPortfolios((prev) => prev.filter((x) => x.id !== id))}
                   onHoldingChanged={fetchPortfolios}
+                  onRenamed={(id, name) =>
+                    setPortfolios((prev) => prev.map((x) => x.id === id ? { ...x, name } : x))
+                  }
                 />
               ))}
             </div>
@@ -378,10 +487,6 @@ export default function PortfoliosPage() {
           )}
         </>
       )}
-
-      <Card variant="glass" className="text-center text-xs text-text-tertiary p-4">
-        Portfolio weights should total 100%. Performance tracking coming soon.
-      </Card>
     </div>
   );
 }
