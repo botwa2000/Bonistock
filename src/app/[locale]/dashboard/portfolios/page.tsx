@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "@/i18n/navigation";
 import { Card } from "@/components/ui/card";
@@ -69,6 +69,12 @@ function NewPortfolioForm({ onCreated }: { onCreated: (p: Portfolio) => void }) 
   );
 }
 
+interface SearchResult {
+  symbol: string;
+  name: string;
+  type: "STOCK" | "ETF";
+}
+
 function AddHoldingForm({
   portfolioId,
   onAdded,
@@ -81,6 +87,81 @@ function AddHoldingForm({
   const [assetType, setAssetType] = useState<"STOCK" | "ETF">("STOCK");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [hasSelected, setHasSelected] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!symbol.trim() || hasSelected) {
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(symbol.trim())}`);
+        if (res.ok) {
+          const data = (await res.json()) as { results: SearchResult[] };
+          setResults(data.results ?? []);
+          setShowDropdown((data.results ?? []).length > 0);
+          setHighlightedIndex(-1);
+        }
+      } catch {
+        setResults([]);
+        setShowDropdown(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [symbol, hasSelected]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function selectResult(result: SearchResult) {
+    setSymbol(result.symbol);
+    setAssetType(result.type);
+    setHasSelected(true);
+    setShowDropdown(false);
+    setResults([]);
+    inputRef.current?.focus();
+  }
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    setSymbol(value);
+    setHasSelected(false);
+    if (!value.trim()) {
+      setResults([]);
+      setShowDropdown(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!showDropdown || results.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1) % results.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev - 1 + results.length) % results.length);
+    } else if (e.key === "Enter" && highlightedIndex >= 0) {
+      e.preventDefault();
+      selectResult(results[highlightedIndex]);
+    } else if (e.key === "Escape") {
+      setShowDropdown(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -103,6 +184,7 @@ function AddHoldingForm({
       }
       setSymbol("");
       setWeight("");
+      setHasSelected(false);
       onAdded();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error adding holding");
@@ -113,13 +195,39 @@ function AddHoldingForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-      <input
-        value={symbol}
-        onChange={(e) => setSymbol(e.target.value)}
-        placeholder="Symbol (e.g. AAPL)"
-        maxLength={20}
-        className="w-32 rounded-xl border border-input-border bg-input-bg px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-fg"
-      />
+      <div className="relative" ref={dropdownRef}>
+        <input
+          ref={inputRef}
+          value={symbol}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Symbol (e.g. AAPL)"
+          maxLength={20}
+          autoComplete="off"
+          className="w-40 rounded-xl border border-input-border bg-input-bg px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-fg"
+        />
+        {showDropdown && results.length > 0 && (
+          <div className="absolute z-10 mt-1 w-64 max-h-60 overflow-auto rounded-xl border border-input-border bg-surface-elevated shadow-lg">
+            {results.map((result, index) => (
+              <button
+                key={`${result.symbol}-${result.type}`}
+                type="button"
+                onClick={() => selectResult(result)}
+                className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                  index === highlightedIndex
+                    ? "bg-accent-fg/10 text-text-primary"
+                    : "text-text-primary hover:bg-surface-hover"
+                }`}
+              >
+                <span className="font-semibold">{result.symbol}</span>
+                <span className="mx-1 text-text-tertiary">—</span>
+                <span className="text-text-secondary">{result.name}</span>
+                <span className="ml-1 text-xs text-text-tertiary">({result.type})</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <input
         value={weight}
         onChange={(e) => setWeight(e.target.value)}
