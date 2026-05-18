@@ -33,18 +33,81 @@ export async function GET(
   }
 
   if (portfolio.holdings.length === 0) {
-    return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
+    return NextResponse.json({ dates: [], portfolioValues: [], summary: null, holdingsData: [], breakdown: null });
   }
 
-  const stockHoldings = portfolio.holdings.filter(
-    (h) => h.assetType === "STOCK"
-  );
+  const stockHoldings = portfolio.holdings.filter((h) => h.assetType === "STOCK");
 
-  if (stockHoldings.length === 0) {
-    return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
-  }
-
+  // Fetch enriched stock data for all stock holdings
   const symbols = stockHoldings.map((h) => h.symbol);
+  const stocks = await db.stock.findMany({
+    where: { symbol: { in: symbols } },
+    select: {
+      symbol: true,
+      name: true,
+      sector: true,
+      region: true,
+      risk: true,
+      upside: true,
+      buys: true,
+      holds: true,
+      sells: true,
+      price: true,
+      dividendYield: true,
+      beta: true,
+      pe: true,
+    },
+  });
+  const stockMap = new Map(stocks.map((s) => [s.symbol, s]));
+
+  // Build enriched holdings data (all holdings, ETFs get partial data)
+  const holdingsData = portfolio.holdings.map((h) => {
+    const s = stockMap.get(h.symbol);
+    return {
+      symbol: h.symbol,
+      name: s?.name ?? h.symbol,
+      assetType: h.assetType,
+      weight: h.weight,
+      sector: s?.sector ?? "ETF",
+      region: s?.region ?? "unknown",
+      risk: s?.risk ?? null,
+      upside: s?.upside ?? null,
+      buys: s?.buys ?? null,
+      holds: s?.holds ?? null,
+      sells: s?.sells ?? null,
+      price: s?.price ?? null,
+      dividendYield: s?.dividendYield ?? null,
+      beta: s?.beta ?? null,
+      pe: s?.pe ?? null,
+    };
+  });
+
+  // Compute breakdown aggregates across all holdings (weighted)
+  const sectorBreakdown: Record<string, number> = {};
+  const regionBreakdown: Record<string, number> = {};
+  const riskBreakdown: Record<string, number> = {};
+  for (const h of holdingsData) {
+    const w = h.weight;
+    const sec = h.sector || "Other";
+    sectorBreakdown[sec] = (sectorBreakdown[sec] ?? 0) + w;
+    const reg = h.region || "Other";
+    regionBreakdown[reg] = (regionBreakdown[reg] ?? 0) + w;
+    if (h.risk) {
+      riskBreakdown[h.risk] = (riskBreakdown[h.risk] ?? 0) + w;
+    }
+  }
+
+  // If no stock holdings, return enriched metadata only (no chart data)
+  if (stockHoldings.length === 0) {
+    return NextResponse.json({
+      dates: [],
+      portfolioValues: [],
+      summary: null,
+      holdingsData,
+      breakdown: { sector: sectorBreakdown, region: regionBreakdown, risk: riskBreakdown },
+    });
+  }
+
   const since = new Date();
   since.setDate(since.getDate() - days);
   since.setHours(0, 0, 0, 0);
@@ -57,7 +120,13 @@ export async function GET(
   });
 
   if (snaps.length === 0) {
-    return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
+    return NextResponse.json({
+      dates: [],
+      portfolioValues: [],
+      summary: null,
+      holdingsData,
+      breakdown: { sector: sectorBreakdown, region: regionBreakdown, risk: riskBreakdown },
+    });
   }
 
   // Group by date
@@ -70,7 +139,13 @@ export async function GET(
 
   const dates = [...byDate.keys()].sort();
   if (dates.length < 2) {
-    return NextResponse.json({ dates: [], portfolioValues: [], summary: null });
+    return NextResponse.json({
+      dates: [],
+      portfolioValues: [],
+      summary: null,
+      holdingsData,
+      breakdown: { sector: sectorBreakdown, region: regionBreakdown, risk: riskBreakdown },
+    });
   }
 
   const basePrices = byDate.get(dates[0])!;
@@ -83,8 +158,6 @@ export async function GET(
       const base = basePrices.get(h.symbol);
       const cur = dayPrices.get(h.symbol);
       if (base && cur && base > 0) {
-        // (weight / 100) * returnPct gives proportional contribution;
-        // uncovered holdings contribute 0 (price assumed unchanged)
         weightedReturn += (h.weight / 100) * ((cur / base - 1) * 100);
       }
     }
@@ -93,16 +166,14 @@ export async function GET(
 
   const rangeReturn = parseFloat((portfolioValues[portfolioValues.length - 1] - 100).toFixed(2));
 
-  // Analyst stats
-  const stocks = await db.stock.findMany({
-    where: { symbol: { in: symbols } },
-    select: { symbol: true, upside: true, buys: true, holds: true, sells: true },
-  });
-  const stockMap = new Map(stocks.map((s) => [s.symbol, s]));
-
+  // Compute weighted analyst stats
   let weightedUpside = 0;
   let weightedBuyPct = 0;
+  let weightedBeta = 0;
+  let weightedDividendYield = 0;
   let totalWeight = 0;
+  let betaWeight = 0;
+  let divWeight = 0;
 
   for (const h of stockHoldings) {
     const s = stockMap.get(h.symbol);
@@ -112,6 +183,8 @@ export async function GET(
     weightedUpside += h.weight * s.upside;
     weightedBuyPct += h.weight * buyPct;
     totalWeight += h.weight;
+    if (s.beta != null) { weightedBeta += h.weight * s.beta; betaWeight += h.weight; }
+    if (s.dividendYield != null) { weightedDividendYield += h.weight * s.dividendYield; divWeight += h.weight; }
   }
 
   if (totalWeight > 0) {
@@ -123,9 +196,17 @@ export async function GET(
     rangeReturn,
     weightedUpside: parseFloat(weightedUpside.toFixed(1)),
     weightedBuyPct: parseFloat(weightedBuyPct.toFixed(1)),
+    weightedBeta: betaWeight > 0 ? parseFloat((weightedBeta / betaWeight).toFixed(2)) : null,
+    weightedDividendYield: divWeight > 0 ? parseFloat((weightedDividendYield / divWeight).toFixed(2)) : null,
     holdingsCount: portfolio.holdings.length,
     totalWeight: parseFloat(portfolio.holdings.reduce((s, h) => s + h.weight, 0).toFixed(1)),
   };
 
-  return NextResponse.json({ dates, portfolioValues, summary });
+  return NextResponse.json({
+    dates,
+    portfolioValues,
+    summary,
+    holdingsData,
+    breakdown: { sector: sectorBreakdown, region: regionBreakdown, risk: riskBreakdown },
+  });
 }
