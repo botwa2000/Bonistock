@@ -571,11 +571,15 @@ function SymbolSearch({
     if (existingSymbols.includes(result.symbol)) return;
     setAdding(result.symbol);
     setError("");
+    // Calculate a default weight: equal split across all holdings after adding
+    const defaultWeight = parseFloat(
+      Math.max(1, 100 / (existingSymbols.length + 1)).toFixed(2)
+    );
     try {
       const res = await fetch(`/api/user/portfolios/${portfolioId}/holdings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol: result.symbol, weight: 0, assetType: result.assetType }),
+        body: JSON.stringify({ symbol: result.symbol, weight: defaultWeight, assetType: result.assetType }),
       });
       if (!res.ok) {
         const body = await res.json() as { error?: string };
@@ -908,6 +912,271 @@ function PortfolioSelector({
   );
 }
 
+// ─── Securities Browser ──────────────────────────────────────────────────────
+
+interface StockRow {
+  symbol: string;
+  name: string;
+  assetType: "STOCK" | "ETF";
+  sector: string;
+  upside: number | null;
+  risk: string | null;
+  price: number | null;
+  analysts: number | null;
+  region?: string;
+}
+
+function SecuritiesBrowser({
+  portfolioId,
+  existingSymbols,
+  onAdded,
+}: {
+  portfolioId: string;
+  existingSymbols: string[];
+  onAdded: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [securities, setSecurities] = useState<StockRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "STOCK" | "ETF">("ALL");
+  const [riskFilter, setRiskFilter] = useState("ALL");
+  const [sortKey, setSortKey] = useState<"symbol" | "upside" | "name">("upside");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [adding, setAdding] = useState<string | null>(null);
+
+  async function load() {
+    if (loaded) return;
+    setLoading(true);
+    try {
+      const [stockRes, etfRes] = await Promise.all([
+        fetch("/api/stocks"),
+        fetch("/api/etfs"),
+      ]);
+      const stockData = await stockRes.json() as {
+        stocks: Array<{ symbol: string; name: string; sector: string; upside: number; risk: string; price: number; analysts: number; region: string }>;
+      };
+      const etfData = await etfRes.json() as Array<{ symbol: string; name: string; theme: string; cagr1y: number; region: string }>;
+      const rows: StockRow[] = [
+        ...(stockData.stocks ?? []).map((s) => ({
+          symbol: s.symbol,
+          name: s.name,
+          assetType: "STOCK" as const,
+          sector: s.sector,
+          upside: s.upside,
+          risk: s.risk?.toUpperCase() ?? null,   // API returns lowercase ("low"), normalize to "LOW"
+          price: s.price,
+          analysts: s.analysts,
+          region: s.region,
+        })),
+        ...etfData.map((e) => ({
+          symbol: e.symbol,
+          name: e.name,
+          assetType: "ETF" as const,
+          sector: e.theme,
+          upside: e.cagr1y ?? null,
+          risk: null,
+          price: null,
+          analysts: null,
+          region: e.region,
+        })),
+      ];
+      setSecurities(rows);
+      setLoaded(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleOpen() {
+    setOpen((prev) => {
+      if (!prev) load();
+      return !prev;
+    });
+  }
+
+  async function addSecurity(row: StockRow) {
+    if (existingSymbols.includes(row.symbol)) return;
+    setAdding(row.symbol);
+    const defaultWeight = parseFloat(
+      Math.max(1, 100 / (existingSymbols.length + 1)).toFixed(2)
+    );
+    try {
+      const res = await fetch(`/api/user/portfolios/${portfolioId}/holdings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol: row.symbol, weight: defaultWeight, assetType: row.assetType }),
+      });
+      if (res.ok) onAdded();
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  const sectors = [...new Set(securities.filter((s) => s.assetType === "STOCK").map((s) => s.sector))].sort();
+
+  const filtered = securities
+    .filter((s) => {
+      if (typeFilter !== "ALL" && s.assetType !== typeFilter) return false;
+      if (riskFilter !== "ALL" && s.risk !== riskFilter) return false;
+      if (filter) {
+        const q = filter.toLowerCase();
+        return s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.sector?.toLowerCase().includes(q);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortKey === "symbol") return sortDir === "asc" ? a.symbol.localeCompare(b.symbol) : b.symbol.localeCompare(a.symbol);
+      if (sortKey === "name") return sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      // upside
+      const av = a.upside ?? -999;
+      const bv = b.upside ?? -999;
+      return sortDir === "asc" ? av - bv : bv - av;
+    });
+
+  function toggleSort(k: typeof sortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir("desc"); }
+  }
+
+  return (
+    <div className="border-t border-border pt-4 mt-2">
+      <button
+        onClick={handleOpen}
+        className="flex items-center gap-2 text-sm text-link-fg hover:text-accent-fg transition-colors"
+      >
+        <span>{open ? "▾" : "▸"}</span>
+        Browse all {loaded ? `(${securities.length})` : "securities"}
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2">
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter by symbol, name, sector…"
+              className="flex-1 min-w-[160px] rounded-xl border border-input-border bg-input-bg px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-fg"
+            />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as "ALL" | "STOCK" | "ETF")}
+              className="rounded-xl border border-input-border bg-input-bg px-2 py-1.5 text-sm text-text-primary focus:outline-none"
+            >
+              <option value="ALL" className="bg-surface-elevated">All types</option>
+              <option value="STOCK" className="bg-surface-elevated">Stocks only</option>
+              <option value="ETF" className="bg-surface-elevated">ETFs only</option>
+            </select>
+            <select
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="rounded-xl border border-input-border bg-input-bg px-2 py-1.5 text-sm text-text-primary focus:outline-none"
+            >
+              <option value="ALL" className="bg-surface-elevated">All risk</option>
+              <option value="LOW" className="bg-surface-elevated">Low</option>
+              <option value="BALANCED" className="bg-surface-elevated">Balanced</option>
+              <option value="HIGH" className="bg-surface-elevated">High</option>
+            </select>
+          </div>
+
+          {/* Results count */}
+          {loaded && (
+            <p className="text-xs text-text-tertiary">
+              {filtered.length} of {securities.length} securities
+              {filter || typeFilter !== "ALL" || riskFilter !== "ALL" ? " (filtered)" : ""}
+            </p>
+          )}
+
+          {/* Table */}
+          {loading ? (
+            <div className="flex h-20 items-center justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-accent-fg" />
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-surface border-b border-border">
+                  <tr>
+                    {[
+                      { label: "Symbol", k: "symbol" as const },
+                      { label: "Name", k: "name" as const },
+                      { label: "Sector", k: null },
+                      { label: "Risk", k: null },
+                      { label: "Upside", k: "upside" as const },
+                      { label: "", k: null },
+                    ].map(({ label, k }, i) => (
+                      <th
+                        key={i}
+                        className={`px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-text-tertiary whitespace-nowrap ${k ? "cursor-pointer hover:text-text-secondary" : ""}`}
+                        onClick={() => k && toggleSort(k)}
+                      >
+                        {label}
+                        {k && sortKey === k && (
+                          <span className="ml-1 text-accent-fg">{sortDir === "asc" ? "↑" : "↓"}</span>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.slice(0, 200).map((row) => {
+                    const alreadyIn = existingSymbols.includes(row.symbol);
+                    const isAdding = adding === row.symbol;
+                    const upsideColor = row.upside == null ? "text-text-tertiary"
+                      : row.upside >= 20 ? "text-success-fg"
+                      : row.upside >= 5 ? "text-warning-fg"
+                      : "text-danger-fg";
+                    return (
+                      <tr key={row.symbol}
+                        className={`border-b border-border last:border-0 transition-colors ${alreadyIn ? "opacity-50" : "hover:bg-surface/60"}`}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-text-primary">{row.symbol}</span>
+                            <Badge variant={row.assetType === "ETF" ? "info" : "default"} className="text-[10px] px-1">{row.assetType}</Badge>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-text-secondary max-w-[150px] truncate text-xs" title={row.name}>{row.name}</td>
+                        <td className="px-3 py-2 text-text-tertiary text-xs whitespace-nowrap">{row.sector || "—"}</td>
+                        <td className="px-3 py-2"><RiskBadge risk={row.risk} /></td>
+                        <td className={`px-3 py-2 font-medium text-xs ${upsideColor}`}>
+                          {row.upside != null ? `+${row.upside.toFixed(1)}%` : "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {alreadyIn ? (
+                            <span className="text-[10px] text-text-tertiary">Added</span>
+                          ) : (
+                            <button
+                              onClick={() => addSecurity(row)}
+                              disabled={isAdding}
+                              className="rounded-lg border border-accent-fg px-2 py-0.5 text-xs text-accent-fg hover:bg-accent-fg hover:text-white transition-colors disabled:opacity-50"
+                            >
+                              {isAdding ? "…" : "+ Add"}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-sm text-text-tertiary">
+                        No securities match your filters
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Portfolio Manager ───────────────────────────────────────────────────
 
 const RANGES = ["1w", "1m", "3m", "6m", "1y"] as const;
@@ -1143,9 +1412,14 @@ export function PortfolioManager() {
 
               <div className="mt-4 border-t border-border pt-4">
                 <p className="mb-2 text-xs text-text-tertiary">
-                  Add holding — search by symbol or company name (max 20)
+                  Search by symbol or company name to add (max 20 holdings)
                 </p>
                 <SymbolSearch
+                  portfolioId={active.id}
+                  existingSymbols={active.holdings.map((h) => h.symbol)}
+                  onAdded={handleHoldingChanged}
+                />
+                <SecuritiesBrowser
                   portfolioId={active.id}
                   existingSymbols={active.holdings.map((h) => h.symbol)}
                   onAdded={handleHoldingChanged}

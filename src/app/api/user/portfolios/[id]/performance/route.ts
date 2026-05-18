@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const RANGE_DAYS: Record<string, number> = {
+  "1w": 7,
   "7d": 7,
   "1m": 30,
   "3m": 90,
@@ -148,20 +149,32 @@ export async function GET(
     });
   }
 
-  const basePrices = byDate.get(dates[0])!;
+  // Per-symbol baseline: use first date each symbol appears (handles sparse data)
+  const symbolBaselines = new Map<string, number>();
+  for (const dateStr of dates) {
+    const dayPrices = byDate.get(dateStr)!;
+    for (const h of stockHoldings) {
+      if (!symbolBaselines.has(h.symbol) && dayPrices.has(h.symbol)) {
+        symbolBaselines.set(h.symbol, dayPrices.get(h.symbol)!);
+      }
+    }
+  }
 
   const portfolioValues: number[] = [];
   for (const dateStr of dates) {
     const dayPrices = byDate.get(dateStr)!;
     let weightedReturn = 0;
+    let coveredWeight = 0;
     for (const h of stockHoldings) {
-      const base = basePrices.get(h.symbol);
+      const base = symbolBaselines.get(h.symbol);
       const cur = dayPrices.get(h.symbol);
       if (base && cur && base > 0) {
-        weightedReturn += (h.weight / 100) * ((cur / base - 1) * 100);
+        weightedReturn += h.weight * ((cur / base - 1) * 100);
+        coveredWeight += h.weight;
       }
     }
-    portfolioValues.push(parseFloat((100 + weightedReturn).toFixed(4)));
+    const portfolioReturn = coveredWeight > 0 ? weightedReturn / coveredWeight : 0;
+    portfolioValues.push(parseFloat((100 + portfolioReturn).toFixed(4)));
   }
 
   const rangeReturn = parseFloat((portfolioValues[portfolioValues.length - 1] - 100).toFixed(2));
