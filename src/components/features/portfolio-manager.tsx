@@ -521,22 +521,156 @@ function HoldingsTable({
   );
 }
 
+// ─── Weight helpers ───────────────────────────────────────────────────────────
+
+function calcSuggestedWeight(currentTotal: number, holdingsCount: number): number {
+  const remaining = parseFloat((100 - currentTotal).toFixed(1));
+  if (remaining > 0.5) return remaining;
+  return parseFloat((100 / (holdingsCount + 1)).toFixed(1));
+}
+
+async function applyHoldingAdd(
+  portfolioId: string,
+  symbol: string,
+  weight: number,
+  assetType: string,
+  currentHoldings: Holding[],
+  currentTotal: number,
+): Promise<void> {
+  const requests: Promise<Response>[] = [];
+  if (currentTotal + weight > 100.05 && currentTotal > 0) {
+    const targetExisting = 100 - weight;
+    for (const h of currentHoldings) {
+      const newW = parseFloat(((h.weight / currentTotal) * targetExisting).toFixed(2));
+      if (newW > 0) {
+        requests.push(
+          fetch(`/api/user/portfolios/${portfolioId}/holdings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ symbol: h.symbol, weight: newW, assetType: h.assetType }),
+          })
+        );
+      }
+    }
+  }
+  requests.push(
+    fetch(`/api/user/portfolios/${portfolioId}/holdings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbol, weight, assetType }),
+    })
+  );
+  await Promise.all(requests);
+}
+
+// ─── Weight Prompt Panel ──────────────────────────────────────────────────────
+
+function WeightPromptPanel({
+  symbol,
+  name,
+  assetType,
+  initialWeight,
+  currentTotal,
+  onConfirm,
+  onCancel,
+  adding,
+  error,
+}: {
+  symbol: string;
+  name: string;
+  assetType: "STOCK" | "ETF";
+  initialWeight: number;
+  currentTotal: number;
+  onConfirm: (weight: number) => void;
+  onCancel: () => void;
+  adding: boolean;
+  error: string;
+}) {
+  const [rawWeight, setRawWeight] = useState(initialWeight.toFixed(1));
+  const w = Math.max(0, parseFloat(rawWeight) || 0);
+  const newTotal = parseFloat((currentTotal + w).toFixed(1));
+  const willExceed = newTotal > 100.05;
+
+  function handleKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter") { e.preventDefault(); if (w > 0) onConfirm(w); }
+    if (e.key === "Escape") { e.preventDefault(); onCancel(); }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-elevated p-3 space-y-2.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-semibold text-text-primary">{symbol}</span>
+        <Badge variant={assetType === "ETF" ? "info" : "default"} className="text-[10px] px-1">
+          {assetType}
+        </Badge>
+        <span className="text-xs text-text-tertiary truncate">{name}</span>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-xs text-text-secondary whitespace-nowrap">Allocation weight</label>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min="0.1"
+            max="100"
+            step="0.1"
+            value={rawWeight}
+            onChange={(e) => setRawWeight(e.target.value)}
+            onKeyDown={handleKey}
+            autoFocus
+            className="w-20 rounded-lg border border-input-border bg-input-bg px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-fg"
+          />
+          <span className="text-xs text-text-secondary">%</span>
+        </div>
+        <span className="text-xs text-text-tertiary">
+          New total:{" "}
+          <span className={
+            willExceed ? "font-medium text-warning-fg"
+            : newTotal >= 99.5 ? "font-medium text-success-fg"
+            : "text-text-secondary"
+          }>
+            {newTotal}%
+          </span>
+        </span>
+      </div>
+      {willExceed && (
+        <p className="text-xs text-warning-fg">
+          Exceeds 100% — existing holdings will be scaled down proportionally to fit.
+        </p>
+      )}
+      {error && <p className="text-xs text-danger-fg">{error}</p>}
+      <div className="flex gap-2">
+        <Button size="sm" onClick={() => onConfirm(w)} disabled={adding || w <= 0}>
+          {adding ? "Adding…" : "Add to portfolio"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onCancel} disabled={adding}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Symbol Search ────────────────────────────────────────────────────────────
 
 function SymbolSearch({
   portfolioId,
   existingSymbols,
+  currentHoldings,
+  totalWeight,
   onAdded,
 }: {
   portfolioId: string;
   existingSymbols: string[];
+  currentHoldings: Holding[];
+  totalWeight: number;
   onAdded: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [adding, setAdding] = useState<string | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<SearchResult | null>(null);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -567,40 +701,43 @@ function SymbolSearch({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  async function addHolding(result: SearchResult) {
+  function selectResult(result: SearchResult) {
     if (existingSymbols.includes(result.symbol)) return;
-    setAdding(result.symbol);
+    setOpen(false);
+    setPendingAdd(result);
     setError("");
-    // Calculate a default weight: equal split across all holdings after adding
-    const defaultWeight = parseFloat(
-      Math.max(1, 100 / (existingSymbols.length + 1)).toFixed(2)
-    );
+  }
+
+  async function confirmAdd(weight: number) {
+    if (!pendingAdd || weight <= 0) return;
+    setAdding(true);
+    setError("");
     try {
-      const res = await fetch(`/api/user/portfolios/${portfolioId}/holdings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol: result.symbol, weight: defaultWeight, assetType: result.assetType }),
-      });
-      if (!res.ok) {
-        const body = await res.json() as { error?: string };
-        throw new Error(body.error ?? "Failed to add");
-      }
+      await applyHoldingAdd(portfolioId, pendingAdd.symbol, weight, pendingAdd.assetType, currentHoldings, totalWeight);
       setQuery("");
-      setOpen(false);
+      setPendingAdd(null);
       onAdded();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error adding holding");
     } finally {
-      setAdding(null);
+      setAdding(false);
     }
+  }
+
+  function cancelAdd() {
+    setPendingAdd(null);
+    setError("");
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!open || results.length === 0) return;
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, results.length - 1)); }
     if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
-    if (e.key === "Enter") { e.preventDefault(); if (results[activeIdx]) addHolding(results[activeIdx]); }
-    if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
+    if (e.key === "Enter") { e.preventDefault(); if (results[activeIdx]) selectResult(results[activeIdx]); }
+    if (e.key === "Escape") {
+      if (pendingAdd) cancelAdd();
+      else { setOpen(false); inputRef.current?.blur(); }
+    }
   }
 
   return (
@@ -610,15 +747,15 @@ function SymbolSearch({
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => results.length > 0 && setOpen(true)}
+            onChange={(e) => { setQuery(e.target.value); if (pendingAdd) setPendingAdd(null); }}
+            onFocus={() => results.length > 0 && !pendingAdd && setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder="Search symbol or company name…"
             className="w-full rounded-xl border border-input-border bg-input-bg px-3 py-2 pr-8 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-fg"
           />
           {query && (
             <button
-              onClick={() => { setQuery(""); setOpen(false); }}
+              onClick={() => { setQuery(""); setOpen(false); setPendingAdd(null); }}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
             >
               ×
@@ -627,53 +764,67 @@ function SymbolSearch({
         </div>
       </div>
 
-      {error && <p className="mt-1 text-xs text-danger-fg">{error}</p>}
-
-      {open && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-xl">
-          {results.map((r, i) => {
-            const alreadyIn = existingSymbols.includes(r.symbol);
-            const isActive = i === activeIdx;
-            return (
-              <button
-                key={r.symbol}
-                className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors
-                  ${isActive ? "bg-surface" : "hover:bg-surface"}
-                  ${alreadyIn ? "opacity-50 cursor-default" : "cursor-pointer"}`}
-                onMouseEnter={() => setActiveIdx(i)}
-                onClick={() => !alreadyIn && addHolding(r)}
-                disabled={!!adding || alreadyIn}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-text-primary">{r.symbol}</span>
-                    <Badge variant={r.assetType === "ETF" ? "info" : "default"} className="text-[10px] px-1">
-                      {r.assetType}
-                    </Badge>
-                    {alreadyIn && (
-                      <span className="text-[10px] text-text-tertiary">Already added</span>
-                    )}
-                    {adding === r.symbol && (
-                      <span className="text-[10px] text-accent-fg">Adding…</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-text-tertiary truncate">{r.name}</span>
-                    {r.sector && <span className="text-[10px] text-text-tertiary">· {r.sector}</span>}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                  {r.upside != null && (
-                    <span className={`text-xs font-medium ${r.upside >= 10 ? "text-success-fg" : r.upside >= 0 ? "text-warning-fg" : "text-danger-fg"}`}>
-                      +{r.upside.toFixed(1)}%
-                    </span>
-                  )}
-                  {r.risk && <RiskBadge risk={r.risk} />}
-                </div>
-              </button>
-            );
-          })}
+      {pendingAdd ? (
+        <div className="mt-2">
+          <WeightPromptPanel
+            symbol={pendingAdd.symbol}
+            name={pendingAdd.name}
+            assetType={pendingAdd.assetType}
+            initialWeight={calcSuggestedWeight(totalWeight, existingSymbols.length)}
+            currentTotal={totalWeight}
+            onConfirm={confirmAdd}
+            onCancel={cancelAdd}
+            adding={adding}
+            error={error}
+          />
         </div>
+      ) : (
+        <>
+          {error && <p className="mt-1 text-xs text-danger-fg">{error}</p>}
+          {open && results.length > 0 && (
+            <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-xl">
+              {results.map((r, i) => {
+                const alreadyIn = existingSymbols.includes(r.symbol);
+                const isActive = i === activeIdx;
+                return (
+                  <button
+                    key={r.symbol}
+                    className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors
+                      ${isActive ? "bg-surface" : "hover:bg-surface"}
+                      ${alreadyIn ? "opacity-50 cursor-default" : "cursor-pointer"}`}
+                    onMouseEnter={() => setActiveIdx(i)}
+                    onClick={() => !alreadyIn && selectResult(r)}
+                    disabled={alreadyIn}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">{r.symbol}</span>
+                        <Badge variant={r.assetType === "ETF" ? "info" : "default"} className="text-[10px] px-1">
+                          {r.assetType}
+                        </Badge>
+                        {alreadyIn && (
+                          <span className="text-[10px] text-text-tertiary">Already added</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-text-tertiary truncate">{r.name}</span>
+                        {r.sector && <span className="text-[10px] text-text-tertiary">· {r.sector}</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                      {r.upside != null && (
+                        <span className={`text-xs font-medium ${r.upside >= 10 ? "text-success-fg" : r.upside >= 0 ? "text-warning-fg" : "text-danger-fg"}`}>
+                          +{r.upside.toFixed(1)}%
+                        </span>
+                      )}
+                      {r.risk && <RiskBadge risk={r.risk} />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -929,10 +1080,14 @@ interface StockRow {
 function SecuritiesBrowser({
   portfolioId,
   existingSymbols,
+  currentHoldings,
+  totalWeight,
   onAdded,
 }: {
   portfolioId: string;
   existingSymbols: string[];
+  currentHoldings: Holding[];
+  totalWeight: number;
   onAdded: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -944,7 +1099,9 @@ function SecuritiesBrowser({
   const [riskFilter, setRiskFilter] = useState("ALL");
   const [sortKey, setSortKey] = useState<"symbol" | "upside" | "name">("upside");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [adding, setAdding] = useState<string | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<StockRow | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
 
   async function load() {
     if (loaded) return;
@@ -996,22 +1153,30 @@ function SecuritiesBrowser({
     });
   }
 
-  async function addSecurity(row: StockRow) {
+  function startAdd(row: StockRow) {
     if (existingSymbols.includes(row.symbol)) return;
-    setAdding(row.symbol);
-    const defaultWeight = parseFloat(
-      Math.max(1, 100 / (existingSymbols.length + 1)).toFixed(2)
-    );
+    setPendingAdd(row);
+    setAddError("");
+  }
+
+  async function confirmAdd(weight: number) {
+    if (!pendingAdd || weight <= 0) return;
+    setAdding(true);
+    setAddError("");
     try {
-      const res = await fetch(`/api/user/portfolios/${portfolioId}/holdings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol: row.symbol, weight: defaultWeight, assetType: row.assetType }),
-      });
-      if (res.ok) onAdded();
+      await applyHoldingAdd(portfolioId, pendingAdd.symbol, weight, pendingAdd.assetType, currentHoldings, totalWeight);
+      setPendingAdd(null);
+      onAdded();
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : "Error adding holding");
     } finally {
-      setAdding(null);
+      setAdding(false);
     }
+  }
+
+  function cancelAdd() {
+    setPendingAdd(null);
+    setAddError("");
   }
 
   const sectors = [...new Set(securities.filter((s) => s.assetType === "STOCK").map((s) => s.sector))].sort();
@@ -1052,6 +1217,21 @@ function SecuritiesBrowser({
 
       {open && (
         <div className="mt-3 space-y-3">
+          {/* Weight prompt panel */}
+          {pendingAdd && (
+            <WeightPromptPanel
+              symbol={pendingAdd.symbol}
+              name={pendingAdd.name}
+              assetType={pendingAdd.assetType}
+              initialWeight={calcSuggestedWeight(totalWeight, existingSymbols.length)}
+              currentTotal={totalWeight}
+              onConfirm={confirmAdd}
+              onCancel={cancelAdd}
+              adding={adding}
+              error={addError}
+            />
+          )}
+
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             <input
@@ -1123,7 +1303,8 @@ function SecuritiesBrowser({
                 <tbody>
                   {filtered.slice(0, 200).map((row) => {
                     const alreadyIn = existingSymbols.includes(row.symbol);
-                    const isAdding = adding === row.symbol;
+                    const isPending = pendingAdd?.symbol === row.symbol;
+                    const isAdding = isPending && adding;
                     const upsideColor = row.upside == null ? "text-text-tertiary"
                       : row.upside >= 20 ? "text-success-fg"
                       : row.upside >= 5 ? "text-warning-fg"
@@ -1147,13 +1328,17 @@ function SecuritiesBrowser({
                         <td className="px-3 py-2">
                           {alreadyIn ? (
                             <span className="text-[10px] text-text-tertiary">Added</span>
+                          ) : isPending ? (
+                            <span className="text-[10px] text-accent-fg font-medium">
+                              {isAdding ? "Adding…" : "Selected ↑"}
+                            </span>
                           ) : (
                             <button
-                              onClick={() => addSecurity(row)}
-                              disabled={isAdding}
+                              onClick={() => startAdd(row)}
+                              disabled={!!pendingAdd}
                               className="rounded-lg border border-accent-fg px-2 py-0.5 text-xs text-accent-fg hover:bg-accent-fg hover:text-white transition-colors disabled:opacity-50"
                             >
-                              {isAdding ? "…" : "+ Add"}
+                              + Add
                             </button>
                           )}
                         </td>
@@ -1417,11 +1602,15 @@ export function PortfolioManager() {
                 <SymbolSearch
                   portfolioId={active.id}
                   existingSymbols={active.holdings.map((h) => h.symbol)}
+                  currentHoldings={active.holdings}
+                  totalWeight={totalWeight}
                   onAdded={handleHoldingChanged}
                 />
                 <SecuritiesBrowser
                   portfolioId={active.id}
                   existingSymbols={active.holdings.map((h) => h.symbol)}
+                  currentHoldings={active.holdings}
+                  totalWeight={totalWeight}
                   onAdded={handleHoldingChanged}
                 />
               </div>
