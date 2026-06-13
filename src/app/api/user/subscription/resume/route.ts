@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/logger";
 
-export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function POST(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const subscription = await db.subscription.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     select: {
       stripeSubscriptionId: true,
       paymentSource: true,
@@ -52,16 +52,16 @@ export async function POST() {
     );
 
     await db.subscription.update({
-      where: { userId: session.user.id },
+      where: { userId: ctx.userId },
       data: { cancelAtPeriodEnd: false },
     });
 
-    await logAudit(session.user.id, "SUBSCRIPTION_CHANGE", {
+    await logAudit(ctx.userId, "SUBSCRIPTION_CHANGE", {
       action: "resume_subscription",
       stripeSubscriptionId: subscription.stripeSubscriptionId,
     });
 
-    log.info("subscription:resume", `User ${session.user.id} resumed subscription`);
+    log.info("subscription:resume", `User ${ctx.userId} resumed subscription`);
 
     return NextResponse.json({
       cancelAtPeriodEnd: false,

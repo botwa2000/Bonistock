@@ -56,6 +56,7 @@ model User {
   portfolios      UserPortfolio[]
   auditLogs       AuditLog[]
   pushTokens      PushToken[]
+  mobileSessions  MobileSession[]
 
   // Affiliate
   promoter              Promoter?
@@ -143,6 +144,8 @@ model Subscription {
   cancelAtPeriodEnd             Boolean       @default(false)
   paymentSource                 PaymentSource @default(STRIPE)
   appleOriginalTransactionId    String?       @unique
+  googlePlayPurchaseToken       String?       @unique
+  googlePlayOriginalOrderId     String?       @unique
   createdAt                     DateTime      @default(now())
   updatedAt                     DateTime      @updatedAt
 
@@ -159,6 +162,7 @@ model PassPurchase {
   activationsUsed        Int           @default(0)
   stripePaymentIntentId  String?       @unique
   appleTransactionId     String?       @unique
+  googlePlayOrderId      String?       @unique
   paymentSource          PaymentSource @default(STRIPE)
   purchasedAt            DateTime      @default(now())
 
@@ -436,6 +440,26 @@ model PushToken {
   @@map("push_tokens")
 }
 
+// Native mobile app sessions: opaque refresh tokens (stored hashed), rotated on use.
+// Access tokens are stateless JWTs (see src/lib/mobile-auth.ts); this table backs refresh + logout.
+model MobileSession {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    @unique
+  deviceId         String?
+  userAgent        String?
+  platform         String?   // "ios" | "android"
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mobile_sessions")
+}
+
 // ──── Product catalog ────
 
 model Product {
@@ -454,6 +478,7 @@ model Product {
   stripeProductId String           @unique
   stripePriceId   String           @unique
   appleProductId  String?          @unique
+  googlePlayProductId String?      @unique
   iosPriceAmount  Int?
   eurPriceAmount  Int?             // DEPRECATED: use ProductPrice instead
   eurIosPriceAmount Int?           // DEPRECATED: use ProductPrice instead
@@ -528,6 +553,7 @@ model EmailTemplate {
 enum PaymentSource {
   STRIPE
   APPLE
+  GOOGLE_PLAY
   ADMIN
 }
 

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const sessions = await db.session.findMany({
-    where: { userId: session.user.id, expires: { gt: new Date() } },
+    where: { userId: ctx.userId, expires: { gt: new Date() } },
     select: {
       id: true,
       userAgent: true,
@@ -24,8 +24,8 @@ export async function GET() {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -35,7 +35,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   await db.session.deleteMany({
-    where: { id: sessionId, userId: session.user.id },
+    where: { id: sessionId, userId: ctx.userId },
   });
 
   return NextResponse.json({ revoked: true });

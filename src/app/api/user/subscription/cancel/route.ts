@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/logger";
 
-export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function POST(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const subscription = await db.subscription.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     select: {
       stripeSubscriptionId: true,
       paymentSource: true,
@@ -61,16 +61,16 @@ export async function POST() {
       // Update DB immediately so refreshUser() sees the change right away
       // (webhook will also set this, but the UI needs it now)
       await db.subscription.update({
-        where: { userId: session.user.id },
+        where: { userId: ctx.userId },
         data: { status: "CANCELED", tier: "FREE", cancelAtPeriodEnd: false },
       });
 
-      await logAudit(session.user.id, "SUBSCRIPTION_CHANGE", {
+      await logAudit(ctx.userId, "SUBSCRIPTION_CHANGE", {
         action: "cancel_immediate_refund",
         stripeSubscriptionId: subscription.stripeSubscriptionId,
       });
 
-      log.info("subscription:cancel", `User ${session.user.id} canceled within 14-day cooling-off (immediate + refund)`);
+      log.info("subscription:cancel", `User ${ctx.userId} canceled within 14-day cooling-off (immediate + refund)`);
 
       return NextResponse.json({
         cancelAtPeriodEnd: false,
@@ -85,16 +85,16 @@ export async function POST() {
     );
 
     await db.subscription.update({
-      where: { userId: session.user.id },
+      where: { userId: ctx.userId },
       data: { cancelAtPeriodEnd: true },
     });
 
-    await logAudit(session.user.id, "SUBSCRIPTION_CHANGE", {
+    await logAudit(ctx.userId, "SUBSCRIPTION_CHANGE", {
       action: "cancel_at_period_end",
       stripeSubscriptionId: subscription.stripeSubscriptionId,
     });
 
-    log.info("subscription:cancel", `User ${session.user.id} scheduled cancellation at period end`);
+    log.info("subscription:cancel", `User ${ctx.userId} scheduled cancellation at period end`);
 
     return NextResponse.json({
       cancelAtPeriodEnd: true,

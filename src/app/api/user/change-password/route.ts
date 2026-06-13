@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyPassword, validatePasswordStrength, hashPassword } from "@/lib/password";
@@ -12,12 +12,12 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = await rateLimit(`change-password:${session.user.id}`, 5, 60 * 60 * 1000);
+  const rl = await rateLimit(`change-password:${ctx.userId}`, 5, 60 * 60 * 1000);
   if (!rl.success) {
     return NextResponse.json({ error: "Too many requests. Try again later.", code: "RATE_LIMITED" }, { status: 429 });
   }
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const { currentPassword, newPassword } = parsed.data;
 
   const user = await db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { passwordHash: true },
   });
 
@@ -56,11 +56,11 @@ export async function POST(req: NextRequest) {
 
   const hashed = await hashPassword(newPassword);
   await db.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: { passwordHash: hashed },
   });
 
-  await logAudit(session.user.id, "PASSWORD_CHANGE");
+  await logAudit(ctx.userId, "PASSWORD_CHANGE");
 
   return NextResponse.json({ message: "Password updated successfully." });
 }

@@ -19,6 +19,13 @@ const envSchema = z.object({
   FMP_API_KEY: z.string().min(1),
   APPLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
   APPLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  // Native mobile OAuth (id_token exchange). Optional until the apps ship.
+  GOOGLE_IOS_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_ANDROID_CLIENT_ID: z.string().min(1).optional(),
+  APPLE_NATIVE_CLIENT_ID: z.string().min(1).optional(), // app bundle id audience
+  // Google Play Billing (Android IAP). Optional until the Android app ships.
+  GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: z.string().min(1).optional(),
+  GOOGLE_PLAY_PUBSUB_AUDIENCE: z.string().min(1).optional(),
 });
 
 export function validateEnv(): void {

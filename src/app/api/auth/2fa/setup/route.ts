@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { encrypt } from "@/lib/crypto";
 import * as OTPAuth from "otpauth";
 import QRCode from "qrcode";
 
-export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function POST(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { email: true, twoFactorEnabled: true },
   });
   if (!user) {
@@ -34,7 +34,7 @@ export async function POST() {
   // Store encrypted secret temporarily (not enabled yet until verified)
   const encryptedSecret = encrypt(totp.secret.base32);
   await db.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: { twoFactorSecret: encryptedSecret },
   });
 

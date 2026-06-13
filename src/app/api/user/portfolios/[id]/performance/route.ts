@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 const RANGE_DAYS: Record<string, number> = {
@@ -15,8 +15,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -25,7 +25,7 @@ export async function GET(
   const days = RANGE_DAYS[range] ?? 90;
 
   const portfolio = await db.userPortfolio.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
     include: { holdings: true },
   });
 

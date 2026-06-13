@@ -63,11 +63,16 @@ export async function middleware(req: NextRequest) {
     // OAuth callback/session/csrf routes need the general limit — a single OAuth
     // sign-in triggers multiple rapid requests (csrf, callback, session, providers).
     const isStrictAuthRoute =
-      pathname.startsWith("/api/auth/") &&
-      !pathname.startsWith("/api/auth/callback") &&
-      pathname !== "/api/auth/csrf" &&
-      pathname !== "/api/auth/session" &&
-      pathname !== "/api/auth/providers";
+      (pathname.startsWith("/api/auth/") &&
+        !pathname.startsWith("/api/auth/callback") &&
+        pathname !== "/api/auth/csrf" &&
+        pathname !== "/api/auth/session" &&
+        pathname !== "/api/auth/providers") ||
+      // Native mobile credential/2FA login — brute-force protection.
+      // (Refresh stays on the general bucket: a foregrounded app may refresh in bursts.)
+      pathname === "/api/mobile/auth/login" ||
+      pathname === "/api/mobile/auth/2fa" ||
+      pathname === "/api/mobile/auth/oauth";
     const limit = isStrictAuthRoute ? AUTH_LIMIT : API_LIMIT;
     const window = isStrictAuthRoute ? AUTH_WINDOW : API_WINDOW;
     const key = `rl:${ip}:${isStrictAuthRoute ? "auth" : "api"}`;
@@ -91,8 +96,17 @@ export async function middleware(req: NextRequest) {
 
   // CSRF protection for mutating requests
   if (pathname.startsWith("/api/") && ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    // Skip webhook routes (Stripe/Apple send their own signatures)
-    if (!pathname.startsWith("/api/stripe/webhook") && !pathname.startsWith("/api/apple/webhook")) {
+    // A request carrying `Authorization: Bearer` is inherently CSRF-safe: a browser
+    // never auto-attaches that header cross-site, so native mobile clients bypass the
+    // Origin check while cookie-based web requests keep full protection.
+    const hasBearer = req.headers.get("authorization")?.startsWith("Bearer ") ?? false;
+    // Skip webhook routes (Stripe/Apple/Google Play send their own signatures)
+    if (
+      !hasBearer &&
+      !pathname.startsWith("/api/stripe/webhook") &&
+      !pathname.startsWith("/api/apple/webhook") &&
+      !pathname.startsWith("/api/google-play/webhook")
+    ) {
       const origin = req.headers.get("origin");
       const appUrl = process.env.NEXT_PUBLIC_APP_URL;
       if (origin && appUrl && !origin.startsWith(appUrl)) {

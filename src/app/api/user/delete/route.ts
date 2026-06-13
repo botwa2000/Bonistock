@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { logAudit } from "@/lib/audit";
@@ -8,13 +8,13 @@ import { renderTemplate } from "@/lib/email-renderer";
 import { notifyAdmins } from "@/lib/admin-notify";
 import { log } from "@/lib/logger";
 
-export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function POST(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const userId = session.user.id;
+  const userId = ctx.userId;
 
   // Capture original user data BEFORE anonymization
   const originalUser = await db.user.findUnique({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "./auth";
+import { verifyAccessToken } from "./mobile-auth";
 import { log } from "./logger";
 
 type Handler = (
@@ -8,25 +9,45 @@ type Handler = (
   context: { userId: string; role: string }
 ) => Promise<NextResponse>;
 
+/**
+ * Resolve the authenticated user from either a native mobile bearer token or the
+ * web session cookie. A `Authorization: Bearer` header is authoritative: if it is
+ * present but invalid we return null (401) rather than falling back to the cookie.
+ * Used by every route wrapped in authenticatedRoute/adminRoute/validateBody, and
+ * callable directly by routes that don't use those wrappers (e.g. webhooks-adjacent).
+ */
+export async function resolveAuth(
+  req: NextRequest
+): Promise<{ userId: string; role: string } | null> {
+  const authz = req.headers.get("authorization");
+  if (authz?.startsWith("Bearer ")) {
+    const claims = await verifyAccessToken(authz.slice(7).trim());
+    return claims ? { userId: claims.userId, role: claims.role } : null;
+  }
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  const role = ((session as unknown as Record<string, unknown>).role as string) ?? "USER";
+  return { userId: session.user.id, role };
+}
+
 export function authenticatedRoute(handler: Handler) {
   return async (req: NextRequest) => {
     const start = Date.now();
     const path = req.nextUrl.pathname;
     log.request(req.method, path);
 
-    const session = await auth();
-    if (!session?.user?.id) {
+    const ctx = await resolveAuth(req);
+    if (!ctx) {
       log.debug("auth", `Unauthorized request to ${path}`);
       return NextResponse.json(
         { error: "Unauthorized", code: "UNAUTHORIZED" },
         { status: 401 }
       );
     }
-    const role = ((session as unknown as Record<string, unknown>).role as string) ?? "USER";
-    log.debug("auth", `User ${session.user.id} (${role}) → ${path}`);
+    log.debug("auth", `User ${ctx.userId} (${ctx.role}) → ${path}`);
 
     try {
-      const res = await handler(req, { userId: session.user.id, role });
+      const res = await handler(req, ctx);
       log.response(req.method, path, res.status, Date.now() - start);
       return res;
     } catch (err) {

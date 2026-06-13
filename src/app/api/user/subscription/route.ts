@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const subscription = await db.subscription.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     select: {
       status: true,
       tier: true,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 const addSchema = z.object({
@@ -13,15 +13,15 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const { id } = await params;
 
   const portfolio = await db.userPortfolio.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
     include: { holdings: true },
   });
   if (!portfolio) {
@@ -55,8 +55,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -67,7 +67,7 @@ export async function DELETE(
   }
 
   const portfolio = await db.userPortfolio.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
   });
   if (!portfolio) {
     return NextResponse.json({ error: "Portfolio not found", code: "NOT_FOUND" }, { status: 404 });

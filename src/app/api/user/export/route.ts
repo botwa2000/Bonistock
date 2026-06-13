@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     include: {
       watchlistItems: true,
       alerts: true,
@@ -29,7 +29,7 @@ export async function GET() {
   // Strip sensitive fields
   const { passwordHash: _, twoFactorSecret: __, ...safeUser } = user;
 
-  await logAudit(session.user.id, "DATA_EXPORT");
+  await logAudit(ctx.userId, "DATA_EXPORT");
 
   return new NextResponse(JSON.stringify(safeUser, null, 2), {
     headers: {

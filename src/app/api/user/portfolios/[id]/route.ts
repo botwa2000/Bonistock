@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 const updateSchema = z.object({
@@ -8,17 +8,17 @@ const updateSchema = z.object({
 });
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const { id } = await params;
   const portfolio = await db.userPortfolio.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
     include: { holdings: true },
   });
 
@@ -33,8 +33,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -45,7 +45,7 @@ export async function PATCH(
   }
 
   const portfolio = await db.userPortfolio.updateMany({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
     data: parsed.data,
   });
 
@@ -57,17 +57,17 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const { id } = await params;
   await db.userPortfolio.deleteMany({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
   });
 
   return NextResponse.json({ deleted: true });

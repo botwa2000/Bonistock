@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
 });
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const portfolios = await db.userPortfolio.findMany({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     include: { holdings: true },
     orderBy: { createdAt: "desc" },
   });
@@ -23,8 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   const portfolio = await db.userPortfolio.create({
     data: {
-      userId: session.user.id,
+      userId: ctx.userId,
       name: parsed.data.name,
     },
     include: { holdings: true },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import type { WatchlistItem } from "@prisma/client";
 
@@ -8,14 +8,14 @@ const addSchema = z.object({
   symbol: z.string().min(1).max(10),
 });
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const items = await db.watchlistItem.findMany({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     orderBy: { addedAt: "desc" },
   });
 
@@ -34,8 +34,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -45,17 +45,17 @@ export async function POST(req: NextRequest) {
   }
 
   const item = await db.watchlistItem.upsert({
-    where: { userId_symbol: { userId: session.user.id, symbol: parsed.data.symbol } },
+    where: { userId_symbol: { userId: ctx.userId, symbol: parsed.data.symbol } },
     update: {},
-    create: { userId: session.user.id, symbol: parsed.data.symbol },
+    create: { userId: ctx.userId, symbol: parsed.data.symbol },
   });
 
   return NextResponse.json(item, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -65,7 +65,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   await db.watchlistItem.deleteMany({
-    where: { userId: session.user.id, symbol },
+    where: { userId: ctx.userId, symbol },
   });
 
   return NextResponse.json({ deleted: true });

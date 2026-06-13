@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
@@ -11,8 +11,8 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { twoFactorSecret: true, twoFactorEnabled: true, email: true },
   });
 
@@ -46,11 +46,11 @@ export async function POST(req: NextRequest) {
   }
 
   await db.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: { twoFactorEnabled: false, twoFactorSecret: null },
   });
 
-  await logAudit(session.user.id, "2FA_DISABLE");
+  await logAudit(ctx.userId, "2FA_DISABLE");
 
   return NextResponse.json({ message: "2FA disabled successfully" });
 }

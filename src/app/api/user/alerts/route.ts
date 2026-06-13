@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 const createSchema = z.object({
@@ -11,14 +11,14 @@ const createSchema = z.object({
   message: z.string().optional(),
 });
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const alerts = await db.alert.findMany({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -26,8 +26,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const alert = await db.alert.create({
     data: {
-      userId: session.user.id,
+      userId: ctx.userId,
       symbol: parsed.data.symbol,
       type: parsed.data.type,
       condition: parsed.data.condition as Prisma.InputJsonValue,
@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -61,7 +61,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   await db.alert.deleteMany({
-    where: { id, userId: session.user.id },
+    where: { id, userId: ctx.userId },
   });
 
   return NextResponse.json({ deleted: true });

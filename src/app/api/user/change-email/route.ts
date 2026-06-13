@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { randomBytes } from "crypto";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
@@ -12,12 +12,12 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = await rateLimit(`change-email:${session.user.id}`, 3, 60 * 60 * 1000);
+  const rl = await rateLimit(`change-email:${ctx.userId}`, 3, 60 * 60 * 1000);
   if (!rl.success) {
     return NextResponse.json({ error: "Too many requests. Try again later.", code: "RATE_LIMITED" }, { status: 429 });
   }
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const newEmail = parsed.data.newEmail.toLowerCase();
 
   const user = await db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { email: true, name: true },
   });
 

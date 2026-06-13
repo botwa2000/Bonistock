@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { getUserTier, getPassInfo, hasActivePassWindow } from "@/lib/tier";
 import { logAudit } from "@/lib/audit";
@@ -20,14 +20,14 @@ const updateSchema = z.object({
   }).optional(),
 }).strict();
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const user = await db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: {
       id: true,
       email: true,
@@ -74,8 +74,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -88,12 +88,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   const user = await db.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: parsed.data as Parameters<typeof db.user.update>[0]["data"],
     select: { id: true, region: true, language: true, theme: true, goal: true, name: true },
   });
 
-  await logAudit(session.user.id, "SETTINGS_CHANGE", { changes: parsed.data });
+  await logAudit(ctx.userId, "SETTINGS_CHANGE", { changes: parsed.data });
 
   return NextResponse.json(user);
 }

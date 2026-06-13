@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
@@ -51,12 +51,12 @@ async function fetchAndVerifyTransaction(transactionId: string) {
  * Tries both production and sandbox environments to handle TestFlight + App Store.
  */
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id;
+  const userId = ctx.userId;
 
   let body: { transactionId?: string };
   try {

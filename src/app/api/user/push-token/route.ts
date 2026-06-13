@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { resolveAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 const tokenSchema = z.object({
@@ -9,8 +9,8 @@ const tokenSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,12 +23,12 @@ export async function POST(req: NextRequest) {
   await db.pushToken.upsert({
     where: { token: parsed.data.token },
     create: {
-      userId: session.user.id,
+      userId: ctx.userId,
       token: parsed.data.token,
       platform: parsed.data.platform,
     },
     update: {
-      userId: session.user.id,
+      userId: ctx.userId,
       updatedAt: new Date(),
     },
   });
@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const ctx = await resolveAuth(req);
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -49,7 +49,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   await db.pushToken.deleteMany({
-    where: { token, userId: session.user.id },
+    where: { token, userId: ctx.userId },
   });
 
   return NextResponse.json({ ok: true });
