@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
-import { routing } from "@/i18n/routing";
+import { routing, type AppLocale } from "@/i18n/routing";
+import en from "../../../../../../messages/en.json";
+import de from "../../../../../../messages/de.json";
+import fr from "../../../../../../messages/fr.json";
+import es from "../../../../../../messages/es.json";
+import it from "../../../../../../messages/it.json";
 
 /**
  * GET /api/mobile/messages/[locale]
@@ -8,23 +13,18 @@ import { routing } from "@/i18n/routing";
  * updates without an app release. The app bundles the same files for offline
  * startup and revalidates here with If-None-Match.
  */
+const MESSAGES: Record<AppLocale, unknown> = { en, de, fr, es, it };
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ locale: string }> }
 ) {
   const { locale: requested } = await params;
-  const locale = routing.locales.includes(requested as (typeof routing.locales)[number])
-    ? requested
+  const locale: AppLocale = routing.locales.includes(requested as AppLocale)
+    ? (requested as AppLocale)
     : routing.defaultLocale;
 
-  let messages: Record<string, unknown>;
-  try {
-    messages = (await import(`../../../../../messages/${locale}.json`)).default;
-  } catch {
-    return NextResponse.json({ error: "Messages not found" }, { status: 404 });
-  }
-
-  const payload = JSON.stringify(messages);
+  const payload = JSON.stringify(MESSAGES[locale]);
   const etag = `"${createHash("sha1").update(`${locale}:${payload}`).digest("hex")}"`;
 
   if (req.headers.get("if-none-match") === etag) {
